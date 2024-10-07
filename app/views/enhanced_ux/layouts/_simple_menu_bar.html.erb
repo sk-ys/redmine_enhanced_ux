@@ -1,0 +1,734 @@
+<!-- 
+// Path pattern:
+// Insertion position: Head of all pages
+// Type:               HTML
+// Comment:            Simple menu bar
+-->
+<script>
+  //<![CDATA[
+  // If the saved visibility setting is false, apply the following style that
+  // hides the header.
+  // This style is then removed when the DOM finishes loading.
+  if (localStorage.getItem("header-visibility") === "false") {
+    $("head").append(
+      '<style class="simple-menu-bar">#header{display: none;}</style>'
+    );
+  }
+
+  window.addEventListener("DOMContentLoaded", () => {
+    // ----- i18n -----
+    const lang = document.documentElement.lang;
+    const resources = {
+      menu: "Menu",
+      sideMenu: "Side menu",
+      showHeader: "Show Header",
+      hideHeader: "Hide Header",
+      search: "Search",
+    };
+
+    if (lang === "ja") {
+      resources.menu = "メニュー";
+      resources.sideMenu = "サイドメニュー";
+      resources.showHeader = "ヘッダーを表示";
+      resources.hideHeader = "ヘッダーを非表示";
+      resources.search = "検索";
+    }
+
+    // ----- Define variables -----
+    const $header = $("#header");
+    const $topMenu = $("#top-menu");
+    const $mainMenu = $("#main-menu");
+    const $main = $("#main");
+    const $projectsMenu = $topMenu.find("ul li a.projects:first");
+    const $adminMenu = $topMenu.find("a.administration:first");
+    const $helpMenu = $topMenu.find("ul li a.help:first");
+    const $sideBar = $("#sidebar");
+
+    const defaultTopMenuHeight = $topMenu.outerHeight();
+    const defaultHeaderHeight = $header.outerHeight();
+    const homePath = $topMenu.find("ul li a.home:first").attr("href");
+    const projectIdentifier = $("body")
+      .attr("class")
+      .split(" ")
+      .filter((i) => i.match(/^project-/))[0]
+      ?.match(/^project-(.+)/)[1];
+    const syncHeaderVisibilityItems = [];
+
+    if ($adminMenu.length > 0) {
+      $topMenu.addClass("has-admin-menu");
+    }
+
+    // ----- Common functions -----
+    // Show or hide dropdown menu
+    function setDropdownVisibility(dropdown, state) {
+      if (state) {
+        if ($header.css("visibility") != "hidden") return;
+        dropdown.addClass("visible");
+      } else {
+        dropdown.removeClass("visible");
+      }
+    }
+
+    // Set menu items for simple menu
+    function setMenuItems($menu, $menuItems, $baseMenu, syncHeader = true) {
+      if ($menuItems.length === 0) return;
+
+      // Customize menu
+      $menu
+        .addClass("simple-menu")
+        .css("cursor", "pointer")
+        .mouseover(() => {
+          setDropdownVisibility($menuItems, true);
+        });
+
+      // Insert menu in top menu
+      if ($topMenu.has($menu).length === 0) {
+        $("<li />").append($menu).insertAfter($baseMenu);
+      }
+
+      // Insert menu items into menu
+      $menuItems
+        .addClass("menu-children")
+        .insertAfter($menu)
+        .parent()
+        .mouseleave(() => {
+          setDropdownVisibility($menuItems, false);
+        });
+
+      //Enable Jquery UI menu widget
+      $menuItems.menu();
+
+      // Visibility settings
+      if (syncHeader) {
+        syncHeaderVisibilityItems.push($menu);
+        if ($header.css("visibility") === "hidden") $menu.show();
+      } else {
+        $menu.show();
+      }
+    }
+
+    // ----- Create menu functions -----
+    function createSimpleMenu() {
+      if ($projectsMenu.length === 0) return;
+
+      const $simpleMenu = $("<a />")
+        .attr("id", "simple-menu")
+        .text(resources.menu);
+
+      function formatSimpleMenuItems($simpleMenuItems) {
+        if ($simpleMenuItems.length === 0) return $simpleMenuItems;
+
+        $simpleMenuItems
+          .find("li .new-object")
+          .attr("onclick", "return false")
+          .removeAttr("id");
+
+        $simpleMenuItems.find("a.projects").parent().remove();
+
+        return $simpleMenuItems;
+      }
+
+      const $simpleMenuItems = $mainMenu.children("ul").clone();
+      if ($simpleMenuItems.length === 0) {
+        // Load main menu items from projects page in the background
+        const url = $projectsMenu.attr("href");
+        $.get(url).done((data) => {
+          const $simpleMenuItems = $("#main-menu > ul", $(data));
+          setMenuItems(
+            $simpleMenu,
+            formatSimpleMenuItems($simpleMenuItems),
+            $projectsMenu.parent()
+          );
+        });
+      } else {
+        setMenuItems(
+          $simpleMenu,
+          formatSimpleMenuItems($simpleMenuItems),
+          $projectsMenu.parent()
+        );
+      }
+    }
+
+    function createSimpleSideMenu() {
+      if ($sideBar.children().length === 0) return;
+      if (location.pathname.match(/my\/account$/)) return;
+      if ($adminMenu.length > 0) return;
+
+      let $baseMenu = $("#simple-menu").parent();
+      if ($baseMenu.length === 0) $baseMenu = $projectsMenu.parent();
+      if ($baseMenu.length === 0) return;
+
+      let $simpleSideMenu;
+      $simpleSideMenu = $topMenu.find("a.administration:first");
+      $simpleSideMenu = $("<a />").text(resources.sideMenu);
+      $simpleSideMenu.attr("id", "simple-side-menu");
+
+      const $simpleSideMenuItems = $("<ul />");
+
+      function appendMenuItemHeader(text) {
+        const lastItemIsContextual = $simpleSideMenuItems
+          .children(":last")
+          .hasClass("contextual");
+
+        $simpleSideMenuItems.append(
+          $("<li><div>" + text + "</div></li>").addClass("ui-widget-header")
+        );
+
+        if (lastItemIsContextual) {
+          const previousItem = $simpleSideMenuItems.children().eq(-2);
+          $simpleSideMenuItems.append(previousItem);
+        }
+      }
+
+      function appendMenuItems(_, elem) {
+        const $elem = $(elem);
+        const $nodeName = $elem.prop("nodeName");
+
+        if ($nodeName === "H3" || $nodeName === "H4") {
+          appendMenuItemHeader($elem.text());
+        } else if ($nodeName === "FORM") {
+          // Form is not supported
+        } else if ($nodeName === "DIV") {
+          if ($elem.hasClass("contextual_")) {
+            $simpleSideMenuItems.append(
+              $("<li />")
+                .append($elem.children().clone())
+                .addClass("contextual")
+            );
+          } else if ($elem.attr("id") === "watchers") {
+            appendMenuItems(null, $elem.children("h3"));
+            appendMenuItems(null, $elem.children("div.contextual"));
+            appendMenuItems(null, $elem.children("ul"));
+          } else if ($elem.hasClass("tags-cloud")) {
+            // RedmineUP Tags Plugin Items
+            $elem.find("a").each(appendMenuItems);
+          } else if ($elem.hasClass("tags")) {
+            // Redmine Tags Plugin Items
+            $elem.find("a").each(appendMenuItems);
+          } else {
+            $elem.children().each(appendMenuItems);
+          }
+        } else if ($nodeName === "UL") {
+          $simpleSideMenuItems.append($elem.children().clone());
+        } else if ($nodeName === "P") {
+          if ($elem.children("a").attr("id") === "toggle-completed-versions") {
+            // Completed versions on roadmap page
+            appendMenuItemHeader($elem.text());
+          } else {
+            $elem.children().each(appendMenuItems);
+          }
+        } else if ($simpleSideMenuItems.children().length === 0) {
+        } else if ($nodeName === "LI") {
+          $simpleSideMenuItems.append($elem.clone());
+        } else {
+          $simpleSideMenuItems.append(
+            $("<li />").append($elem.clone().removeAttr("title"))
+          );
+        }
+      }
+
+      // Create menu item from side bar content
+      if (
+        projectIdentifier &&
+        location.pathname.match(`/${projectIdentifier}/wiki`)
+      ) {
+        appendMenuItemHeader("Wiki Sidebar");
+      }
+      $sideBar.children().each(appendMenuItems);
+      if ($simpleSideMenuItems.children().length === 0) return;
+
+      setMenuItems($simpleSideMenu, $simpleSideMenuItems, $baseMenu, true);
+    }
+
+    function createSimpleAdminMenu() {
+      if ($adminMenu.length === 0) return;
+
+      $adminMenu.attr("id", "simple-admin-menu");
+
+      const $simpleAdminMenuItems = $adminMenu.children("ul").clone();
+
+      if ($simpleAdminMenuItems.length === 0) {
+        const url = $adminMenu.attr("href");
+        $.get(url).done((data) => {
+          const $simpleAdminMenuItems = $("#admin-menu > ul", $(data)).clone();
+          setMenuItems($adminMenu, $simpleAdminMenuItems, null, false);
+        });
+      } else {
+        setMenuItems($adminMenu, $simpleAdminMenuItems, null, false);
+      }
+    }
+
+    function createSimpleProjectsMenu() {
+      const $projectMenu = $topMenu
+        .find("ul > li > a.projects:first")
+        .attr("id", "simple-projects-menu");
+      if ($projectMenu.length === 0) return;
+
+      const $projectJumpContents = $("#project-jump.drdn div.drdn-content");
+      const $simpleProjectMenuItems = $("<ul />");
+
+      // Clone project jump content
+      $projectJumpContents
+        .children("div.drdn-items.projects")
+        .children()
+        .each((_, elem) => {
+          $elem = $(elem);
+          const isHeader = $elem.prop("nodeName") === "STRONG";
+          if (isHeader) {
+            $simpleProjectMenuItems.append(
+              $("<li><div>" + $elem.text() + "</div></li>").addClass(
+                "ui-widget-header"
+              )
+            );
+          } else {
+            $simpleProjectMenuItems.append(
+              $("<li />").append($elem.clone().removeAttr("title"))
+            );
+          }
+        });
+
+      setMenuItems($projectMenu, $simpleProjectMenuItems, null, false);
+    }
+
+    function createSimpleSearchForm() {
+      const $simpleSearchMenu = $("<a />")
+        .attr("id", "simple-search-menu")
+        .css("cursor", "pointer")
+        .addClass("simple-menu")
+        .text(resources.search);
+
+      const $simpleSearchForm = $("#quick-search>form").clone();
+      if ($simpleSearchForm.length === 0) return;
+      $simpleSearchForm.find("input.q").removeAttr("id");
+
+      const $simpleSearchDialog = $("<div />").append($simpleSearchForm);
+
+      let $baseMenu = $helpMenu.parent();
+      if ($baseMenu.length > 0) {
+        $("<li />").append($simpleSearchMenu).insertBefore($baseMenu);
+      } else {
+        $topMenu
+          .children("ul:first")
+          .append($("<li />").append($simpleSearchMenu));
+      }
+
+      $simpleSearchDialog
+        .css("background-color", $topMenu.css("background-color"))
+        .addClass("menu-children")
+        .insertAfter($simpleSearchMenu);
+
+      $simpleSearchMenu.click(() => {
+        setDropdownVisibility(
+          $simpleSearchDialog,
+          !$simpleSearchDialog.hasClass("visible")
+        );
+      });
+
+      // Close form when clicked outside this form
+      $(document).click((e) => {
+        if ($simpleSearchMenu.parent().has(e.target).length === 0) {
+          setDropdownVisibility($simpleSearchDialog, false);
+        }
+      });
+
+      syncHeaderVisibilityItems.push($simpleSearchMenu);
+    }
+
+    function createSimpleTitleBar() {
+      const $projectTitle = $header.children("h1:first");
+
+      const $titleBar = $("<div />").addClass("simple-title-bar");
+      const $title = $("<div />");
+      $titleBar.append($title);
+
+      if ($projectTitle.children().length > 0) {
+        $title.append($projectTitle.children().clone());
+      } else {
+        $title.append($projectTitle.text());
+      }
+
+      const mainMenu = $mainMenu
+        .find(".selected:first")
+        .clone()
+        .css("margin", 0);
+      if (mainMenu.length === 1) {
+        $title.append(
+          $("<span />")
+            .addClass("main-menu")
+            .append("<span> [</span>")
+            .append(mainMenu)
+            .append("<span>]</span>")
+        );
+      }
+
+      $title.attr("title", $titleBar.text());
+      $topMenu.prepend($titleBar);
+    }
+
+    // ----- Toggle header visibility function -----
+    function enableHeaderVisibilityToggleFeature() {
+      const emptyStyle = {
+        position: "",
+        width: "",
+        height: "",
+        zIndex: "",
+        top: "",
+        boxSizing: "",
+      };
+
+      const $btn = $("<a />")
+        .attr("id", "hide-header-btn")
+        .css({
+          cursor: "pointer",
+          backgroundImage: "url(" + homePath + "images/arrow_down.png)",
+          paddingLeft: "16px",
+          height: "16px",
+        })
+        .addClass("icon icon-only");
+      $topMenu.children("ul").append($("<li />").append($btn));
+
+      function setHeaderVisibility(state) {
+        setHeaderPositionFixed(false);
+        $header.removeClass("fixed");
+        if (state) {
+          $header.css({
+            visibility: "visible",
+            padding: "",
+            height: "",
+            minHeight: "",
+          });
+          $btn
+            .attr("title", resources.hideHeader)
+            .css({ transform: "scaleY(-1)" });
+
+          syncHeaderVisibilityItems.forEach((e) => {
+            e.hide();
+          });
+        } else {
+          $header.css({
+            visibility: "hidden",
+            padding: 0,
+            height: 0,
+            minHeight: 0,
+          });
+          $btn
+            // .attr("title", resources.showHeader) // Interferes with mouseover
+            .css({ transform: "" });
+
+          syncHeaderVisibilityItems.forEach((e) => {
+            e.show();
+          });
+        }
+        setTopMenuPositionFixed(!state);
+        localStorage.setItem("header-visibility", state);
+      }
+
+      function setHeaderPositionFixed(state) {
+        if (state) {
+          if (
+            !$header.hasClass("fixed") &&
+            $header.css("visibility") === "hidden"
+          ) {
+            $header
+              .css({
+                position: "fixed",
+                zIndex: 200,
+                top: defaultTopMenuHeight,
+                width: "100%",
+                boxSizing: "border-box",
+                visibility: "visible",
+                padding: "",
+                height: defaultHeaderHeight,
+                minHeight: "",
+              })
+              .addClass("fixed");
+          }
+        } else {
+          if ($header.hasClass("fixed")) {
+            $header
+              .css(emptyStyle)
+              .css({
+                visibility: "hidden",
+                padding: 0,
+                height: 0,
+                minHeight: 0,
+              })
+              .removeClass("fixed");
+          }
+        }
+      }
+
+      function setTopMenuPositionFixed(state) {
+        if (state) {
+          $topMenu
+            .css({
+              position: "fixed",
+              zIndex: 99,
+              top: 0,
+              width: "100%",
+              boxSizing: "border-box",
+              height: defaultTopMenuHeight,
+            })
+            .addClass("fixed");
+          $main.css({
+            marginTop: defaultTopMenuHeight,
+          });
+        } else {
+          $topMenu.css(emptyStyle).removeClass("fixed");
+          $main.css({
+            top: "",
+            position: "",
+            marginTop: "",
+          });
+        }
+      }
+
+      $btn
+        .click(() => {
+          setHeaderVisibility(
+            localStorage.getItem("header-visibility") === "false" ||
+              $header.hasClass("fixed")
+          );
+        })
+        .mouseover(() => {
+          setHeaderPositionFixed(true);
+        });
+      $header.mouseleave(() => {
+        setHeaderPositionFixed(false);
+      });
+
+      // Load settings from local storage
+      setHeaderVisibility(
+        !(localStorage.getItem("header-visibility") === "false")
+      );
+    }
+
+    // Offset scroll position to prevent them from being hidden by the top menu
+    function simpleMenuBarOffsetScrollPosition(duration = 100) {
+      if ($("#header").css("visibility") === "visible" && !isMobile()) return;
+      const hash = window.location.hash;
+      if (hash) {
+        const anchor = document.querySelector(hash);
+        if (anchor) {
+          const top = $(anchor).offset().top;
+          const offset = isMobile()
+            ? $("#header").outerHeight()
+            : $("#top-menu").outerHeight();
+          if ($("html").scrollTop() !== top - offset) {
+            $("html").animate({ scrollTop: top - offset }, duration);
+          }
+        }
+      }
+    }
+
+    // Invoke each functions
+    try {
+      createSimpleMenu();
+      createSimpleSideMenu();
+      createSimpleAdminMenu();
+      createSimpleProjectsMenu();
+      createSimpleSearchForm();
+      createSimpleTitleBar();
+      enableHeaderVisibilityToggleFeature();
+      setTimeout(simpleMenuBarOffsetScrollPosition, 1000);
+      window.addEventListener("hashchange", () => {
+        setTimeout(() => simpleMenuBarOffsetScrollPosition(0));
+      });
+    } finally {
+      // Remove the default header style if the style is added to the html header
+      $("head>style.simple-menu-bar").remove();
+    }
+  });
+  //]]>
+</script>
+
+<style>
+  /* ----- Simple menu settings ----- */
+  #top-menu {
+    display: grid;
+    grid-template-columns: max-content minmax(0, auto) max-content max-content;
+    grid-template-areas: "top-menu title-bar account loggedas";
+
+    & > ul {
+      grid-area: top-menu;
+    }
+
+    & > .simple-title-bar {
+      grid-area: title-bar;
+    }
+
+    & > #account {
+      grid-area: account;
+    }
+
+    & > #loggedas {
+      grid-area: loggedas;
+    }
+
+    .simple-menu {
+      &:not(#simple-projects-menu) {
+        /* Set initial state to hidden */
+        display: none;
+      }
+
+      & + ul.ui-menu.visible {
+        position: absolute;
+        display: block;
+      }
+
+      & + .ui-menu {
+        color: black;
+        display: none;
+        box-shadow: 0px 0px 3px rgba(0, 0, 0, 0.1);
+
+        .ui-menu-item {
+          & > a:before {
+            display: inline-block;
+            line-height: 1em;
+            width: 20px;
+            height: 1em;
+            font-weight: bold;
+            text-align: center;
+          }
+
+          & > a {
+            padding-left: calc(20px + 2px);
+
+            &.selected {
+              background-color: #f6f7f8;
+            }
+
+            &.ui-state-active {
+              color: #fff;
+              background-color: #759fcf;
+            }
+          }
+        }
+
+        li {
+          float: left;
+          clear: both;
+          width: 100%;
+
+          & a,
+          & div {
+            color: black;
+            width: 100%;
+            margin: 0;
+            box-sizing: border-box;
+            display: inline-block;
+            text-decoration: none;
+            font-weight: normal;
+            border-width: 0;
+          }
+
+          &.ui-widget-header {
+            border: 0;
+
+            div {
+              font-weight: bold;
+              color: #333;
+            }
+          }
+        }
+      }
+
+      &:not(#admin-menu) + .ui-menu .ui-menu-item > a.selected {
+        padding-left: 0;
+
+        &:before {
+          content: "\2713 ";
+        }
+      }
+    }
+  }
+
+  :is(#simple-side-menu, #simple-projects-menu) + .ui-menu {
+    max-height: calc(100vh - 100px);
+    overflow-y: auto;
+    overflow-x: hidden;
+  }
+
+  /* Show headers on mobile environment */
+  @media screen and (max-width: 899px) {
+    #header {
+      display: block !important;
+      visibility: visible !important;
+      height: auto !important;
+    }
+
+    #hide-header-btn {
+      display: none;
+    }
+
+    div.flyout-menu .simple-menu {
+      & + ul.ui-menu {
+        display: none !important;
+      }
+    }
+  }
+
+  /* ----- simple title bar settings ----- */
+  #top-menu > .simple-title-bar {
+    left: 0;
+    pointer-events: none;
+    text-align: center;
+
+    & > div {
+      display: inline-block;
+      pointer-events: auto;
+      opacity: 0.5;
+      width: calc(100% - 20px);
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      direction: rtl;
+      transition: opacity 1s;
+
+      &:hover {
+        opacity: 1;
+      }
+    }
+
+    a {
+      font-weight: normal;
+    }
+
+    .main-menu {
+      margin-left: 5px;
+    }
+  }
+
+  /* ----- simple search menu settings ----- */
+  #header.fixed {
+    box-shadow: 0 5px 5px 0 rgb(0 0 0 / 20%);
+  }
+
+  #simple-search-menu {
+    /* initial state is hidden */
+    display: none;
+
+    & + .menu-children {
+      padding: 10px;
+      border-radius: 0 0 5px 5px;
+      display: none;
+
+      &.visible {
+        position: absolute;
+        display: block;
+      }
+    }
+  }
+
+  @media print {
+    #top-menu {
+      display: none;
+    }
+  }
+
+  /* Support Bleuclair theme */
+  body.theme-Bleuclair .icon-group:before {
+    content: "\f0c0";
+    font-family: Font Awesome\5 Solid;
+  }
+</style>

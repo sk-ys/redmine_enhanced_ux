@@ -1,0 +1,480 @@
+<!--
+// Path pattern:       /(roadmap|versions/[0-9]+$)
+// Insertion position: Head of all pages
+// Type:               HTML
+// Comment:            Custom roadmap and versions
+-->
+<script>
+  var ajaxUpdateIssueList;
+
+  window.addEventListener("DOMContentLoaded", () => {
+    // ----- settings start -----
+    const minTableHeight = 150;
+    // ----- settings end -----
+
+    const homeUrl =
+      window.location.origin +
+      ($("#top-menu a.home").attr("href") ||
+        $("link[href*='/favicon.ico']").attr("href").split("/favicon.ico")[0]);
+    const pageType = /\/roadmap/.test(location.pathname)
+      ? "roadmap"
+      : /\/versions\/[0-9]+$/.test(location.pathname)
+      ? "versions"
+      : undefined;
+    if (pageType === undefined) return;
+
+    const resourcesAll = {
+      en: {
+        labelCancel: "Cancel",
+        messageFailedToUpdate: "Failed to update.",
+      },
+      ja: {
+        labelCancel: "キャンセル",
+        messageFailedToUpdate: "更新に失敗しました。",
+      },
+    };
+    const resources = {
+      ...resourcesAll["en"],
+      ...(resourcesAll[document.documentElement.lang] || {}),
+    };
+
+    function isMobile() {
+      return window.innerWidth <= 899;
+    }
+
+    // Set the position of the version article to sticky
+    function setPositionSticky() {
+      const articles = $("article.version-article");
+      if (articles.length === 0) return;
+
+      const articleBgColor = getEffectiveBackgroundColor(articles.eq(0));
+
+      articles.each((i, e) => {
+        $("<div>")
+          .addClass("header-wrapper")
+          .css("backgroundColor", articleBgColor)
+          .append($(e).find(".contextual"))
+          .append($(e).find("header"))
+          .append($(e).find(".version-overview"))
+          .prependTo($(e));
+      });
+    }
+
+    // Utils
+    function getEffectiveBackgroundColor($element) {
+      if ($element.length === 0) return "rgba(255, 255, 255, 1)";
+
+      let bgColor = $element.css("background-color");
+      if (bgColor === "rgba(0, 0, 0, 0)" || bgColor === "transparent") {
+        bgColor = getEffectiveBackgroundColor($element.parent());
+      }
+      return bgColor;
+    }
+
+    ajaxUpdateIssueList = async function () {
+      try {
+        const response = await fetch(location.href);
+
+        if (!response.ok) {
+          throw new Error(`Error ${response.status}: ${response.statusText}`);
+        }
+
+        // Data acquisition and processing
+        const htmlString = await response.text();
+        const data = new DOMParser().parseFromString(htmlString, "text/html");
+
+        // Show flash
+        const $flash = $("#content > div.flash", htmlString);
+        if ($flash.length) {
+          $("#content > div.flash").remove();
+          $flash.prependTo("#content");
+        }
+
+        const scrollTargetSelector = "#roadmap";
+        const scrollPositionBeforeUpdate = scrollTargetSelector
+          ? {
+              top: $(scrollTargetSelector).scrollTop(),
+              left: $(scrollTargetSelector).scrollLeft(),
+            }
+          : undefined;
+
+        const updatingTargetSelector = "#roadmap";
+
+        if (updatingTargetSelector === undefined) {
+          alert(resources.messageFailedToUpdate);
+          return;
+        }
+
+        const updatedTarget = $(updatingTargetSelector, data).children();
+
+        if (updatedTarget.length === 0) {
+          alert(resources.messageFailedToUpdate);
+          return;
+        }
+
+        const state = {};
+
+        if (window["setupShowOnlyOpenedIssues"]) {
+          // Store hidden state for show_only_opened_issues patch
+          $("#roadmap article.version-article").each((_, e) => {
+            const versionHref = $(e).find("header a").attr("href");
+            const enabled = $(e)
+              .find("input.hide_closed_issue")
+              .prop("checked");
+            state[versionHref] = enabled;
+          });
+        }
+
+        $(updatingTargetSelector).empty().append(updatedTarget);
+
+        if (window["setupShowOnlyOpenedIssues"]) {
+          setupShowOnlyOpenedIssues();
+
+          // Restore hidden state for show_only_opened_issues patch
+          $("#roadmap article.version-article").each((_, e) => {
+            const versionHref = $(e).find("header a").attr("href");
+            const enabled = $(e)
+              .find("input.hide_closed_issue")
+              .prop("checked");
+            if (state[versionHref] !== undefined) {
+              if (enabled !== state[versionHref]) {
+                $(e).find("input.hide_closed_issue")[0].click();
+              }
+            }
+          });
+        }
+
+        Initialize();
+
+        // Restore scroll position
+        if (scrollPositionBeforeUpdate) {
+          setTimeout(() => {
+            $(scrollTargetSelector)
+              .scrollTop(scrollPositionBeforeUpdate.top)
+              .scrollLeft(scrollPositionBeforeUpdate.left);
+          });
+        }
+      } catch (error) {
+        console.error("Fetch error:", error);
+      }
+    };
+
+    function setupVersionDialog() {
+      const dialogCancelButton = {
+        text: resources.labelCancel,
+        click: function () {
+          $(this).dialog("close");
+        },
+      };
+
+      function showVersionDialog(e) {
+        e.preventDefault();
+
+        // Prepare dialog
+        const $versionDialog = $("<div>")
+          .attr("id", "version_dialog_content")
+          .css({
+            backgroundImage: `url(${homeUrl}images/loading.gif)`,
+            backgroundPosition: "center center",
+            backgroundRepeat: "no-repeat",
+          })
+          .dialog({
+            width: 500,
+            height: 500,
+            modal: true,
+            autoOpen: true,
+            close: function () {
+              $(this).empty();
+              $versionDialog.dialog("destroy");
+            },
+          });
+
+        const url = $(this).attr("href");
+        const $iframe = $("<iframe>")
+          .hide()
+          .attr("src", url)
+          .on("load", function () {
+            const $contents = $(this).contents();
+
+            // If action completed
+            if ($contents.find("#flash_notice.notice").length > 0) {
+              $versionDialog.dialog("close");
+              ajaxUpdateIssueList();
+              return;
+            }
+
+            // Set up view
+            $contents.find("#wrapper>div:not(#main)").remove();
+            $contents.find("#main").css({ padding: 0 });
+            $contents.find("#content>h2").remove();
+            $contents.find("#content").css({ padding: 0 });
+            $contents
+              .find(".tabular")
+              .css({ height: "100%", margin: 0, border: "none" });
+            $contents.find(".tabular p").css({ padding: "5px 10px" });
+
+            $(this)[0].contentWindow.onbeforeunload = () => {
+              $iframe.hide();
+            };
+
+            // Show content
+            $(this).show();
+
+            const submitButtons = $contents
+              .find(
+                "#content " +
+                  ":is(form.edit_version, form.new_version) " +
+                  "input[type=submit]"
+              )
+              .hide()
+              .toArray()
+              .map((element) => {
+                return {
+                  text: $(element).val(),
+                  click: () => {
+                    $(element).click();
+                  },
+                };
+              });
+
+            // Update dialog options
+            $versionDialog
+              .dialog(
+                "option",
+                "buttons",
+                submitButtons.concat(dialogCancelButton)
+              )
+              .dialog("option", "title", $contents[0].title);
+          });
+
+        // Insert content to dialog
+        $iframe.appendTo($versionDialog);
+      }
+
+      // Replace new version link
+      $('#content .contextual a[href$="/versions/new"]')
+        .off("click.showVersionDialog")
+        .on("click.showVersionDialog", showVersionDialog)
+        .addClass("prevent-popup-anywhere");
+
+      // Replace edit version link
+      $('#content .contextual a[href$="/edit"][href*="/versions"]')
+        .off("click.showVersionDialog")
+        .on("click.showVersionDialog", showVersionDialog)
+        .addClass("prevent-popup-anywhere");
+    }
+
+    function setupVersionLayout() {
+      const $table = $("table.related-issues");
+      if ($table.length === 0) return;
+
+      let stateIsMobile = false;
+
+      const $tableWrapper = $("<div>").attr("id", "table-wrapper");
+
+      function setupTableWrapper() {
+        $tableWrapper.appendTo($table.parent()).append($table).css({
+          overflow: "auto",
+        });
+      }
+
+      function setTableHeight() {
+        stateIsMobile = isMobile();
+
+        $tableWrapper.css({
+          maxHeight: `calc(100% - ${
+            $tableWrapper.offset().top - $("#roadmap").offset().top
+          }px)`,
+        });
+
+        const bottomOfLastElem = Math.max(
+          ...$("#content > *")
+            .map((i, e) => e.getBoundingClientRect().bottom)
+            .toArray()
+        );
+
+        const contentPaddingY =
+          $("#content").outerHeight() - $("#content").height();
+
+        const contentHeightExceptRoadMap =
+          bottomOfLastElem - $("#roadmap + *").offset().top + contentPaddingY;
+
+        $("#roadmap").css({ height: "", minHeight: "" });
+
+        const roadmapMinHeight =
+          minTableHeight + $("#roadmap").height() - $tableWrapper.height();
+
+        $("#roadmap").css({
+          height: `min(calc(100% - ${contentHeightExceptRoadMap}px), ${
+            $table.outerHeight(true) + roadmapMinHeight - minTableHeight
+          }px)`,
+          minHeight: `${roadmapMinHeight}px`,
+        });
+      }
+
+      // Invoke
+      setTimeout(setupTableWrapper);
+      setTimeout(setTableHeight);
+
+      // Set events
+      $(window).resize(() => {
+        if (isMobile() !== stateIsMobile) {
+          setTableHeight();
+        }
+      });
+
+      new MutationObserver(setTableHeight).observe($table[0], {
+        attributes: true,
+      });
+    }
+
+    function Initialize() {
+      setupVersionDialog();
+
+      switch (pageType) {
+        case "roadmap":
+          setPositionSticky();
+          break;
+        case "versions":
+          setupVersionLayout();
+          break;
+      }
+
+      return;
+
+      const d = $("<div>").dialog({
+        title: "test",
+        width: 500,
+        height: 500,
+        modal: true,
+        autoOpen: false,
+      });
+
+      d.append(
+        $("<iframe>")
+          .hide()
+          .attr("src", "http://localhost:8051/versions/8/edit")
+          .on("load", function () {
+            console.log("loaded");
+            const $contents = $(this).contents();
+
+            // Set up view
+            $contents.find("#wrapper>div:not(#main)").remove();
+            $contents.find("#main").css({ padding: 0 });
+            $contents.find("#content>h2").remove();
+            $contents.find("#content").css({ padding: 0 });
+            $contents
+              .find(".tabular")
+              .css({ height: "100%", margin: 0, border: "none" });
+            $contents.find(".tabular p").css({ padding: "5px 10px" });
+
+            $(this).show();
+
+            const dialogCancelButton = {
+              text: resources.labelCancel,
+              click: function () {
+                $(this).dialog("close");
+              },
+            };
+            const submitButtons = $contents
+              .find(
+                "#content " +
+                  ":is(form.edit_version, form.new_version) " +
+                  "input[type=submit]"
+              )
+              .hide()
+              .toArray()
+              .map((element) => {
+                return {
+                  text: $(element).val(),
+                  click: () => {
+                    $(element).click();
+                  },
+                };
+              });
+
+            d.dialog("option", "title", $contents[0].title).dialog("open");
+          })
+      );
+    }
+
+    Initialize();
+  });
+</script>
+<style>
+  article.version-article .header-wrapper {
+    position: sticky;
+    top: -12px;
+    padding-top: 10px;
+    padding-bottom: 3px;
+    box-shadow: 0px 5px 3px -3px rgba(0, 0, 0, 0.2);
+
+    .progress-info {
+      margin-bottom: 0;
+    }
+  }
+  div.ui-dialog[aria-describedby="version_dialog_content"] {
+    #version_dialog_content {
+      display: flex;
+      overflow: hidden !important;
+      padding: 0;
+
+      & > iframe {
+        border: none;
+        flex-grow: 1;
+      }
+    }
+
+    .ui-dialog-buttonpane {
+      margin-top: 0;
+
+      .ui-dialog-buttonset button {
+        height: auto;
+      }
+    }
+  }
+  @media screen and (min-height: 400px) {
+    #wrapper {
+      height: 100vh;
+    }
+    #wrapper > div {
+      flex: 0 0 auto;
+    }
+    #wrapper > div#main {
+      flex: 1 1 auto;
+      overflow: auto;
+    }
+    /* note: Versions page `#roadmap` element has a `version-*` class. */
+    div#roadmap:not([class|="version"]) {
+      max-height: calc(100% - 70px);
+      overflow: auto;
+      padding: 10px;
+    }
+  }
+
+  #roadmap > form {
+    position: relative;
+
+    #table-wrapper {
+      margin-bottom: 1em;
+
+      table.list {
+        position: relative;
+        width: 100% !important;
+        overflow-y: auto;
+        margin: 0;
+
+        & > caption {
+          position: sticky;
+          top: 0;
+          background-color: white;
+          box-shadow: 0px 3px 10px 0px rgb(0 0 0 / 5%);
+        }
+      }
+    }
+  }
+  #version-summary {
+    position: relative;
+    z-index: 1;
+  }
+</style>

@@ -1,0 +1,900 @@
+<!--
+// Path pattern:       /issues/calendar
+// Insertion position: Head of all pages
+// Type:               HTML
+// Comment:            Custom calendar
+-->
+<script>
+  var ajaxUpdateIssueList;
+
+  window.addEventListener("DOMContentLoaded", () => {
+    // ----- settings start -----
+    const MONTH_CHANGE_DELAY = 1500;
+    // ----- settings end -----
+
+    const resourcesAll = {
+      en: {
+        labelCancel: "Cancel",
+        labelCriteria: "Criteria",
+        labelIssueNew: "New Issue",
+      },
+      ja: {
+        labelCancel: "キャンセル",
+        labelCriteria: "抽出条件",
+        labelIssueNew: "新しいチケット",
+      },
+    };
+    const resources = {
+      ...resourcesAll["en"],
+      ...(resourcesAll[document.documentElement.lang] || {}),
+    };
+
+    const csrfToken = $('meta[name="csrf-token"]').attr("content");
+
+    const homeUrl = $("link[href*='favicon.ico']")
+      .attr("href")
+      .split("favicon.ico")[0];
+
+    const projectName = (() => {
+      const res = /\/projects\/(.+)\/issues\/gantt/.exec(location.pathname);
+      return res ? res[1] : null;
+    })();
+
+    // Utils
+    function getAbsUrl(url) {
+      const a = document.createElement("a");
+      a.href = url;
+      return a.href;
+    }
+
+    function extractSearch(url) {
+      return new URL(getAbsUrl(url)).search;
+    }
+
+    function setUpQueryForm() {
+      // Create query form open button and append it to h2 tag.
+      const $queryFormOpenButton = $("<a/>")
+        .attr("id", "query_form_open_button")
+        .text(resources.labelCriteria)
+        .css({ backgroundImage: `url(${homeUrl}images/magnifier.png)` })
+        .on("click", (e) => {
+          e.preventDefault();
+          $("#query_form").show();
+        })
+        .on("mouseenter", () => {
+          $("#query_form").show();
+        })
+        .appendTo("#content>h2:first");
+
+      // Close the query form when the outside of the form is clicked.
+      $(document).click((e) => {
+        if (
+          e.target !== $("#query_form")[0] &&
+          $(e.target).parents("#query_form").length === 0 &&
+          e.target !== $("#query_form_open_button")[0] &&
+          $(window).width() >= 900
+        ) {
+          $("#query_form").hide();
+        }
+      });
+
+      setUpQueryFormButtons();
+    }
+
+    function setUpQueryFormButtons() {
+      // Add cancel button to query form.
+      $("#query_form_with_buttons>.buttons").append(
+        $("<a/>")
+          .text(resources.labelCancel)
+          .addClass("icon icon-close query_form_cancel")
+          .css("cursor", "pointer")
+          .on("click", () => {
+            $("#query_form").hide();
+          })
+      );
+
+      // Replace apply button with Ajax update
+      $("#query_form_with_buttons p.buttons>a.icon-checked:first")
+        .attr("onclick", "")
+        .on("click", (e) => {
+          e.preventDefault();
+
+          if (e.ctrlKey) {
+            $("#query_form").submit();
+            return;
+          }
+
+          // Select or deselect all columns before serializing
+          $("#selected_c option").prop("selected", true);
+          $("#available_c option").prop("selected", false);
+
+          ajaxUpdateIssueList({
+            search: $("#query_form").serialize(),
+          });
+
+          $("#query_form").hide();
+        });
+
+      // Replace clear button with Ajax update
+      $("#query_form_with_buttons p.buttons>a.icon-reload:first")
+        .addClass("prevent-popup-anywhere")
+        .on("click", (e) => {
+          if (e.ctrlKey) return;
+
+          e.preventDefault();
+          ajaxUpdateIssueList({
+            search: extractSearch($(e.target).attr("href")),
+          });
+        });
+
+      // Add div.contextual if not exist
+      if ($("#content > div.contextual").length === 0) {
+        // Initial
+        $("#content").prepend($("<div>").addClass("contextual"));
+      } else {
+        // Clear existing menu item
+        $("#content>div.contextual:first").children("span").remove();
+      }
+
+      // Move contextual buttons to outside of the query form
+      $("#query_form_with_buttons > span.contextual")
+        .appendTo("#content > div.contextual:first")
+        .find("a")
+        .addClass("prevent-popup-anywhere");
+
+      $("#query_form").hide();
+    }
+
+    function setFilterItemToSortable() {
+      $("#filters-table").sortable({
+        revert: true,
+      });
+    }
+
+    function replaceAnchorTagAction() {
+      // Replace pagination anchor tag actions
+      $(".contextual.pagination ul.pages li.page > a")
+        .on("click", (e) => {
+          // Prevent Ajax updating when clicking with the Ctrl key
+          if (e.ctrlKey) return;
+
+          e.preventDefault();
+          ajaxUpdateIssueList({ search: extractSearch(e.target.href) });
+        })
+        // Prevent popup-anywhere
+        .addClass("prevent-popup-anywhere");
+    }
+
+    function extractDate(target) {
+      const $calbody = $(target).closest("li.calbody");
+
+      if ($calbody.length === 0) return undefined;
+
+      let year = parseInt($("#year option[selected]").val());
+      let month = parseInt($("#month option[selected]").val());
+      const day = parseInt(
+        $calbody
+          .find("p.day-num")
+          .clone()
+          .children()
+          .remove()
+          .end()
+          .text()
+          .trim()
+      );
+
+      if ($calbody.hasClass("odd")) {
+        if (day < 15) {
+          if (month === 12) {
+            month = 1;
+            year += 1;
+          } else {
+            month += 1;
+          }
+        } else {
+          if (month === 1) {
+            month = 12;
+            year -= 1;
+          } else {
+            month -= 1;
+          }
+        }
+      }
+
+      return new Date(`${year}-${month}-${day}`).toLocaleDateString("sv-SE");
+    }
+
+    function updateIssueDate($issue, $targetCalbody) {
+      const date = extractDate($targetCalbody);
+
+      const key = $issue.hasClass("starting") ? "start_date" : "due_date";
+      const issueId = $issue.find("input[name='ids[]']").val();
+
+      const update_data = { issue: {} };
+      update_data["issue"][key] = date;
+
+      const $contextMenuForm = $('form[data-cm-url$="/issues/context_menu"]');
+
+      const params = $contextMenuForm
+        .clone()
+        .find("input[name='ids[]']")
+        .remove()
+        .end()
+        .serialize();
+
+      const formData = new FormData($contextMenuForm[0]);
+
+      fetch(`${homeUrl}issues/${issueId}?${params}`, {
+        method: "PATCH",
+        headers: {
+          "X-CSRF-Token": formData.get("authenticity_token"),
+          "Content-Type": "application/json",
+          Accept: "text/html",
+        },
+        body: JSON.stringify(update_data),
+        redirect: "manual",
+      }).then(async (response) => {
+        ajaxUpdateIssueList();
+      });
+    }
+
+    function updateVersionDate($version, $targetCalbody) {
+      const date = extractDate($targetCalbody);
+
+      const key = "effective_date";
+      const versionId = /\d+$/.exec($version.find("a").attr("href"))[0];
+
+      const update_data = { version: {} };
+      update_data["version"][key] = date;
+
+      const $contextMenuForm = $('form[data-cm-url$="/issues/context_menu"]');
+
+      const params = $contextMenuForm
+        .clone()
+        .find("input[name='ids[]']")
+        .remove()
+        .end()
+        .serialize();
+
+      const formData = new FormData($contextMenuForm[0]);
+
+      fetch(`${homeUrl}versions/${versionId}?${params}`, {
+        method: "PATCH",
+        headers: {
+          "X-CSRF-Token": formData.get("authenticity_token"),
+          "Content-Type": "application/json",
+          Accept: "text/html",
+        },
+        body: JSON.stringify(update_data),
+        redirect: "manual",
+      }).then(async (response) => {
+        ajaxUpdateIssueList();
+      });
+    }
+
+    function setCalendarItemSortable() {
+      function updateContainment() {
+        const instance = $("#content ul.cal li.calbody")
+          .sortable("instance")
+          .grabbedItem?.closest("li.calbody")
+          .sortable("instance");
+
+        if (instance?.containment) {
+          const currentItem = instance.currentItem;
+
+          instance.containment[2] =
+            instance.containment[0] +
+            $("ul.cal").outerWidth(true) -
+            currentItem.outerWidth(true);
+          instance.containment[3] =
+            instance.containment[1] +
+            $("ul.cal").outerHeight(true) -
+            currentItem.outerHeight(true);
+        }
+      }
+
+      function checkOverlap(target, x, y) {
+        $target = $(target);
+
+        const offset = $target.offset();
+        const bbox = {
+          top: offset.top,
+          left: offset.left,
+          bottom: offset.top + $target.outerHeight(),
+          right: offset.left + $target.outerWidth(),
+        };
+
+        return (
+          bbox.left <= x && x < bbox.right && bbox.top <= y && y <= bbox.bottom
+        );
+      }
+
+      const $sortable = $("#content ul.cal li.calbody").sortable({
+        connectWith: "#content ul.cal li.calbody",
+        items: "div.issue, span.icon-package",
+        cursor: "grabbing",
+        containment: "ul.cal",
+        start: function (e, ui) {
+          $("#content").addClass("issue-dragging");
+          const instance = $sortable.sortable("instance");
+          instance.grabbedItem = $(ui.item);
+
+          this.startedAtUrl = location.href;
+
+          setTimeout(updateContainment);
+        },
+        stop: function (e, ui) {
+          $("#content").removeClass("issue-dragging");
+
+          const $calBody = ui.item.closest("li.calbody");
+
+          if (checkOverlap($calBody, e.pageX, e.pageY)) {
+            if ($(ui.item).hasClass("issue")) {
+              updateIssueDate(ui.item, $calBody);
+            } else if ($(ui.item).hasClass("icon-package")) {
+              updateVersionDate(ui.item, $calBody);
+            }
+          } else {
+            console.debug("Canceled");
+            $(this).sortable("cancel");
+            if (this.startedAtUrl && this.startedAtUrl !== location.href) {
+              ajaxUpdateIssueList({ search: extractSearch(this.startedAtUrl) });
+            } else {
+              $(
+                "#content ul.cal li.calbody :is(div.issue, span.icon-package)"
+              ).show();
+            }
+          }
+
+          const instance = $sortable.sortable("instance");
+          instance.grabbedItem = null;
+          $(ui.item).css({ zIndex: "" });
+          $("body > style.overlapped").remove();
+        },
+        sort: function (e, ui) {
+          if (checkOverlap("ul.cal", e.pageX, e.pageY)) {
+            $("body > style.overlapped").remove();
+          } else {
+            $("<style>")
+              .text("*{ cursor: not-allowed !important; }")
+              .addClass("overlapped")
+              .appendTo("body");
+          }
+        },
+      });
+
+      $("#content ul.cal li.calbody").sortable("refresh");
+      updateContainment();
+    }
+
+    function setupDroppableSwitches() {
+      const countdownTimer = new (class CountdownTimer {
+        #offsetX = 0;
+        #offsetY = -30;
+        constructor() {
+          this.$countdownTimer = $("<div>")
+            .attr("id", "countdown_timer")
+            .append($("<div>").addClass("countdown_timer_core"))
+            .append($("<div>").addClass("countdown_timer_label"))
+            .appendTo("body");
+          this.$countdownTimer
+            .find(".countdown_timer_core")[0]
+            .style.setProperty("--duration", MONTH_CHANGE_DELAY + "ms");
+        }
+        show(direction, x, y) {
+          if (x && y) {
+            $("#countdown_timer").css({
+              top: y + this.#offsetY,
+              left: x + this.#offsetX,
+            });
+          }
+          $("#countdown_timer .countdown_timer_label").text(
+            direction === "next" ? "⇨" : "⇦"
+          );
+          $("#countdown_timer").show();
+          $(document).on("mousemove.countdown_timer", (e) => {
+            $("#countdown_timer").css({
+              top: e.clientY + this.#offsetY,
+              left: e.clientX + this.#offsetX,
+            });
+          });
+        }
+        hide() {
+          $("#countdown_timer").hide();
+          $(document).off("mousemove.countdown_timer");
+        }
+      })();
+
+      function generateDroppableSettings(direction) {
+        return {
+          containment: "#content",
+          tolerance: "pointer",
+          accept: "div.issue, span,icon-package",
+          over: function (e, ui) {
+            clearTimeout(this.monthChangeTimer);
+            this.monthChangeTimer = setTimeout(() => {
+              countdownTimer.hide();
+              changeMonth(direction);
+            }, MONTH_CHANGE_DELAY);
+            countdownTimer.show(direction, e.clientX, e.clientY);
+          },
+          out: function (e, ui) {
+            countdownTimer.hide();
+          },
+        };
+      }
+
+      const $dSwitchPrev = $("<div>")
+        .attr("id", "dSwitchPrev")
+        .addClass("droppableSwitch")
+        .droppable(generateDroppableSettings("prev"));
+
+      const $dSwitchNext = $("<div>")
+        .attr("id", "dSwitchNext")
+        .addClass("droppableSwitch")
+        .droppable(generateDroppableSettings("next"));
+
+      $("#content").append($dSwitchPrev).append($dSwitchNext);
+
+      function changeMonth(direction) {
+        if (direction === "prev") {
+          if (!$dSwitchPrev.droppable("instance").isover) return;
+          ajaxUpdateIssueList({
+            search: extractSearch(
+              $(".contextual .pages .previous a").attr("href")
+            ),
+          });
+        } else if (direction === "next") {
+          if (!$dSwitchNext.droppable("instance").isover) return;
+          ajaxUpdateIssueList({
+            search: extractSearch($(".contextual .pages .next a").attr("href")),
+          });
+        }
+      }
+    }
+
+    function initialize() {
+      setUpQueryForm();
+      replaceAnchorTagAction();
+      setCalendarItemSortable();
+      setupDroppableSwitches();
+
+      $(document).keyup(function (e) {
+        if (e.key === "Escape" || e.key === "Esc") {
+          $("#content ul.cal li.calbody").sortable("cancel");
+        }
+      });
+
+      // Add adding new issue link
+      if ($("#content > .contextual a.new-issue").length === 0) {
+        const newIssueUrl =
+          `${homeUrl}` +
+          (projectName === null ? "" : `projects/${projectName}/`) +
+          "issues/new";
+        // Check access to the new issue page
+        $.ajax(newIssueUrl).done(() => {
+          $("<a>")
+            .addClass("icon icon-add new-issue")
+            .attr("href", newIssueUrl)
+            .text(resources.labelIssueNew)
+            .css({ marginTop: 5, display: "inline-block" })
+            .prependTo("#content > .contextual");
+        });
+      }
+    }
+
+    function ajaxUpdatePostActions($data) {
+      replaceAnchorTagAction();
+      setCalendarItemSortable();
+    }
+
+    ajaxUpdateIssueList = async function (settings = {}) {
+      const settingsDefault = { search: location.search, noSearch: false };
+      settings = { ...settingsDefault, ...settings };
+
+      settings.search = settings.noSearch
+        ? ""
+        : settings.search[0] === "?"
+        ? settings.search
+        : "?" +
+          (settings.search[0] === "&"
+            ? settings.search.slice(1)
+            : settings.search);
+
+      const url = location.origin + location.pathname + settings.search;
+
+      try {
+        $("#ajax-indicator").show();
+        const response = await fetch(url, {
+          method: "GET",
+          headers: {
+            "X-CSRF-Token": csrfToken,
+            "Content-Type": "text/html",
+            Accept: "text/html",
+          },
+        });
+
+        if (!response.ok) {
+          throw new Error("Network response was not ok");
+        }
+
+        const htmlString = await response.text();
+        const data = new DOMParser().parseFromString(htmlString, "text/html");
+        const $data = $(data);
+
+        if (url !== location.href) {
+          // Update history
+          window.history.pushState({}, "", url);
+
+          // Update back url
+          $('input[name*="back_url"]').attr("value", url);
+        }
+
+        // Show flash
+        const $flash = $("#content > div.flash", data);
+        if ($flash.length) {
+          $("#content > div.flash").remove();
+          $flash.prependTo("#content");
+        }
+
+        // Update query form
+        $("#query_form")
+          .empty()
+          .append($("#query_form", htmlString).children());
+        setUpQueryFormButtons();
+        setFilterItemToSortable();
+
+        // Update list title
+        $("#content>h2:first")
+          .contents()
+          .each((i, e) => {
+            if (e.nodeType === Node.TEXT_NODE) {
+              e.nodeValue = $("#content>h2", $data).text();
+            }
+          });
+        $("head>title").text($("title", data).text());
+
+        // Update sidebar
+        $("#sidebar").replaceWith($("#sidebar", data));
+
+        // Support for RedmineUp issue_tags plugin
+        if (typeof setSelect2Filter) {
+          if (availableFilters["issue_tags"]) {
+            setSelect2Filter("issue_tags", {
+              url: homeUrl + "auto_completes/redmine_tags",
+            });
+          }
+        }
+
+        const updatingTargetSelector = "#content ul.cal";
+
+        console.debug("Start updating the calendar");
+
+        const grabbedItem = $("#content ul.cal li.calbody").sortable(
+          "instance"
+        )?.grabbedItem;
+
+        if (
+          grabbedItem?.length > 0 &&
+          $("#content").hasClass("issue-dragging")
+        ) {
+          // Hide already showing items
+          const currentYear = parseInt($("#year option[selected]").val());
+          const currentMonth = parseInt($("#month option[selected]").val());
+
+          $(updatingTargetSelector)
+            .find("li")
+            .each((_, e) => {
+              $(e)
+                .addClass("old-item")
+                .data("year", currentYear)
+                .data("month", currentMonth);
+            });
+
+          // Hide the same item that is currently being held.
+          if (grabbedItem.hasClass("issue")) {
+            const currentItemIssueId = grabbedItem
+              .find("input[name='ids[]']")
+              .val();
+            const currentItemIsStarting = grabbedItem.hasClass("starting");
+
+            $(updatingTargetSelector, data).each((_, e) => {
+              $(e)
+                .find("input[name='ids[]']")
+                .each((_, input) => {
+                  if (input.value === currentItemIssueId) {
+                    const $issue = $(input).closest("div.issue");
+                    if (currentItemIsStarting === $issue.hasClass("starting")) {
+                      $issue.hide();
+                    }
+                  }
+                });
+            });
+          } else if (grabbedItem.hasClass("icon-package")) {
+            const href = grabbedItem.find("a").attr("href");
+            $(updatingTargetSelector, data).each((_, e) => {
+              $(e)
+                .find('a[href="' + href + '"]')
+                .parent()
+                .hide();
+            });
+          }
+        } else {
+          $(updatingTargetSelector).empty();
+        }
+
+        // Update calendar
+        $(updatingTargetSelector).append(
+          $(updatingTargetSelector, data).children()
+        );
+
+        console.debug("Calendar update completed");
+
+        ajaxUpdatePostActions($data);
+      } catch (error) {
+        console.error(
+          "There has been a problem with your fetch operation:",
+          error
+        );
+        alert(error);
+      } finally {
+        $("#ajax-indicator").hide();
+      }
+    };
+
+    initialize();
+  });
+</script>
+<style>
+  #content ul.cal :is(div.tooltip, span.icon-package) {
+    cursor: grab;
+  }
+
+  div.tooltip.ui-sortable-helper {
+    span.tip {
+      display: none;
+    }
+  }
+
+  /* ----- Query form settings ----- */
+  #content {
+    position: relative;
+  }
+
+  #query_form_open_button {
+    display: none;
+  }
+
+  /* Styles for mobile layout */
+  @media screen and (max-width: 899px) {
+    #query_form_with_buttons > p.buttons > .query_form_cancel {
+      display: none;
+    }
+    #query_form {
+      display: block !important;
+    }
+  }
+
+  /* Styles for desktop layout */
+  @media screen and (min-width: 900px) {
+    #list-definition td.field {
+      min-width: 80px;
+    }
+
+    #query_form_open_button {
+      display: inline;
+      font-size: 0.6em;
+      background-position: left;
+      background-repeat: no-repeat;
+      padding-left: 20px;
+      cursor: pointer;
+      margin-left: 10px;
+      font-weight: normal;
+    }
+
+    #query_form {
+      display: none;
+      position: absolute;
+      background-color: white;
+      z-index: 91;
+      width: max-content;
+      max-width: calc(100% - 50px);
+      box-shadow: 5px 5px 5px rgb(0 0 0 / 20%);
+      border-radius: 5px;
+      padding: 15px;
+      border: 1px #ccc solid;
+      top: 42px;
+      min-width: 900px;
+
+      #filters .add-filter {
+        min-width: 350px;
+      }
+    }
+
+    #query_form_with_buttons {
+      & > p.contextual {
+        display: none;
+      }
+
+      & > p.buttons {
+        float: right;
+        margin: 0;
+        display: flex;
+        justify-content: space-between;
+        align-items: baseline;
+        width: calc(100% - 10px);
+        border-top: 1px solid #ccc;
+        padding-top: 10px;
+        margin: 15px 0 0;
+
+        & > a.icon-checked {
+          margin-left: auto;
+        }
+
+        label[for="year"] {
+          margin-left: 15px;
+          margin-right: 10px;
+        }
+      }
+    }
+
+    #query_form_content fieldset {
+      margin-bottom: 20px;
+    }
+  }
+
+  /* ===== Query form settings ===== */
+
+  /* ----- Droppable ----- */
+  .droppableSwitch {
+    position: absolute;
+    height: 50px;
+    width: 100px;
+    top: 0;
+    width: 20px;
+    height: 100%;
+  }
+
+  .issue-dragging .droppableSwitch {
+    display: block;
+  }
+
+  #dSwitchNext {
+    right: 0;
+  }
+
+  /* ===== Droppable ===== */
+
+  #content ul.cal li.old-item {
+    height: 0 !important;
+    min-height: 0 !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    border: none !important;
+    overflow: hidden;
+  }
+
+  #content ul.cal:hover .ui-sortable-placeholder {
+    visibility: visible !important;
+    opacity: 0.5;
+    border-style: dashed !important;
+    border-width: 1px !important;
+  }
+
+  /* ----- Countdown timer ----- */
+  #countdown_timer {
+    --size: 30px;
+
+    width: var(--size);
+    height: var(--size);
+    display: none;
+    z-index: 1001;
+    margin: 0;
+    padding: 0;
+    position: fixed;
+    box-sizing: border-box;
+    transform: translate3d(-50%, -50%, 0);
+
+    .countdown_timer_core {
+      --duration: 1s;
+      --color: #3e5b76;
+
+      --border-width: 3px;
+      --iteration-count: 1;
+
+      position: absolute;
+      top: 0;
+      left: 0;
+      box-sizing: border-box;
+      animation: timer-container var(--duration) steps(1) var(--iteration-count);
+      width: 100%;
+      height: 100%;
+
+      &::before,
+      &::after {
+        content: "";
+        box-sizing: border-box;
+        display: block;
+        border-radius: 50%;
+        border: var(--border-width) solid;
+        width: 100%;
+        height: 100%;
+        position: absolute;
+        top: 0;
+        left: 0;
+        transform: rotate(45deg);
+      }
+
+      &::before {
+        border-color: transparent transparent var(--color) var(--color);
+        animation: timer-rotate var(--duration) linear var(--iteration-count);
+      }
+
+      &::after {
+        border-color: var(--color) var(--color) transparent transparent;
+        animation: timer-hide var(--duration) steps(1) var(--iteration-count);
+      }
+    }
+
+    .countdown_timer_label {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      font-size: 18px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      box-sizing: border-box;
+      border-radius: 50%;
+      border: 1px solid rgb(0 0 0 / 20%);
+      color: var(--color);
+    }
+  }
+
+  @keyframes timer-container {
+    0% {
+      clip-path: polygon(50% 0, 100% 0, 100% 100%, 50% 100%);
+    }
+
+    50% {
+      clip-path: polygon(0 0, 100% 0, 100% 100%, 0 100%);
+    }
+  }
+
+  @keyframes timer-rotate {
+    100% {
+      transform: rotate(calc(360deg + 45deg));
+    }
+  }
+
+  @keyframes timer-hide {
+    0% {
+      opacity: 0;
+    }
+
+    50% {
+      opacity: 1;
+    }
+  }
+  /* ===== Countdown timer ===== */
+
+  /* Support for Redmine theme "farend bleuclair" */
+  body.theme-Bleuclair {
+    @media screen and (min-width: 900px) {
+      #content > div.contextual {
+        margin-right: 25px;
+      }
+    }
+    @media screen and (min-height: 400px) {
+      #sidebar-switch-panel {
+        position: absolute;
+        top: 5px;
+        left: auto;
+        right: 4px;
+        z-index: 1;
+      }
+    }
+  }
+</style>

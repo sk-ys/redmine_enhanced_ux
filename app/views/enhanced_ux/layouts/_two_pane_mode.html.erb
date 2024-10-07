@@ -1,0 +1,1869 @@
+<!--
+// Path pattern:       (/issues($|/gantt)|/roadmap|/issue_note_list|/calendar|/versions/[0-9]+$)
+// Insertion position: Head of all pages
+// Type:               HTML
+// Comment:            2-pane mode
+-->
+<script>
+  window.addEventListener("DOMContentLoaded", () => {
+    // ----- settings start -----
+    const enable2PaneModeDefault = false;
+    const prevent2PaneModeInIframe = true;
+    const widthOfWindowToForceSwitchToRowView = 1280;
+    // ----- settings end -----
+
+    const homeUrl = $("link[href*='favicon.ico']")
+      .attr("href")
+      .split("favicon.ico")[0];
+    const pageType = (() => {
+      const key1 = location.pathname.split("/").slice(-1)[0];
+      const key2 = location.pathname.split("/").slice(-2)[0];
+      return /^[0-9]+$/.test(key1) ? key2 : key1;
+    })();
+    const supportedPageTypes = [
+      "issues",
+      "gantt",
+      "roadmap",
+      "versions",
+      "calendar",
+      "issue_note_list",
+    ];
+    const storageNameForSrc = "2-pane-mode-src";
+    const storageNameForEachPage = "2-pane-mode-" + pageType;
+    const classNameForOpenedItem = "two-pane-mode-opened-item";
+    const newIssueSelector = "a[href*='/issues/new']";
+
+    const resourcesAll = {
+      en: {
+        label2PaneMode: "2-pane mode",
+        labelClear: "Clear",
+        labelHome: "Home",
+        labelCopyURL: "Copy URL",
+        labelReload: "Reload",
+        labelToggleDirection: "Toggle direction",
+        labelMaximize: "Maximize window",
+        labelMinimize: "Unfixed window",
+        labelRestore: "Restore original window size",
+        labelUnminimize: "Fixed window",
+        labelHide: "Hide",
+        labelClose: "Close",
+        labelOpenInNewTab: "Open in new tab",
+        confirmResetHeight: "Do you want to reset the height?",
+        confirmResetWidth: "Do you want to reset the width?",
+        confirmOpenPage: "Do you want to open the page?",
+        messageSelectIssue: "Issue not selected. Please select a issue.",
+        messageExit2PaneMode: "Exit 2-pane mode",
+        labelIssueNew: "New Issue",
+        labelBack: "Back",
+        labelForward: "Forward",
+        messageFailedToUpdate: "Failed to update.",
+      },
+      ja: {
+        label2PaneMode: "2画面モード",
+        labelClear: "クリア",
+        labelHome: "ホーム",
+        labelCopyURL: "URLをコピーする",
+        labelReload: "再読み込み",
+        labelToggleDirection: "方向切替",
+        labelMaximize: "ウィンドウを最大化",
+        labelMinimize: "ウィンドウの固定化を解除",
+        labelRestore: "元のウィンドウサイズに戻す",
+        labelHide: "隠す",
+        labelClose: "閉じる",
+        labelUnminimize: "ウィンドウを固定化",
+        labelOpenInNewTab: "新しいタブで開く",
+        confirmResetHeight: "高さをリセットしますか？",
+        confirmResetWidth: "幅をリセットしますか？",
+        confirmOpenPage: "ページを開きますか？",
+        messageSelectIssue: "チケットが未選択です。チケットを選択して下さい。",
+        messageExit2PaneMode: "2画面モードを終了する",
+        labelIssueNew: "新しいチケット",
+        labelBack: "戻る",
+        labelForward: "進む",
+        messageFailedToUpdate: "更新に失敗しました。",
+      },
+    };
+    const resources =
+      resourcesAll[document.documentElement.lang] || resourcesAll["en"];
+
+    // Do not enable 2-pane mode in the new issue form.
+    if ($("#issue-form.new_issue").length > 0) return;
+
+    // Do not enable 2-pane mode in the project settings page.
+    if (/\/settings\/issues(|\/)$/.test(location.pathname)) return;
+
+    // Do not enable 2-pane mode in the iframe
+    if (window !== window.parent && prevent2PaneModeInIframe) return;
+
+    const utils = {
+      locationToFullPath: function (location) {
+        return location.origin === "null"
+          ? null
+          : location.origin + location.pathname;
+      },
+      getAbsUrl: function (url) {
+        if (!/^http(|s):\/\//.test(url)) {
+          url = location.origin + url;
+        }
+        return url;
+      },
+      getIssueIdFromIssueUrl: function (url) {
+        try {
+          const splitted = new URL(utils.getAbsUrl(url)).pathname.split("/");
+          return Number(splitted[splitted.length - 1]);
+        } catch {
+          return undefined;
+        }
+      },
+      existIssueIdInIssueList: function (issueId) {
+        if (!issueId) return undefined;
+        return config.existIssueIdInIssueList?.(issueId) ?? false;
+      },
+      copyToClipboard: function (value) {
+        const tempInput = $("<input>")
+          .val(value)
+          .css({
+            position: "fixed",
+            top: 0,
+            left: 0,
+            opacity: 0,
+            zIndex: -100,
+          })
+          .appendTo("body")
+          .select();
+        document.execCommand("copy");
+        tempInput.remove();
+      },
+      isNewIssueUrl: function (url) {
+        try {
+          return /issues\/new$/.test(new URL(utils.getAbsUrl(url)).pathname);
+        } catch (e) {
+          console.log(e);
+        }
+        return false;
+      },
+      isIssueUrl: function (url) {
+        try {
+          return /issues\/[0-9]+$/.test(new URL(utils.getAbsUrl(url)).pathname);
+        } catch (e) {
+          console.log(e);
+        }
+        return false;
+      },
+    };
+
+    class History {
+      #iframe;
+      #list = [];
+
+      constructor(iframe) {
+        this.#iframe = iframe;
+        this.pos = -1;
+        this.#list = [];
+      }
+
+      push(url) {
+        this.pos += 1;
+        if (this.pos > 0) {
+          this.#list = this.#list.slice(0, this.pos);
+        }
+        this.#list.push(url);
+      }
+
+      back() {
+        if (this.pos < 1) return undefined;
+        this.pos -= 1;
+        this.#iframe.src = this.#list[this.pos];
+      }
+
+      forward() {
+        if (this.pos >= this.#list.length - 1) return undefined;
+        this.pos += 1;
+        this.#iframe.src = this.#list[this.pos];
+      }
+
+      home() {
+        this.pos = 0;
+        this.#iframe.src = this.#list[this.pos];
+      }
+
+      clear() {
+        this.pos = -1;
+        this.#list = [];
+      }
+
+      get list() {
+        return this.#list;
+      }
+    }
+
+    const configBase = {
+      targetAnchorSelector: undefined,
+      insertCheckBox: ($checkBox) => {
+        $("#content>h2").append($checkBox);
+      },
+      replaceAnchorTagsAfter: undefined,
+      scrollTargetSelector: undefined,
+      updatingTargetSelector: undefined,
+      replaceAjaxUpdateFunction: (beforeCallback, afterCallback) => {
+        if (window.ajaxUpdateIssueList) {
+          var ajaxUpdateIssueListOrg = ajaxUpdateIssueList;
+          ajaxUpdateIssueList = async function (settings) {
+            beforeCallback?.();
+            await ajaxUpdateIssueListOrg(settings);
+            afterCallback?.();
+          };
+          config.ajaxUpdateIssueList = async (settings) => {
+            await window.ajaxUpdateIssueList(settings);
+          };
+        }
+      },
+      updateIssueListBefore: (state) => {},
+      updateIssueListAfter: (state) => {},
+      highlightOpenedItem: (className, targetAnchorSelector, url) => {
+        targetAnchorSelector.split(",").forEach((s) => {
+          $(`${s}[href="${url}"]`)
+            .closest("tr.issue, div.issue")
+            .addClass(className);
+        });
+      },
+      jumpToOpenedItem: undefined,
+      existIssueIdInIssueList: (issueId) => {
+        return (
+          $("table.list.issues>tbody>tr")
+            .toArray()
+            .map((item) => $(item).attr("id"))
+            .filter(
+              (item) => item !== undefined && /^issue\-[0-9]+$/.test(item)
+            )
+            .map((item) => Number(item.slice(6)))
+            .indexOf(issueId) >= 0
+        );
+      },
+    };
+
+    const configRoadmap = {
+      targetAnchorSelector:
+        "#roadmap table.list.related-issues td.subject>a.issue",
+      updatingTargetSelector: "#roadmap",
+      updateIssueListBefore: (state) => {
+        if (window["setupShowOnlyOpenedIssues"]) {
+          // Store hidden state for show_only_opened_issues patch
+          $("#roadmap article.version-article").each((_, e) => {
+            const versionHref = $(e).find("header a").attr("href");
+            const enabled = $(e)
+              .find("input.hide_closed_issue")
+              .prop("checked");
+            state[versionHref] = enabled;
+          });
+        }
+      },
+      updateIssueListAfter: (state) => {
+        if (window["setupShowOnlyOpenedIssues"]) {
+          setupShowOnlyOpenedIssues();
+
+          // Restore hidden state for show_only_opened_issues patch
+          $("#roadmap article.version-article").each((_, e) => {
+            const versionHref = $(e).find("header a").attr("href");
+            const enabled = $(e)
+              .find("input.hide_closed_issue")
+              .prop("checked");
+            if (state[versionHref] !== undefined) {
+              if (enabled !== state[versionHref]) {
+                $(e).find("input.hide_closed_issue")[0].click();
+              }
+            }
+          });
+        }
+      },
+      jumpToOpenedItem: ($target) => {
+        const $versionHeader = $target
+          .closest(".version-article")
+          .find("div.header-wrapper");
+        if ($versionHeader.length === 0) return;
+
+        $("#roadmap").scrollTop(0).scrollTop($versionHeader.position().top);
+        const offset = $versionHeader.position().top;
+        $("#roadmap")
+          .scrollTop(0)
+          .scrollTop(
+            $versionHeader.position().top + $target.position().top - offset
+          );
+      },
+      existIssueIdInIssueList: (issueId) => {
+        return (
+          $("#roadmap table.list.related-issues td.subject>a")
+            .toArray()
+            .map((item) =>
+              Number(
+                $(item)
+                  .attr("href")
+                  .match(/\/([0-9]+)$/)[1]
+              )
+            )
+            .indexOf(issueId) >= 0
+        );
+      },
+    };
+
+    const config = {
+      ...configBase,
+      ...{
+        issues: {
+          targetAnchorSelector:
+            "table.list.issues tr.issue>td.id>a, " +
+            "table.list.issues tr.issue>td.subject>a",
+          scrollTargetSelector: "#content div.autoscroll:has(>table.issues)",
+          updatingTargetSelector: "table.list.issues",
+          jumpToOpenedItem: ($target) => {
+            $("#content table.list.issues")
+              .parent()
+              .scrollTop(
+                $target.position().top -
+                  $("#content table.list.issues thead").outerHeight()
+              );
+          },
+        },
+        gantt: {
+          targetAnchorSelector:
+            "td.gantt_subjects_column form div.issue-subject a.issue, " +
+            "#gantt_area>form>div.tooltip>span.tip>a.issue",
+          replaceAnchorTagsAfter: () => {
+            // Prevent unnecessary screen transitions in gantt
+
+            const un_target_anchor_selector =
+              "table.gantt-table div.gantt_subjects a:not(.issue)";
+            $("#content").on("click", un_target_anchor_selector, (e) => {
+              const enabled = $("#enable_2-pane_mode").is(":checked");
+
+              // Prevent 2-pane mode when checkbox is not checked
+              if (!enabled) return;
+
+              // Prevent 2-pane mode when clicking with the Ctrl key
+              if (e.ctrlKey) return;
+
+              if (confirm(resources.confirmOpenPage)) {
+                return;
+              } else {
+                e.preventDefault();
+              }
+            });
+          },
+          scrollTargetSelector: "#gantt_area",
+          updatingTargetSelector: "table.gantt-table",
+          updateIssueListAfter: (state) => {
+            // Execute original gantt setup script
+            eval(
+              $("#content>script:first")
+                .text()
+                .match(/\$\(function\(\) {([\s\S]*?)}\)\;/)[1]
+            );
+          },
+          highlightOpenedItem: (className, targetAnchorSelector, url) => {
+            const $issueSubject = $(
+              "table.gantt-table div.gantt_subjects div.issue-subject " +
+                `a[href="${url}"]`
+            ).closest("div.issue-subject");
+            if ($issueSubject.length === 0) return;
+
+            const issueId = parseInt($issueSubject.attr("id").split("-")[1]);
+            const dataNumberOfRows = $issueSubject.data("number-of-rows");
+            $(
+              `table.gantt-table div[data-number-of-rows=${dataNumberOfRows}]` +
+                `:not(.tooltip)`
+            ).addClass(className);
+          },
+          existIssueIdInIssueList: (issueId) => {
+            return (
+              $(
+                "table.gantt-table td.gantt_subjects_column>" +
+                  "div.gantt_subjects_container>div.gantt_subjects>form>div"
+              )
+                .toArray()
+                .map((item) => $(item).attr("id"))
+                .filter(
+                  (item) => item !== undefined && /^issue\-[0-9]+$/.test(item)
+                )
+                .map((item) => Number(item.slice(6)))
+                .indexOf(issueId) >= 0
+            );
+          },
+        },
+        roadmap: configRoadmap,
+        versions: {
+          ...configRoadmap,
+          ...{
+            insertCheckBox: ($checkBox) => {
+              $("#roadmap>h2+span.badge:first").after($checkBox);
+            },
+          },
+        },
+        issue_note_list: {
+          targetAnchorSelector:
+            "table.list.issues tr.issue>td.issue-status" +
+            ">div.header>div.header-text>a",
+          scrollTargetSelector: "#content div.autoscroll:has(>table.issues)",
+          updatingTargetSelector: "table.list.issues",
+          jumpToOpenedItem: ($target) => {
+            $("#content table.list.issues")
+              .parent()
+              .scrollTop(
+                $target.position().top -
+                  $("#content table.list.issues thead").outerHeight()
+              );
+          },
+        },
+        calendar: {
+          targetAnchorSelector: "a.issue",
+          updatingTargetSelector: "form ul.cal",
+          existIssueIdInIssueList: (issueId) => {
+            return (
+              $("div.issue input[type=checkbox]")
+                .map((_, e) => parseInt($(e).val()))
+                .toArray()
+                .indexOf(issueId) >= 0
+            );
+          },
+        },
+      }[pageType],
+    };
+
+    // If the target object is not found, the 2-pane mode is not applied.
+    if (config === undefined) return;
+
+    class Status {
+      constructor(defaults = {}) {
+        this.default = {
+          enabled: defaults.enabled ?? enable2PaneModeDefault,
+          direction: defaults.direction ?? "Column",
+          height: defaults.height ?? 500,
+          width: defaults.width ?? 600,
+          maximize: defaults.maximize ?? false,
+          minimize: defaults.minimize ?? false,
+          src: defaults.src ?? "",
+        };
+
+        this.current = this.default;
+      }
+
+      get availableKeys() {
+        return [
+          "enabled",
+          "direction",
+          "height",
+          "width",
+          "maximize",
+          "minimize",
+          "src",
+        ];
+      }
+
+      load() {
+        const loadedStatus = JSON.parse(
+          localStorage.getItem(storageNameForEachPage) || "{}"
+        );
+        loadedStatus.src = localStorage.getItem(storageNameForSrc);
+        // console.debug("status.load", loadedStatus);
+
+        if (!["Column", "Row"].includes(loadedStatus.direction)) {
+          console.warn("Failed to restore the stored direction status.");
+          loadedStatus.direction = undefined;
+        }
+
+        Object.keys(loadedStatus).forEach((key) =>
+          loadedStatus[key] === undefined ? delete loadedStatus[key] : {}
+        );
+
+        this.current = { ...this.current, ...loadedStatus };
+      }
+
+      set(params = {}, saveForce = false) {
+        // console.debug("status.set", params);
+
+        // Remove invalid keys
+        Object.keys(params).forEach((key) => {
+          if (!this.availableKeys.includes(key) || params[key] === undefined) {
+            delete params[key];
+          }
+        });
+
+        const changed = Object.keys(params).some(
+          (key) => params[key] !== this.current[key]
+        );
+
+        this.current = { ...this.current, ...params };
+
+        if (changed || saveForce) {
+          this.save();
+        }
+      }
+
+      save() {
+        // console.debug("status.save", this.current);
+        localStorage.setItem(storageNameForSrc, this.current.src);
+        localStorage.setItem(
+          storageNameForEachPage,
+          JSON.stringify(this.current)
+        );
+      }
+
+      get active() {
+        return {
+          get direction() {
+            if ($("#main").hasClass("grid-direction-column")) {
+              return "Column";
+            } else if ($("#main").hasClass("grid-direction-row")) {
+              return "Row";
+            } else {
+              return undefined;
+            }
+          },
+          get minimize() {
+            return $("#main").hasClass("issue-pane-minimize");
+          },
+          get maximize() {
+            return $("#issue-pane").hasClass("maximize");
+          },
+          get rowForce() {
+            return $("#main").hasClass("gird-direction-row-force");
+          },
+        };
+      }
+    }
+
+    class Pane {
+      #generateControlPanelButtons(status) {
+        const $clearButton = $("<button>")
+          .addClass("clear")
+          .button({
+            icon: "ui-icon-document",
+            label: resources.labelClear,
+            showLabel: false,
+          })
+          .on("click", () => {
+            this.clear();
+          });
+
+        this.$backButton = $("<button>")
+          .addClass("back")
+          .button({
+            icon: "ui-icon-caret-1-w",
+            label: resources.labelBack,
+            showLabel: false,
+          })
+          .on("click", () => {
+            this.back();
+          });
+
+        this.$forwardButton = $("<button>")
+          .addClass("forward")
+          .button({
+            icon: "ui-icon-caret-1-e",
+            label: resources.labelForward,
+            showLabel: false,
+          })
+          .on("click", () => {
+            this.forward();
+          });
+
+        const $refreshButton = $("<button>")
+          .addClass("refresh")
+          .button({
+            icon: "ui-icon-arrowrefresh-1-e",
+            label: resources.labelReload,
+            showLabel: false,
+          })
+          .on("click", () => {
+            this.reload();
+          });
+
+        const $homeButton = $("<button>")
+          .addClass("home")
+          .button({
+            icon: "ui-icon-home",
+            label: resources.labelHome,
+            showLabel: false,
+          })
+          .on("click", () => {
+            this.#history.home();
+          });
+
+        const $copyButton = $("<button>")
+          .addClass("copy")
+          .button({
+            icon: "ui-icon-copy",
+            label: resources.labelCopyURL,
+            showLabel: false,
+          })
+          .on("click", () => {
+            const location = this.$iframe.contents()[0].location;
+            utils.copyToClipboard(location.origin + location.pathname);
+          });
+
+        const $openInNewTabButton = $("<button>")
+          .addClass("open-in-new-tab")
+          .button({
+            icon: "ui-icon-extlink",
+            label: resources.labelOpenInNewTab,
+            showLabel: false,
+          })
+          .click((e) => {
+            const location = this.$iframe.contents()[0].location;
+            window.open(location.origin + location.pathname, "_blank");
+          });
+
+        const $toggleDirectionButton = $("<button>")
+          .addClass("toggle-direction")
+          .button({
+            icon: "ui-icon-blank",
+            label: resources.labelToggleDirection,
+            showLabel: false,
+          })
+          .on("click", () => {
+            this.toggleGridDirection();
+          });
+
+        const $hideButton = $("<button>")
+          .addClass("hide")
+          .button({
+            icon: "ui-icon-arrowthickstop-1-e",
+            label: resources.labelHide,
+            showLabel: false,
+          })
+          .on("click", () => {
+            if (!status.active.minimize) {
+              this.setMinimize(true, !status.active.rowForce);
+            }
+            this.hidePreview();
+          });
+
+        const $restoreButton = $("<button>")
+          .addClass("restore")
+          .button({
+            icon: "ui-icon-newwin",
+            label: resources.labelRestore,
+            showLabel: false,
+          })
+          .on("click", () => {
+            this.setMaximize(false);
+          });
+
+        const $minimizeButton = $("<button>")
+          .addClass("minimize")
+          .button({
+            icon: "ui-icon-minus",
+            label: resources.labelMinimize,
+            showLabel: false,
+          })
+          .on("click", () => {
+            this.setMinimize(!status.active.minimize);
+            this.toggleGridDirectionByWindowSize();
+            if (status.active.minimize) {
+              if (status.active.direction === "Column") {
+                this.$base.css({
+                  maxWidth: 0,
+                  minWidth: 0,
+                  overflow: "hidden",
+                });
+              } else {
+                this.$base.css({
+                  maxHeight: 0,
+                  minHeight: 0,
+                  overflow: "hidden",
+                });
+              }
+              setTimeout(() => {
+                this.$base.css({
+                  maxWidth: "",
+                  maxHeight: "",
+                  minWidth: "",
+                  minHeight: "",
+                  overflow: "",
+                });
+              });
+            }
+          });
+
+        const $maximizeButton = $("<button>")
+          .addClass("maximize")
+          .button({
+            icon: "ui-icon-stop",
+            label: resources.labelMaximize,
+            showLabel: false,
+          })
+          .on("click", () => {
+            this.setMaximize(true);
+          });
+
+        return $("<div>")
+          .addClass("buttons")
+          .append($clearButton)
+          .append(this.$backButton)
+          .append(this.$forwardButton)
+          .append($refreshButton)
+          .append($homeButton)
+          .append($copyButton)
+          .append($openInNewTabButton)
+          .append($toggleDirectionButton)
+          .append($hideButton)
+          .append($restoreButton)
+          .append($minimizeButton)
+          .append($maximizeButton);
+      }
+
+      #initElements(status) {
+        this.$controlPanelButtons = this.#generateControlPanelButtons(status);
+
+        this.$controlPanel = $("<div>")
+          .attr("id", "issue-pane-control-panel")
+          .append($("<div>").addClass("title"))
+          .append(this.$controlPanelButtons);
+
+        this.$iframe = $("<iframe>").on("load", (e) => {
+          const $contents = $(e.target).contents();
+          const iframeHref = $contents[0].location.href;
+
+          // Update history
+          if (iframeHref === "about:blank") {
+            // Skip
+          } else if (this.#history.list[this.#history.pos] === iframeHref) {
+            // Reload action detected
+          } else if (this.#history.list[this.#history.pos - 1] === iframeHref) {
+            // Back action detected
+            this.#history.pos -= 1;
+          } else if (this.#history.list[this.#history.pos + 1] === iframeHref) {
+            // Forward action detected
+            this.#history.pos += 1;
+          } else {
+            // Append new history
+            this.#history.push(iframeHref);
+          }
+
+          // Update state of buttons
+          this.$backButton.button("option", "disabled", this.#history.pos <= 0);
+          this.$forwardButton.button(
+            "option",
+            "disabled",
+            this.#history.pos >= this.#history.list.length - 1
+          );
+
+          this.$controlPanel
+            .children(".title")
+            .text($contents[0].title)
+            .attr("title", $contents[0].title);
+
+          if ($contents.find("#flash_notice.notice").length > 0) {
+            // Successful update
+            this.updateIssueList().then(() => {
+              this.#handleOnLoad();
+            });
+          } else {
+            this.#handleOnLoad();
+          }
+
+          $contents
+            .find(
+              "#wrapper>div.flyout-menu, #top-menu, #header, #footer, #sidebar"
+            )
+            .remove();
+          $contents.find("#main").css({ padding: 0, margin: 0 });
+          $contents.find("#sidebar-switch-button").remove();
+          $(e.target)[0].contentWindow.onbeforeunload = (e) => {
+            const textAreaChanged = this.checkTextAreaChange();
+            if (textAreaChanged) {
+              return warnLeavingUnsavedMessage;
+            } else {
+              this.$iframe.css("visibility", "hidden");
+            }
+          };
+
+          // If it is a new issue URL, remove the back_url input element
+          // to prevent going to an unintended URL.
+          if ($contents.find("body").hasClass("controller-issues action-new")) {
+            $contents.find("#issue-form input[name=back_url]").remove();
+          }
+
+          this.$iframe.css("visibility", "");
+
+          $contents.find("textarea").on("change", function () {
+            $(this).attr("data-changed", "changed");
+          });
+        });
+
+        this.$emptyPane = $("<div>").attr("id", "issue-pane-empty");
+        this.$overlay = $("<div>").attr("id", "issue-pane-overlay");
+
+        this.$toggleMinimize = $("<div>")
+          .attr({
+            id: "issue-pane-toggle-minimize",
+            title: resources.labelMinimize,
+          })
+          .on("click", () => {
+            this.setMinimize(!status.active.minimize);
+          })
+          .on("mouseover", () => {
+            if (status.active.minimize) {
+              this.showPreview();
+            }
+          })
+          .append($("<span>").addClass("ui-icon"));
+
+        this.$base = $("<div>")
+          .attr("id", "issue-pane")
+          .css({
+            backgroundImage: `url(${homeUrl}images/loading.gif)`,
+            backgroundColor: $("#content").css("backgroundColor"),
+          })
+          .resizable({
+            handles: "w,n",
+            create: function () {
+              $(this)
+                .children(".ui-resizable-handle")
+                .on("dblclick", () => {
+                  if (status.active.direction === "Column") {
+                    if (confirm(resources.confirmResetWidth)) {
+                      this.$base.css("width", status.default.width);
+                      status.set({ width: status.default.width });
+                    }
+                  } else {
+                    if (confirm(resources.confirmResetHeight)) {
+                      this.$base.css("height", status.default.height);
+                      status.set({ height: status.default.height });
+                    }
+                  }
+                });
+            },
+            start: () => {
+              // Countermeasures against unintended interruptions to resizing
+              this.$overlay.show();
+            },
+            resize: () => {
+              // Support custom_gantt_chart
+              if (window["adjustGanttAreaSize"] !== undefined) {
+                adjustGanttAreaSize();
+              }
+              this.$iframe.contents()[0].dispatchEvent(new Event("resize"));
+            },
+            stop: () => {
+              this.$overlay.hide();
+              if (status.active.direction === "Column") {
+                status.set({ width: this.$base.width() });
+              } else {
+                status.set({ height: this.$base.height() });
+              }
+            },
+          })
+          .append(this.$controlPanel)
+          .append(this.$iframe)
+          .append(this.$emptyPane)
+          .append(this.$overlay)
+          .append(this.$toggleMinimize);
+      }
+
+      #handleOnLoad() {
+        // Update data("src") in the issue-pane if issue id is exist.
+        try {
+          const newUrl = utils.locationToFullPath(
+            this.$iframe.contents()[0].location
+          );
+          if (newUrl == null) return;
+          if (newUrl === this.$base.data("src")) return;
+
+          if (utils.isIssueUrl(newUrl)) {
+            const issueId = utils.getIssueIdFromIssueUrl(newUrl);
+
+            if (utils.existIssueIdInIssueList(issueId)) {
+              this.$base.data("src", newUrl);
+              this.status.set({ src: newUrl });
+            }
+          } else if (utils.isNewIssueUrl(newUrl)) {
+            this.$base.data("src", newUrl);
+          }
+
+          this.onLoad(newUrl);
+        } catch (e) {
+          console.error(e);
+        }
+      }
+
+      #history;
+
+      constructor(args) {
+        this.status = args.status;
+        this.updateIssueList = args.updateIssueList;
+        this.onLoad = args.onLoad;
+        this.onClear = args.onClear;
+
+        this.$base;
+        this.$controlPanelButtons;
+        this.$controlPanel;
+        this.$iframe;
+        this.$emptyPane;
+        this.$overlay;
+        this.$toggleMinimize;
+
+        this.#initElements(this.status);
+
+        this.isNewIssue = false;
+        this.#history = new History(this.$iframe[0]);
+      }
+
+      switchable() {
+        if (!this.checkTextAreaChange()) return true;
+        return confirm(warnLeavingUnsavedMessage);
+      }
+
+      checkTextAreaChange() {
+        var warn = false;
+        $("textarea", this.$iframe.contents())
+          .blur()
+          .each(function () {
+            if ($(this).data("changed")) {
+              warn = true;
+            }
+          });
+        return warn;
+      }
+
+      open(url, preview = true, updateForce = false) {
+        if (!this.switchable()) return false;
+
+        if (!updateForce && this.$base.data("src") === url) {
+          // If the pane has already been created
+          // Do nothing
+        } else {
+          // Create a new pane
+          if (preview) {
+            this.showPreview();
+          }
+          this.#history.clear();
+          this.$iframe.css("visibility", "hidden").attr("src", url);
+        }
+
+        if (url !== "") {
+          this.$base.removeClass("empty");
+        }
+      }
+
+      openUrlIfIssueExistOrNew(url, preview = true) {
+        if (
+          utils.existIssueIdInIssueList(utils.getIssueIdFromIssueUrl(url)) ||
+          utils.isNewIssueUrl(url)
+        ) {
+          this.open(url, preview);
+        } else {
+          // Open blank page
+          this.open("", preview);
+          this.clear();
+        }
+      }
+
+      reload() {
+        this.$iframe.contents()[0].location.reload();
+      }
+
+      back() {
+        this.#history.back();
+      }
+
+      forward() {
+        this.#history.forward();
+      }
+
+      hide() {
+        this.$base.hide();
+        this.enableGrid(false);
+        $("html").css({ overflow: "" });
+      }
+
+      clear() {
+        if (!this.switchable()) return false;
+        this.$iframe.attr("src", "");
+        this.$base.data("src", "").addClass("empty");
+        this.status.set({ src: "" });
+        this.#history.clear();
+
+        if (this.onClear) this.onClear();
+      }
+
+      showPreview() {
+        this.$base.addClass("preview");
+      }
+
+      hidePreview(fade = false) {
+        if (
+          $("#main").hasClass("issue-pane-minimize") &&
+          this.$base.is(":visible")
+        ) {
+          this.$base.fadeTo(fade ? 500 : 0, 0, () => {
+            this.$base.removeClass("preview").css("opacity", "");
+          });
+        }
+      }
+
+      enableGrid(state = true) {
+        if (state) {
+          $("#main").css({ display: "grid" }).addClass("enable-2-pane-mode");
+          $("#content").css({ width: "100%", boxSizing: "border-box" });
+          if (!this.status.active.direction) {
+            this.restoreLayout();
+          }
+        } else {
+          // Reset styles
+          $("#main")
+            .css({ display: "" })
+            .removeClass(
+              [
+                "enable-2-pane-mode",
+                "grid-direction-column",
+                "issue-pane-minimize",
+                "grid-direction-row",
+              ].join(" ")
+            );
+          $("#content").css({ width: "", boxSizing: "" });
+        }
+      }
+
+      setGridDirection(direction, saveStatus = true) {
+        const currentStatus = this.status.current;
+        if (direction.includes("Column")) {
+          this.$base.css({ height: "", width: currentStatus.width });
+        } else if (direction.includes("Row")) {
+          this.$base.css({ height: currentStatus.height, width: "" });
+        } else {
+          console.error(`Failed to set direction to "${direction}"`);
+          return;
+        }
+
+        // Toggle class of the #main tag
+        $("#main")
+          .toggleClass("grid-direction-column", direction.includes("Column"))
+          .toggleClass("grid-direction-row", direction.includes("Row"));
+
+        this.$controlPanel
+          .find(".toggle-direction")
+          .button(
+            "option",
+            "icon",
+            direction === "Column"
+              ? "ui-icon-arrowthick-2-n-s"
+              : "ui-icon-arrowthick-2-e-w"
+          );
+
+        if (saveStatus) {
+          this.status.set({ direction: direction });
+        }
+      }
+
+      toggleGridDirection() {
+        const destinationDirection =
+          this.status.active.direction === "Column" ? "Row" : "Column";
+        this.setGridDirection(
+          destinationDirection,
+          !this.status.active.rowForce
+        );
+      }
+
+      toggleGridDirectionByWindowSize(force = false) {
+        if (
+          !this.status.active.minimize &&
+          $(window).width() < widthOfWindowToForceSwitchToRowView
+        ) {
+          if (force || !this.status.active.rowForce) {
+            $("#main").addClass("gird-direction-row-force");
+            this.setGridDirection("Row", false);
+          }
+        } else {
+          if (force || this.status.active.rowForce) {
+            $("#main").removeClass("gird-direction-row-force");
+            this.setGridDirection(this.status.current.direction, false);
+          }
+        }
+      }
+
+      setMinimize(minimize = true, saveStatus = true) {
+        // Change labels related to minimization process
+        if (minimize) {
+          this.$toggleMinimize.attr({ title: resources.labelUnminimize });
+          this.$controlPanelButtons
+            .find("button.minimize")
+            .attr({ title: resources.labelUnminimize });
+        } else {
+          this.$toggleMinimize.attr({ title: resources.labelMinimize });
+          this.$controlPanelButtons
+            .find("button.minimize")
+            .attr({ title: resources.labelMinimize });
+        }
+
+        // Toggle class of the #main tag
+        $("#main").toggleClass("issue-pane-minimize", minimize);
+
+        if (saveStatus) {
+          this.status.set({ minimize: minimize });
+        }
+      }
+
+      setMaximize(maximize = true, saveStatus = true) {
+        this.$base.toggleClass("maximize", maximize);
+
+        $("html").css({ overflow: maximize ? "hidden" : "" });
+
+        if (saveStatus) {
+          this.status.set({ maximize: maximize });
+        }
+      }
+
+      // Restore pane layout
+      restoreLayout() {
+        this.setGridDirection(this.status.current.direction, false);
+        this.setMinimize(this.status.current.minimize, false);
+        this.setMaximize(this.status.current.maximize, false);
+        this.toggleGridDirectionByWindowSize(true);
+
+        if (this.$base.data("src")) {
+          this.showPreview();
+        }
+      }
+    }
+
+    class TwoPaneMode {
+      #replaceAnchorTags() {
+        $("#content").on(
+          "click",
+          this.config.targetAnchorSelector + ", " + newIssueSelector,
+          (e) => {
+            const url = utils.getAbsUrl($(e.target).closest("a").attr("href"));
+
+            // Prevent 2-pane mode when checkbox is not checked
+            if (!this.status.current.enabled) return;
+
+            // Prevent 2-pane mode when clicking with the Ctrl key
+            if (e.ctrlKey) return;
+
+            // If the issue-pane is already opened and hidden, it will be
+            // previewed.
+            if (
+              $("#main").hasClass("issue-pane-minimize") &&
+              !this.issuePane.$base.hasClass("preview") &&
+              this.issuePane.$base.data("src") === url
+            ) {
+              e.preventDefault();
+              this.issuePane.showPreview();
+              return;
+            }
+
+            // If the issue-pane is already opened and confirmed, open the url
+            // in the new tab.
+            if (
+              this.issuePane.$base.is(":visible") &&
+              this.issuePane.$base.data("src") === url
+            ) {
+              if (confirm(resources.confirmOpenPage)) {
+                return;
+              }
+            }
+
+            e.preventDefault();
+            this.issuePane.open(url);
+            this.enable(true);
+          }
+        );
+
+        if (this.config["replaceAnchorTagsAfter"] !== undefined) {
+          this.config.replaceAnchorTagsAfter();
+        }
+      }
+
+      #setEvents() {
+        $(window).on("resize", () => {
+          this.issuePane.toggleGridDirectionByWindowSize();
+        });
+
+        // Hide issue pane in preview mode.
+        $(document).on("click", (e) => {
+          if (
+            $(e.target).closest("#issue-pane").length > 0 ||
+            $(e.target).closest(this.config.targetAnchorSelector).length > 0 ||
+            $(e.target).closest(newIssueSelector).length > 0 ||
+            $(e.target).closest("#query_form").length > 0
+          ) {
+            return;
+          }
+
+          this.issuePane.hidePreview();
+        });
+
+        // Check textarea changed before unload
+        $(window).on("beforeunload.2pane_mode", () => {
+          const textAreaChanged = this.issuePane.checkTextAreaChange();
+          if (textAreaChanged) {
+            return warnLeavingUnsavedMessage;
+          }
+        });
+      }
+
+      #restore() {
+        // Restore pane layout
+        this.issuePane.restoreLayout();
+
+        this.issuePane.onLoad = () => {
+          this.highlightOpenedItem();
+          this.jumpToOpenedItem();
+
+          // Jump to opened item in first time
+          this.issuePane.onLoad = () => {
+            this.highlightOpenedItem();
+          };
+        };
+
+        // Restore pane content
+        this.enable(true, true);
+
+        if (!this.status.current.src) {
+          this.issuePane.onLoad = () => {
+            this.highlightOpenedItem();
+          };
+        }
+      }
+
+      #postUpdateIssueList() {
+        if ($("#enable_2-pane_mode").length === 0) {
+          this.addCheckBox(this.status.current.enabled);
+        }
+        this.highlightOpenedItem();
+      }
+
+      constructor(config) {
+        this.config = config;
+
+        setTimeout(() => {
+          this.config.replaceAjaxUpdateFunction(null, () => {
+            this.#postUpdateIssueList();
+          });
+        });
+
+        this.status = new Status();
+        this.status.load();
+
+        this.issuePane = new Pane({
+          status: this.status,
+          updateIssueList: async () => {
+            await this.updateIssueList();
+          },
+          onLoad: () => {
+            this.highlightOpenedItem();
+          },
+          onClear: () => {
+            this.highlightOpenedItem();
+          },
+        });
+
+        this.issuePane.$base.appendTo("#main");
+
+        // Append exit button to empty pane
+        this.issuePane.$emptyPane.append(
+          $("<div>")
+            .css({ textAlign: "center" })
+            .append($("<p>").text(resources.messageSelectIssue))
+            .append(
+              $("<button>")
+                .text(resources.messageExit2PaneMode)
+                .button()
+                .on("click", () => {
+                  this.enable(false);
+                })
+                .css({ height: "auto" })
+            )
+        );
+
+        // Initialize
+        this.addCheckBox(this.status.current.enabled);
+        this.#replaceAnchorTags();
+
+        if (this.status.current.enabled) {
+          this.#restore();
+        }
+
+        this.#setEvents();
+      }
+
+      addCheckBox(enabled) {
+        if ($("#enable_2-pane_mode").length) {
+          console.warn("Check box is already exist.");
+          return;
+        }
+        const $checkBox = $("<span>")
+          .append(
+            $("<input>")
+              .attr({ type: "checkbox", id: "enable_2-pane_mode" })
+              .prop("checked", enabled)
+              .on("change", () => {
+                const enabled = $("#enable_2-pane_mode").is(":checked");
+                this.enable(enabled);
+              })
+          )
+          .append(
+            $("<label>")
+              .attr({
+                for: "enable_2-pane_mode",
+              })
+              .text(resources.label2PaneMode)
+          );
+        this.config.insertCheckBox($checkBox);
+      }
+
+      enable(state = true, force = false) {
+        if (!force && this.status.current.enabled === state) return;
+
+        $("#enable_2-pane_mode").prop("checked", state);
+        this.status.set({ enabled: state });
+        this.updateView();
+      }
+
+      highlightOpenedItem() {
+        // Reset
+        $(`.${classNameForOpenedItem}`).removeClass(classNameForOpenedItem);
+
+        if (this.status.current.enabled) {
+          let url = this.issuePane.$base.data("src");
+
+          if (url) {
+            url = url.replace(location.origin, "");
+
+            this.config.highlightOpenedItem?.(
+              classNameForOpenedItem,
+              this.config.targetAnchorSelector,
+              url
+            );
+          }
+        }
+      }
+
+      jumpToOpenedItem() {
+        const $target = $(`.${classNameForOpenedItem}`);
+        if ($target.length === 0) return;
+
+        this.config.jumpToOpenedItem?.($target);
+      }
+
+      updateView() {
+        // console.debug("updateView");
+        if (this.status.current.enabled) {
+          this.issuePane.$base.css("display", "flex");
+          this.issuePane.enableGrid(true);
+          $("html").css({
+            overflow: this.status.active.maximize ? "hidden" : "",
+          });
+          if (this.issuePane.$base.data("src") === undefined) {
+            this.issuePane.openUrlIfIssueExistOrNew(this.status.current.src);
+            return;
+          }
+          this.status.set({ src: this.issuePane.$base.data("src") });
+        } else {
+          this.issuePane.hide();
+        }
+      }
+
+      async updateIssueList() {
+        if (this.config.ajaxUpdateIssueList) {
+          await this.config.ajaxUpdateIssueList();
+        } else {
+          await $.ajax(location.href).done((data) => {
+            const scrollTargetSelector = this.config.scrollTargetSelector;
+            const scrollPositionBeforeUpdate = scrollTargetSelector
+              ? {
+                  top: $(scrollTargetSelector).scrollTop(),
+                  left: $(scrollTargetSelector).scrollLeft(),
+                }
+              : undefined;
+
+            const updatingTargetSelector = this.config.updatingTargetSelector;
+
+            if (updatingTargetSelector === undefined) {
+              alert(resources.messageFailedToUpdate);
+              return;
+            }
+
+            const updatedTarget = $(
+              updatingTargetSelector,
+              $("<div>").html(data)
+            ).children();
+
+            if (updatedTarget.length === 0) {
+              alert(resources.messageFailedToUpdate);
+              return;
+            }
+
+            const state = {};
+            this.config.updateIssueListBefore?.(state);
+            $(updatingTargetSelector).empty().append(updatedTarget);
+            this.config.updateIssueListAfter?.(state);
+
+            // Restore scroll position
+            if (scrollPositionBeforeUpdate) {
+              setTimeout(() => {
+                $(scrollTargetSelector)
+                  .scrollTop(scrollPositionBeforeUpdate.top)
+                  .scrollLeft(scrollPositionBeforeUpdate.left);
+              });
+            }
+          });
+          this.#postUpdateIssueList();
+        }
+      }
+    }
+
+    // Main
+    const twoPaneMode = new TwoPaneMode(config);
+  });
+</script>
+<style>
+  /* set area name */
+  #sidebar {
+    grid-area: sidebar;
+  }
+
+  #content {
+    grid-area: content;
+  }
+
+  #issue-pane {
+    grid-area: issue-pane;
+    display: none;
+    flex: 1 1 auto;
+    flex-direction: column;
+    border-left: 1px solid #ccc;
+    /* resizable */
+    left: 0 !important;
+    top: 0 !important;
+    min-width: 500px;
+    min-height: 180px;
+    background-position: center center;
+    background-repeat: no-repeat;
+
+    & > iframe {
+      flex: 1 1 auto;
+      border: none;
+      border-top: 1px solid #ddd;
+    }
+
+    & > :is(iframe[src=""], iframe:not([src])) {
+      display: none;
+    }
+
+    &
+      > :is(
+        iframe[src=""] + #issue-pane-empty,
+        iframe:not([src]) + #issue-pane-empty
+      ) {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      background: white;
+    }
+
+    &.maximize {
+      width: 100% !important;
+      height: 100% !important;
+      box-sizing: border-box !important;
+      top: 0 !important;
+      left: 0 !important;
+      position: fixed !important;
+      z-index: 200;
+      padding: 0 !important;
+
+      #issue-pane-toggle-minimize {
+        display: none;
+      }
+
+      .buttons {
+        & > :is(button.toggle-direction, button.maximize, button.minimize) {
+          display: none;
+        }
+
+        & > button.hide {
+          display: none;
+        }
+      }
+    }
+
+    &:not(.maximize) .buttons > button.restore {
+      display: none;
+    }
+  }
+
+  #issue-pane-overlay {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    z-index: 10;
+    display: none;
+  }
+
+  #issue-pane-control-panel {
+    display: flex;
+    flex-direction: row;
+    background-color: #eee;
+    padding: 5px;
+    justify-content: space-between;
+    align-items: flex-end;
+    border-top: 1px solid #ccc;
+
+    & > .title {
+      text-overflow: ellipsis;
+      overflow: hidden;
+      font-size: 0.9em;
+      padding: 0 0.5em;
+      margin: auto 0;
+      white-space: nowrap;
+      font-weight: bold;
+      color: #333;
+    }
+
+    & > .buttons {
+      display: flex;
+      flex-direction: row;
+      flex: 0 0 auto;
+      margin: 0;
+
+      & > button {
+        width: 20px;
+        height: 20px;
+        padding: 0;
+      }
+    }
+  }
+
+  #issue-pane-empty {
+    display: none;
+    width: 100%;
+    height: 100%;
+  }
+
+  #main.grid-direction-column {
+    grid-template-columns: 1fr auto;
+    grid-template-rows: none;
+    grid-template-areas: "content issue-pane";
+
+    #issue-pane {
+      padding-right: 10px;
+    }
+
+    &.issue-pane-minimize {
+      grid-template-columns: 1fr auto 10px;
+      grid-template-rows: none;
+      grid-template-areas: "content sidebar issue-pane";
+    }
+
+    &:not(.issue-pane-minimize) :is(#sidebar, #sidebar-switch-panel) {
+      display: none;
+    }
+
+    #issue-pane-toggle-minimize {
+      width: 10px;
+      height: 100%;
+      right: 0;
+
+      span.ui-icon {
+        /* ui-icon-triangle-1-e -3px */
+        background-position: calc(-32px - 3px) -16px;
+        width: 10px;
+      }
+    }
+
+    &.issue-pane-minimize #issue-pane-toggle-minimize span.ui-icon {
+      /* ui-icon-triangle-1-w -3px */
+      background-position: calc(-96px - 3px) -16px;
+      width: 10px;
+    }
+  }
+
+  #main.grid-direction-row {
+    grid-template-columns: 1fr auto;
+    grid-template-rows: 1fr auto;
+    grid-template-areas: "content sidebar" "issue-pane sidebar";
+
+    #issue-pane {
+      padding-bottom: 10px;
+      border: 0;
+
+      .buttons > button.hide > span.ui-button-icon {
+        transform: rotate(90deg);
+      }
+    }
+
+    &.issue-pane-minimize {
+      grid-template-columns: 1fr auto;
+      grid-template-rows: 1fr 10px;
+      grid-template-areas: "content sidebar" "issue-pane sidebar";
+    }
+
+    #issue-pane-toggle-minimize span.ui-icon {
+      /* ui-icon-triangle-1-s -3px */
+      background-position: -65px calc(-16px - 3px);
+      height: 10px;
+    }
+
+    &.issue-pane-minimize #issue-pane-toggle-minimize span.ui-icon {
+      /* ui-icon-triangle-1-n -3px */
+      background-position: 0 calc(-16px - 3px);
+      height: 10px;
+    }
+
+    #issue-pane-toggle-minimize {
+      width: 100%;
+      height: 10px;
+      bottom: 0;
+    }
+  }
+
+  #main #issue-pane > :is(.ui-resizable-n, .ui-resizable-w) {
+    display: none;
+  }
+
+  #main.grid-direction-column:not(.issue-pane-minimize)
+    #issue-pane
+    > .ui-resizable-w,
+  #main.grid-direction-column.issue-pane-minimize
+    #issue-pane.preview
+    > .ui-resizable-w,
+  #main.grid-direction-row:not(.issue-pane-minimize)
+    #issue-pane
+    > .ui-resizable-n,
+  #main.grid-direction-row.issue-pane-minimize
+    #issue-pane.preview
+    > .ui-resizable-n {
+    display: block;
+  }
+
+  #main.issue-pane-minimize #issue-pane {
+    &.preview {
+      box-shadow: 0 0 5px #0003;
+
+      &:not(.maximize) {
+        position: fixed;
+        z-index: 100;
+      }
+    }
+
+    .buttons > button.minimize > span.ui-icon {
+      /*  ui-icon-pin-w */
+      background-position: -128px -144px;
+    }
+  }
+
+  #main.grid-direction-column.issue-pane-minimize #issue-pane {
+    &:not(.preview):not(.maximize) {
+      min-width: unset;
+      border: 0;
+      max-width: 10px;
+      padding-right: 0;
+    }
+
+    &.preview:not(.maximize) {
+      right: 0;
+      left: auto !important;
+      height: 100%;
+      max-width: 98vw;
+    }
+  }
+
+  #main.grid-direction-row.issue-pane-minimize #issue-pane {
+    top: auto !important;
+    max-height: 98vh;
+    width: calc(100% - 2px);
+    left: 1px;
+    position: fixed;
+    bottom: 0;
+
+    &:not(.preview):not(.maximize) {
+      min-height: unset;
+      border: 0;
+      max-height: 10px;
+      padding-bottom: 0;
+    }
+  }
+
+  #main.issue-pane-minimize
+    #issue-pane:not(.preview):not(.maximize)
+    :is(#issue-pane-control-panel, iframe, #issue-pane-empty) {
+    display: none;
+  }
+
+  #issue-pane-toggle-minimize {
+    position: absolute;
+    z-index: 10;
+    cursor: pointer;
+    background-color: #ddd;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+
+    &:hover {
+      background-color: #ccc;
+    }
+  }
+
+  #content #enable_2-pane_mode {
+    margin-left: 10px;
+    margin-right: 5px;
+    cursor: pointer;
+
+    & + label {
+      font-size: 12px;
+      font-weight: normal;
+      cursor: pointer;
+    }
+  }
+
+  #main.gird-direction-row-force:not(.issue-pane-minimize)
+    #issue-pane-control-panel
+    button.toggle-direction {
+    display: none;
+  }
+
+  /* Minimize button icon settings */
+  #main #issue-pane .buttons > button.minimize > span.ui-icon {
+    /* ui-icon-pin-s */
+    background-position: -144px -144px;
+  }
+
+  /* Mobile mode */
+  @media screen and(min-width: 0px) and(max-width: 899px) {
+    #main > #sidebar {
+      width: 22%;
+    }
+
+    #main {
+      /* Initial */
+      display: flex;
+    }
+  }
+
+  /* Support Redmine theme "farend bleuclair" */
+  /* Restore sidebar width to standard */
+  @media screen and(min-width: 900px) and(max-width: 1089px) {
+    #main.grid-direction-row {
+      grid-template-columns: 1fr auto;
+      grid-template-rows: 1fr auto;
+      grid-template-areas: "content sidebar" "issue-pane sidebar";
+
+      &.issue-pane-minimize {
+        grid-template-columns: 1fr auto;
+        grid-template-rows: 1fr 10px;
+        grid-template-areas: "content sidebar" "issue-pane sidebar";
+      }
+    }
+
+    #main.grid-direction-column.issue-pane-minimize {
+      grid-template-columns: 1fr auto 10px;
+      grid-template-rows: none;
+      grid-template-areas: "content sidebar issue-pane";
+    }
+
+    #main > #sidebar {
+      /* TODO: Support for % designation */
+      width: 180px;
+    }
+  }
+
+  @media screen and(min-width: 1090px) and(max-width: 1279px) {
+    #main > #sidebar {
+      width: 240px;
+    }
+  }
+
+  @media screen and(min-width: 1280px) and(max-width: 1599px) {
+    #main > #sidebar {
+      width: 280px;
+    }
+  }
+
+  @media screen and(min-width: 1600px) and(max-width: 1919px) {
+    #main > #sidebar {
+      width: 320px;
+    }
+  }
+
+  @media screen and(min-width: 1920px) and(max-width: 2559px) {
+    #main > #sidebar {
+      width: 360px;
+    }
+  }
+
+  @media screen and(min-width: 2560px) {
+    #main > #sidebar {
+      width: 380px;
+    }
+  }
+
+  body:not(.controller-issue_note_list) .two-pane-mode-opened-item {
+    font-weight: bold;
+
+    span.tip {
+      font-weight: normal;
+    }
+  }
+
+  body.controller-issue_note_list .two-pane-mode-opened-item {
+    outline: solid 1px #9ccc65;
+    outline-offset: -1px;
+  }
+
+  #main:not(.issue-pane-minimize) #issue-pane > div.ui-resizable-handle:hover,
+  #issue-pane.preview > div.ui-resizable-handle:hover {
+    background-color: #759fcf99;
+  }
+
+  #issue-pane.empty
+    #issue-pane-control-panel
+    .buttons
+    > :is(
+      button.clear,
+      button.back,
+      button.forward,
+      button.home,
+      button.copy,
+      button.refresh,
+      button.open-in-new-tab
+    ) {
+    display: none;
+  }
+
+  /* TODO */
+  @media screen and (min-width: 0px) and (max-width: 1089px) {
+    #main.enable-2-pane-mode #sidebar {
+      width: 120px !important;
+    }
+  }
+
+  @media screen and (min-width: 1090px) and (max-width: 1279px) {
+    #main.enable-2-pane-mode #sidebar {
+      width: 240px !important;
+    }
+  }
+
+  @media screen and (min-width: 1280px) and (max-width: 1599px) {
+    #main.enable-2-pane-mode #sidebar {
+      width: 280px !important;
+    }
+  }
+
+  @media screen and (min-width: 1600px) and (max-width: 1919px) {
+    #main.enable-2-pane-mode #sidebar {
+      width: 320px !important;
+    }
+  }
+
+  @media screen and (min-width: 1920px) and (max-width: 2559px) {
+    #main.enable-2-pane-mode #sidebar {
+      width: 360px !important;
+    }
+  }
+
+  @media screen and (min-width: 2560px) {
+    #main.enable-2-pane-mode #sidebar {
+      width: 380px;
+    }
+  }
+</style>

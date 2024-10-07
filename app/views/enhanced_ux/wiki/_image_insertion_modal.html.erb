@@ -1,0 +1,686 @@
+<!--
+// Path pattern:
+// Insertion position: Head of all pages
+// Type:               HTML
+// Comment:            Image insertion modal
+-->
+<script>
+  (() => {
+    // ----- settings start -----
+    const modalHeight = "auto";
+    const modalWidth = 500;
+    const checkedDecodeDefault = true;
+    // ----- settings end -----
+
+    const resourcesAll = {
+      en: {
+        labelModalTitle: "Insert image",
+        labelModalFilename: "File Name",
+        labelModalImageTitle: "Title",
+        labelModalThumbnailSize: "Thumbnail size",
+        labelModalDecode: "decode",
+        labelModalTagPreview: "Preview",
+        labelModalUploadFile: "Upload file",
+        labelModalChooseFiles: "Choose Files",
+        labelModalOk: "OK",
+        labelModalCancel: "Cancel",
+        labelUploadingMessage: "Now uploading...",
+      },
+      ja: {
+        labelModalTitle: "画像の挿入",
+        labelModalFilename: "ファイル名",
+        labelModalImageTitle: "タイトル",
+        labelModalThumbnailSize: "サムネイルサイズ:",
+        labelModalDecode: "デコード",
+        labelModalTagPreview: "プレビュー",
+        labelModalUploadFile: "ファイルのアップロード",
+        labelModalChooseFiles: "ファイル選択",
+        labelModalOk: "OK",
+        labelModalCancel: "キャンセル",
+        labelUploadingMessage: "アップロード中...",
+      },
+    };
+    const resources = {
+      ...resourcesAll["en"],
+      ...(resourcesAll[document.documentElement.lang] || {}),
+    };
+
+    let initializationComplete = false;
+    const selectedTexts = [];
+    let imageInsertionModal = null;
+
+    function isImageFile(fileName) {
+      const imageExtensions = ["jpg", "jpeg", "png", "gif", "bmp", "svg"];
+      const extension = fileName.split(".").pop().toLowerCase();
+      return imageExtensions.includes(extension);
+    }
+
+    class SelectedText {
+      constructor(textarea) {
+        this.textarea = textarea;
+        this.prefix = "";
+        this.suffix = "";
+        this.start = 0;
+        this.end = 0;
+        this.scrollTop = 0;
+        this.text = "";
+        this.beforeText = "";
+        this.afterText = "";
+
+        if (textarea.setSelectionRange !== undefined) {
+          this.start = textarea.selectionStart;
+          this.end = textarea.selectionEnd;
+          this.scrollTop = textarea.scrollTop;
+          this.text = textarea.value.substring(this.start, this.end);
+          this.beforeText = textarea.value.substring(0, this.start);
+          this.afterText = textarea.value.substring(this.end);
+
+          const beforeLast = textarea.value.substr(this.start - 1, 1);
+          const afterFirst = textarea.value.substr(this.end, 1);
+
+          this.prefix = this.start !== 0 && beforeLast.match(/\S/) ? " " : "";
+          this.suffix = afterFirst.match(/\S/) ? " " : "";
+        }
+      }
+    }
+
+    function checkJsToolBarExist() {
+      return (
+        window.jsToolBar !== undefined &&
+        jsToolBar.prototype.elements.img !== undefined
+      );
+    }
+
+    function initImageInsertionModal() {
+      if (!checkJsToolBarExist()) return false;
+
+      // Replace function of img button
+      jsToolBar.prototype.elements.img.fn.wiki = function () {
+        addTask(this);
+      };
+
+      const textFormatting =
+        $("head>script[src*='/jstoolbar/textile.js']").length > 0
+          ? "textile"
+          : "markdown";
+      imageInsertionModal = new ImageInsertionModal(textFormatting);
+
+      initializationComplete = true;
+      return true;
+    }
+
+    const observer = new MutationObserver((mutations) => {
+      // Initialize before loading body
+      if (initImageInsertionModal()) {
+        observer.disconnect();
+      }
+    });
+    observer.observe(document.documentElement, { childList: true });
+
+    function showUploadingMessage(jstEditor, textarea, show = false) {
+      const $jstEditor = $(jstEditor);
+      if ($jstEditor.length === 0) return;
+
+      $(textarea).prop("disabled", show);
+
+      if (show) {
+        $jstEditor.css("position", "relative");
+        const $uploadingMessage = $("<div>")
+          .text(resources.labelUploadingMessage)
+          .addClass("uploading-message")
+          .css({
+            position: "absolute",
+            top: "50%",
+            left: "50%",
+            transform: "translate(-50%, -50%)",
+          });
+        $jstEditor.prepend($uploadingMessage);
+      } else {
+        $jstEditor.css("position", "");
+        $jstEditor.find(".uploading-message").remove();
+      }
+    }
+
+    function splitMultilineText(textarea, selectedText) {
+      const textSplitted = selectedText.text.split("\n");
+      const start = selectedText.start;
+      const selectedTextsTemp = [];
+
+      let s = start;
+      for (let i = 0; i < textSplitted.length; i++) {
+        const t = textSplitted[i];
+        if (i === textSplitted.length - 1 && t.trim() === "") break;
+        const e = s + t.length;
+
+        // Select a position of the selected texts
+        textarea.setSelectionRange(s, e);
+        selectedTextsTemp.push(new SelectedText(textarea));
+        s = e + 1;
+      }
+
+      return selectedTextsTemp;
+    }
+
+    function generateDecorator(tagFormatting, thumbnailSize, imageTitle) {
+      let prefix = "";
+      let suffix = "";
+      switch (tagFormatting) {
+        case "thumbnail":
+          prefix = "{{thumbnail(";
+          suffix =
+            (thumbnailSize === "" ? "" : ", size=" + thumbnailSize) +
+            (imageTitle === "" ? "" : ", title=" + imageTitle) +
+            ")}}";
+          break;
+        case "textile":
+          prefix = "!";
+          suffix = (imageTitle === "" ? "" : "(" + imageTitle + ")") + "!";
+          break;
+        case "markdown":
+          prefix = "![" + imageTitle + "](";
+          suffix = ")";
+          break;
+      }
+
+      return [prefix, suffix];
+    }
+
+    function taskStarted() {
+      try {
+        return imageInsertionModal.isOpen();
+      } catch {
+        return null;
+      }
+    }
+
+    function executeTask(jsToolBarInstance) {
+      if (taskStarted()) return;
+      if (selectedTexts.length === 0) return;
+
+      if (typeof ajaxUpload !== "undefined" && ajaxUpload.uploading > 0) {
+        showUploadingMessage(
+          jsToolBarInstance.editor,
+          jsToolBarInstance.textarea,
+          true
+        );
+
+        // If any files are being uploaded, recheck after 300ms.
+        setTimeout(() => executeTask(jsToolBarInstance), 300);
+
+        return;
+      }
+
+      showUploadingMessage(
+        jsToolBarInstance.editor,
+        jsToolBarInstance.textarea,
+        false
+      );
+
+      imageInsertionModal.open(jsToolBarInstance);
+    }
+
+    function addTask(jsToolBarInstance) {
+      const textarea = jsToolBarInstance.textarea;
+      const selectedText = new SelectedText(textarea);
+
+      if (selectedText.text.trim().indexOf("\n") > 0) {
+        splitMultilineText(textarea, selectedText).forEach(
+          (selectedSplittedText) => selectedTexts.push(selectedSplittedText)
+        );
+      } else {
+        selectedTexts.push(selectedText);
+      }
+
+      // Move cursor to end of the text
+      textarea.focus();
+      textarea.setSelectionRange(selectedText.end, selectedText.end);
+
+      setTimeout(() => executeTask(jsToolBarInstance));
+    }
+
+    function clearSelectedTexts() {
+      selectedTexts.length = 0;
+    }
+
+    function formatText(text, tagFormatting, decode) {
+      let formattedText = text;
+      if (decode) {
+        formattedText = decodeURIComponent(text);
+        if (tagFormatting !== "thumbnail") {
+          formattedText = formattedText.replaceAll(
+            " ",
+            encodeURIComponent(" ")
+          );
+        }
+      }
+      return formattedText;
+    }
+
+    function hasFileInputForm(jsToolBarInstance) {
+      return (
+        $(jsToolBarInstance.editor).closest("form").find("input[type='file']")
+          .length > 0
+      );
+    }
+
+    class ImageInsertionModal {
+      #jsToolBarInstance = null;
+      #isCancelled = true;
+      #textFormatting;
+      #$modal;
+      #$fileName;
+      #$imageTitle;
+      #$thumbSize;
+      #$decodeEnabled;
+      #$tagPreview;
+      #$uploadFile;
+
+      #generateModal() {
+        this.#$modal = $("<div>")
+          .attr("id", "image_insertion_modal")
+          .attr("title", resources.labelModalTitle);
+
+        this.#$fileName = $("<input>")
+          .attr("id", "image_insertion_modal_filename")
+          .attr("type", "text")
+          .on("click", () => {
+            this.#$fileName.autocomplete("search");
+          })
+          .autocomplete({
+            source: this.attachmentNames,
+            minLength: 0,
+            select: () => {
+              this.previewFormattedTextDelay();
+            },
+          });
+
+        this.#$imageTitle = $("<input>")
+          .attr("id", "image_insertion_modal_title")
+          .attr("type", "text");
+
+        this.#$thumbSize = $("<input>")
+          .attr("id", "image_insertion_modal_size")
+          .attr("type", "number")
+          .attr("min", 0);
+
+        this.#$decodeEnabled = $("<input>")
+          .attr("id", "image_insertion_modal_decode")
+          .attr("type", "checkbox")
+          .prop("checked", checkedDecodeDefault);
+
+        [
+          this.#$fileName,
+          this.#$imageTitle,
+          this.#$thumbSize,
+          this.#$decodeEnabled,
+        ].map((obj) => {
+          obj.keydown((e) => {
+            const key = e.which;
+            if (key === 13) {
+              this.#isCancelled = false;
+              this.close();
+              return false;
+            } else {
+              this.previewFormattedTextDelay();
+            }
+          });
+          obj.focusout(() => {
+            this.previewFormattedTextDelay();
+          });
+          obj.click(() => {
+            this.previewFormattedTextDelay();
+          });
+        });
+
+        const $modalDecodeBox = $("<span>")
+          .attr("id", "image_insertion_modal_decode_box")
+          .append(
+            $("<label>")
+              .attr("for", "image_insertion_modal_decode")
+              .append(resources.labelModalDecode)
+          )
+          .append(this.#$decodeEnabled);
+
+        const $modalUploadFileButton = $("<button>")
+          .attr("id", "image_insertion_modal_upload_file_button")
+          .text(resources.labelModalChooseFiles)
+          .button()
+          .on("click", (e) => {
+            if (!this.#jsToolBarInstance) return;
+
+            $(this.#jsToolBarInstance.editor)
+              .closest("form")
+              .find("input[type=file]")
+              .click();
+          });
+
+        this.#$tagPreview = $("<code>").attr(
+          "id",
+          "image_insertion_modal_tag_preview"
+        );
+
+        this.#$uploadFile = $("<p>")
+          .append(resources.labelModalUploadFile + ":")
+          .append("<br>")
+          .append($modalUploadFileButton);
+
+        this.#$modal
+          .append(
+            $("<p>")
+              .append(resources.labelModalFilename + ":")
+              .append(this.#$fileName)
+              .append($modalDecodeBox)
+          )
+          .append(
+            $("<p>")
+              .append(resources.labelModalImageTitle + ":")
+              .append(this.#$imageTitle)
+          )
+          .append(
+            $("<p>")
+              .append(resources.labelModalThumbnailSize + ":")
+              .append(this.#$thumbSize)
+          )
+          .append(
+            $("<p>")
+              .append(resources.labelModalTagPreview + ":")
+              .append("<br>")
+              .append(this.#$tagPreview)
+          )
+          .append(this.#$uploadFile);
+      }
+
+      #setUpDialog() {
+        this.#$modal.dialog({
+          autoOpen: false,
+          height: modalHeight,
+          width: modalWidth,
+          modal: true,
+          buttons: [
+            {
+              text: resources.labelModalOk,
+              click: () => {
+                this.#isCancelled = false;
+                this.close();
+              },
+            },
+            {
+              text: resources.labelModalCancel,
+              click: () => this.close(),
+            },
+          ],
+          open: () => {
+            this.#isCancelled = true;
+            this.updateAutocompleteItems();
+            this.#$uploadFile.hide();
+            this.resetForm();
+
+            if (selectedTexts.length > 0) {
+              this.selectedText = selectedTexts[0];
+            } else {
+              this.selectedText = new SelectedText(
+                this.#jsToolBarInstance.textarea
+              );
+            }
+
+            this.fileName = this.selectedText.text;
+            this.previewFormattedText();
+
+            if (this.fileName === "") {
+              this.#$fileName.autocomplete("search");
+              if (hasFileInputForm(this.#jsToolBarInstance)) {
+                this.#$uploadFile.show();
+              }
+            }
+          },
+          close: () => {
+            if (this.#isCancelled) {
+              clearSelectedTexts();
+              return;
+            }
+
+            this.placeFormattedText();
+          },
+        });
+      }
+
+      #clearJsToolbarInstance() {
+        this.#jsToolBarInstance = null;
+      }
+
+      constructor(textFormatting) {
+        this.#generateModal();
+        this.#setUpDialog();
+        this.attachmentNames = [];
+        this.selectedText;
+        this.#textFormatting = textFormatting;
+      }
+      isOpen() {
+        return this.#$modal.dialog("isOpen");
+      }
+      open(jsToolBarInstance) {
+        this.#jsToolBarInstance = jsToolBarInstance;
+        this.#$modal.dialog("open");
+      }
+      close() {
+        this.#$modal.dialog("close");
+        this.#clearJsToolbarInstance();
+      }
+      previewFormattedText() {
+        const tagFormatting =
+          this.thumbSize === "" ? this.#textFormatting : "thumbnail";
+        const [prefix, suffix] = generateDecorator(
+          tagFormatting,
+          this.thumbSize,
+          this.imageTitle
+        );
+        this.#$tagPreview.text(
+          prefix +
+            formatText(
+              this.fileName,
+              tagFormatting,
+              this.decodeEnabled
+            ) +
+            suffix
+        );
+      }
+      previewFormattedTextDelay(delay = 100) {
+        setTimeout(() => this.previewFormattedText(), delay);
+      }
+
+      resetForm() {
+        this.#$fileName.val("");
+        this.#$thumbSize.val("");
+        this.#$imageTitle.val("");
+        this.#$tagPreview.text("");
+      }
+      updateAutocompleteItems() {
+        this.attachmentNames.length = 0;
+        $(
+          "#add_attachments input.filename, " +
+            "#existing-attachments input.filename, " +
+            "#new-attachments input.filename"
+        ).each((_, elem) => {
+          const fileName = $(elem).val();
+          if (
+            !this.attachmentNames.includes(fileName) &&
+            isImageFile(fileName)
+          ) {
+            this.attachmentNames.push(fileName);
+          }
+        });
+
+        this.#$fileName.autocomplete({
+          source: this.attachmentNames,
+          minLength: 0,
+        });
+      }
+      generateFormattedText() {
+        const tagFormatting =
+          this.thumbSize === "" ? this.#textFormatting : "thumbnail";
+        const [prefix, suffix] = generateDecorator(
+          tagFormatting,
+          this.thumbSize,
+          this.imageTitle
+        );
+        const formattedText =
+          this.selectedText.prefix +
+          prefix +
+          formatText(
+            this.fileName,
+            tagFormatting,
+            this.decodeEnabled
+          ) +
+          suffix +
+          this.selectedText.suffix;
+
+        return { prefix: prefix, suffix: suffix, formattedText: formattedText };
+      }
+      placeFormattedText() {
+        const jsToolBarInstance = this.#jsToolBarInstance;
+        const textarea = jsToolBarInstance.textarea;
+
+        const { prefix, suffix, formattedText } = this.generateFormattedText();
+
+        textarea.focus();
+        const hasSpaceBefore = this.selectedText.beforeText.slice(-2) === " \n";
+        // Cancel line break after space by `addInlineAttachmentMarkup`
+        // Before:
+        // ```
+        // -
+        // foo.jpg
+        // ```
+        //
+        // After:
+        // ```
+        // - foo.jpg
+        // ```
+        textarea.value =
+          textarea.value.substring(
+            0,
+            this.selectedText.start - (hasSpaceBefore ? 1 : 0)
+          ) +
+          formattedText +
+          textarea.value.substring(this.selectedText.end);
+
+        textarea.scrollTop = this.selectedText.scrollTop;
+
+        if (selectedTexts.length <= 1 && this.fileName === "") {
+          // Move cursor
+          const cursorPos =
+            this.selectedText.start +
+            this.selectedText.prefix.length +
+            prefix.length;
+          textarea.setSelectionRange(cursorPos, cursorPos);
+          clearSelectedTexts();
+          return;
+        } else {
+          if (selectedTexts.length > 0) {
+            // Remove the first item
+            selectedTexts.shift();
+
+            const shift =
+              formattedText.length -
+              this.selectedText.text.length -
+              (hasSpaceBefore ? 1 : 0);
+
+            // Shift
+            for (let i = 0; i < selectedTexts.length; i++) {
+              selectedTexts[i].start += shift;
+              selectedTexts[i].end += shift;
+            }
+
+            if (selectedTexts.length > 0) {
+              setTimeout(() => executeTask(jsToolBarInstance));
+            }
+          }
+        }
+      }
+      get fileName() {
+        return this.#$fileName.val();
+      }
+      set fileName(value) {
+        this.#$fileName.val(value);
+      }
+      get thumbSize() {
+        return this.#$thumbSize.val();
+      }
+      get imageTitle() {
+        return this.#$imageTitle.val();
+      }
+      get decodeEnabled() {
+        return this.#$decodeEnabled.prop("checked");
+      }
+    }
+
+    $(() => {
+      if (!initializationComplete) {
+        // If initialization is not completed, abort the process.
+        console.warn("Failed to initialize the image insertion modal.");
+        observer.disconnect();
+        return;
+      }
+
+      // Replace addFile function
+      if (window.addFile !== undefined) {
+        const addFileOrg = addFile;
+        addFile = function (inputEl, file, eagerUpload) {
+          const ret = addFileOrg.call(this, inputEl, file, eagerUpload);
+
+          if (ret !== null && isImageFile(file.name)) {
+            if (imageInsertionModal.isOpen()) {
+              // Update filename field after upload
+              imageInsertionModal.fileName = file.name;
+              imageInsertionModal.previewFormattedText();
+            }
+            setTimeout(() => imageInsertionModal.updateAutocompleteItems());
+          }
+          return ret;
+        };
+        addFile.nextAttachmentId = addFileOrg.nextAttachmentId;
+      }
+    });
+  })();
+</script>
+<style>
+  #image_insertion_modal > p {
+    position: relative;
+  }
+
+  #image_insertion_modal input:not([type="checkbox"]) {
+    width: 100%;
+  }
+
+  #image_insertion_modal_tag_preview {
+    width: 100%;
+    word-break: break-all;
+    color: #888;
+    background-color: #eee;
+    padding: 3px 5px;
+    margin: 3px 0;
+    display: inline-block;
+    box-sizing: border-box;
+  }
+
+  #image_insertion_modal_decode {
+    height: auto;
+  }
+
+  #image_insertion_modal_decode_box {
+    position: absolute;
+    right: 0;
+    top: 0;
+    font-size: 80%;
+  }
+
+  #image_insertion_modal_upload_file_button {
+    height: auto;
+  }
+
+  div.ui-dialog[aria-describedby="image_insertion_modal"]
+    div.ui-dialog-buttonpane
+    button.ui-button {
+    height: auto;
+    line-height: 1em;
+  }
+</style>

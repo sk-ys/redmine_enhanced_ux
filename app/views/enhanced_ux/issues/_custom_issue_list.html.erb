@@ -1,0 +1,677 @@
+<!--
+// Path pattern:       /issues$
+// Insertion position: Head of all pages
+// Type:               HTML
+// Comment:            Custom issue list
+-->
+<script>
+  var ajaxUpdateIssueList;
+
+  window.addEventListener("DOMContentLoaded", () => {
+    // ----- settings start -----
+    const defaultColumnWidth = {
+      buttons: "20px",
+    };
+    // ----- settings end -----
+
+    // Prevent applying to new issued forms.
+    if ($("#issue-form.new_issue").length > 0) return;
+
+    // Prevent applying to the project settings page.
+    if (/\/settings\/issues(|\/)$/.test(location.pathname)) return;
+
+    const resourcesAll = {
+      en: {
+        labelCancel: "Cancel",
+        labelCriteria: "Criteria",
+        labelHideColumn: "Hide column",
+        confirmResetWidth: "Do you want to reset the width?",
+      },
+      ja: {
+        labelCancel: "キャンセル",
+        labelCriteria: "抽出条件",
+        labelHideColumn: "列を非表示",
+        confirmResetWidth: "幅をリセットしますか？",
+      },
+    };
+    const resources = {
+      ...resourcesAll["en"],
+      ...(resourcesAll[document.documentElement.lang] || {}),
+    };
+
+    const homeUrl = $("link[href*='favicon.ico']")
+      .attr("href")
+      .split("favicon.ico")[0];
+
+    // Utils
+    function getAbsUrl(url) {
+      const a = document.createElement("a");
+      a.href = url;
+      return a.href;
+    }
+
+    function extractSearch(url) {
+      return new URL(getAbsUrl(url)).search;
+    }
+
+    const columnWidth = {
+      key: "issue-list-column-width",
+      getElemName: (elem) => {
+        return $(elem).attr("class").split(" ")[0];
+      },
+      get: () => {
+        return (
+          JSON.parse(localStorage.getItem(columnWidth.key)) ||
+          defaultColumnWidth
+        );
+      },
+      restore: () => {
+        const latest = columnWidth.get();
+        Object.keys(latest).forEach((key) => {
+          $(`table.list.issues>thead>tr>th.${key}`).css("width", latest[key]);
+        });
+      },
+      update: () => {
+        const latest = columnWidth.get();
+        $("table.issues>thead>tr>th").each((i, e) => {
+          const name = columnWidth.getElemName(e);
+          const width = $(e).prop("style")["width"];
+          if (width === "") {
+            delete latest[name];
+          } else {
+            latest[name] = $(e).css("width");
+          }
+        });
+        localStorage.setItem(columnWidth.key, JSON.stringify(latest));
+      },
+    };
+
+    function setUpIssueListHeader() {
+      const $hideButton = $("<span>")
+        .addClass("icon icon-close")
+        .on("click", (e) => {
+          name = columnWidth.getElemName($(e.target).closest("th"));
+          $(`#selected_c>option[value=${name}]`).remove();
+          ajaxUpdateIssueListWithQuery();
+        })
+        .text(String.fromCharCode(160))
+        .attr("title", resources.labelHideColumn);
+
+      columnWidth.restore();
+      $("table.list.issues>thead>tr")
+        .sortable({
+          items: "> th:not(.checkbox):not(.id):not(.buttons)",
+          revert: true,
+          scroll: false,
+          helper: "clone",
+          dropOnEmpty: false,
+          update: (event, ui) => {
+            $("table.issues>thead>tr>th")
+              .map((i, e) => $(e).attr("class").split(" ")[0])
+              .each((i, e) => {
+                // Sort selected in criteria
+                $(`#selected_c>option[value=${e}]`).appendTo("#selected_c");
+              });
+            ajaxUpdateIssueListWithQuery();
+          },
+        })
+        .children("th:not(.checkbox):not(.id):not(.buttons)")
+        .resizable({
+          handles: "e",
+          stop: () => {
+            columnWidth.update();
+          },
+        })
+        .append($hideButton)
+        .find("div.ui-resizable-handle")
+        .on("dblclick", (e) => {
+          if (confirm(resources.confirmResetWidth)) {
+            // Reset width
+            $(e.target).closest("th").css("width", "");
+            columnWidth.update();
+          }
+        });
+
+      // Replace anchor tag action
+      $("table.list.issues>thead>tr>th>a").on("click", (e) =>
+        replaceAnchorTagAction(e)
+      );
+    }
+
+    ajaxUpdateIssueList = async function (settings = {}) {
+      const settingsDefault = { search: location.search, noSearch: false };
+      settings = { ...settingsDefault, ...settings };
+
+      settings.search = settings.noSearch
+        ? ""
+        : settings.search[0] === "?"
+        ? settings.search
+        : "?" +
+          (settings.search[0] === "&"
+            ? settings.search.slice(1)
+            : settings.search);
+
+      const url = location.origin + location.pathname + settings.search;
+
+      if ($("table.list.issues").length === 0) {
+        // If table not found, hard load the page.
+        window.location.href = url;
+        return;
+      }
+
+      try {
+        const response = await fetch(url);
+
+        if (!response.ok) {
+          throw new Error(`Error ${response.status}: ${response.statusText}`);
+        }
+
+        // Data acquisition and processing
+        const htmlString = await response.text();
+
+        if (url !== location.href) {
+          // Update history
+          window.history.pushState({}, "", url);
+
+          // Update back url
+          $('input[name*="back_url"]').attr("value", url);
+        }
+
+        // Show flash
+        const $flash = $("#content > div.flash", htmlString);
+        if ($flash.length) {
+          $("#content > div.flash").remove();
+          $flash.prependTo("#content");
+        }
+
+        // Update query form
+        $("#query_form")
+          .empty()
+          .append($("#query_form", htmlString).children());
+        setUpQueryFormButtons();
+        setFilterItemToSortable();
+
+        // Update query-totals
+        $("#content>p.query-totals").remove();
+        $("#query_form+p.query-totals", htmlString).insertAfter("#query_form");
+
+        // Update list title
+        $("#content>h2:first")
+          .contents()
+          .each((_, e) => {
+            if (e.nodeType === Node.TEXT_NODE) {
+              e.nodeValue = $("#content>h2", htmlString).text();
+            }
+          });
+        $("head>title").text($("title", htmlString).text());
+
+        // Update sidebar
+        $("#sidebar").replaceWith($("#sidebar", htmlString));
+
+        // Support for RedmineUp issue_tags plugin
+        if (typeof setSelect2Filter) {
+          if (availableFilters["issue_tags"]) {
+            setSelect2Filter("issue_tags", {
+              url: homeUrl + "auto_completes/redmine_tags",
+            });
+          }
+        }
+
+        // Backup scroll position
+        const scrollTargetSelector =
+          '#content > form[data-cm-url$="/issues/context_menu"] >' +
+          "div.autoscroll";
+        const scrollPositionBeforeUpdate = {
+          top: $(scrollTargetSelector).scrollTop(),
+          left: $(scrollTargetSelector).scrollLeft(),
+        };
+
+        // Update issue list
+        $("table.list.issues")
+          .empty()
+          .append($("table.list.issues", htmlString).children());
+
+        // Restore scroll position
+        setTimeout(() => {
+          $(scrollTargetSelector)
+            .scrollTop(scrollPositionBeforeUpdate.top)
+            .scrollLeft(scrollPositionBeforeUpdate.left);
+        });
+
+        // Update anchor tags
+        $("span.pagination")
+          .empty()
+          .append($("span.pagination", htmlString).children());
+
+        [
+          "p.other-formats a.atom",
+          "p.other-formats a.csv",
+          "p.other-formats a.pdf",
+        ].forEach((s) => {
+          $(s).attr("href", $(s, htmlString).attr("href"));
+        });
+
+        // Update CSV export form
+        $("#csv-export-form > input").remove();
+        $("#csv-export-form").prepend(
+          $("#csv-export-form > input", htmlString)
+        );
+
+        setUpIssueListHeader();
+        displayDoneRatioText();
+
+        // Restore original toggleIssuesSelection change event.
+        $("input[type=checkbox].toggle-selection").on(
+          "change",
+          toggleIssuesSelection
+        );
+      } catch (error) {
+        console.error("Fetch error:", error);
+      }
+    };
+
+    function ajaxUpdateIssueListWithQuery() {
+      // Select or deselect all columns before serializing
+      $("#selected_c option").prop("selected", true);
+      $("#available_c option").prop("selected", false);
+
+      ajaxUpdateIssueList({ search: $("#query_form").serialize() });
+    }
+
+    function setUpQueryForm() {
+      const $queryFormOpenButton = $("<a>")
+        .attr("id", "query_form_open_button")
+        .text(resources.labelCriteria)
+        .css({ backgroundImage: `url(${homeUrl}images/magnifier.png)` })
+        .on("click", (e) => {
+          e.preventDefault();
+          $("#query_form").show();
+        })
+        .on("mouseenter", () => {
+          $("#query_form").show();
+        })
+        .appendTo("#content>h2:first");
+
+      // Close the query form when the outside of the form is clicked
+      $(document).click((e) => {
+        if (
+          e.target !== $("#query_form")[0] &&
+          $(e.target).parents("#query_form").length === 0 &&
+          e.target !== $("#query_form_open_button")[0] &&
+          $(window).width() >= 900
+        ) {
+          $("#query_form").hide();
+        }
+      });
+
+      setUpQueryFormButtons();
+      setFilterItemToSortable();
+    }
+
+    function setUpQueryFormButtons() {
+      // Add cancel button to query form.
+      $("#query_form_with_buttons>.buttons").append(
+        $("<a>")
+          .text(resources.labelCancel)
+          .addClass("icon icon-close query_form_cancel")
+          .css("cursor", "pointer")
+          .on("click", () => {
+            $("#query_form").hide();
+          })
+      );
+
+      // Add label for display settings
+      $("<label>")
+        .text(resources.labelDisplayPeriod)
+        .insertBefore("input#months");
+      $("<label>")
+        .text(resources.labelDisplayStartDate)
+        .insertBefore("select#month")
+        .css({ marginLeft: 10 });
+
+      // Replace apply button with ajax update
+      $("#query_form_with_buttons p.buttons>a.icon-checked:first")
+        .attr("onclick", "")
+        .on("click", (e) => {
+          e.preventDefault();
+
+          if (e.ctrlKey) {
+            $("#query_form").submit();
+            return;
+          }
+
+          ajaxUpdateIssueListWithQuery();
+
+          $("#query_form").hide();
+        });
+
+      // Replace clear button with ajax update
+      $("#query_form_with_buttons p.buttons>a.icon-reload:first")
+        .addClass("prevent-popup-anywhere")
+        .on("click", (e) => {
+          if (e.ctrlKey) return;
+          e.preventDefault();
+          ajaxUpdateIssueList({
+            search: extractSearch($(e.target).attr("href")),
+          });
+        });
+
+      $("#query_form").hide();
+    }
+
+    function setFilterItemToSortable() {
+      $("#filters-table").sortable({
+        revert: true,
+      });
+    }
+
+    function replaceAnchorTagAction(e) {
+      if (e.ctrlKey) return;
+
+      e.preventDefault();
+      ajaxUpdateIssueList({ search: extractSearch($(e.target).attr("href")) });
+    }
+
+    function displayDoneRatioText() {
+      const $doneRatioElements = $(
+        "table.list.issues > tbody > tr.issue > td.done_ratio"
+      );
+      if ($doneRatioElements.length === 0) return;
+
+      $doneRatioElements.each(function () {
+        const percent = $(this)
+          .children("table.progress")
+          .attr("class")
+          .match(/progress-(\d+)/)[1];
+        const $p = $(this).children("p.percent");
+        $p.text(`${percent}%`);
+      });
+    }
+
+    // Invoke
+    setUpQueryForm();
+    setUpIssueListHeader();
+    displayDoneRatioText();
+
+    // Replace pagination anchor tag action
+    $("span.pagination").on("click", "a", (e) => replaceAnchorTagAction(e));
+  });
+</script>
+<style>
+  #query_form_open_button {
+    display: none;
+  }
+
+  @media screen and (min-height: 400px) {
+    #wrapper {
+      height: 100vh;
+
+      & > div {
+        flex: 0 0 auto;
+
+        &#main {
+          flex: 1 1 auto;
+          overflow: auto;
+        }
+      }
+    }
+
+    #content {
+      display: flex;
+      flex-direction: column;
+      position: relative;
+      flex: 1 1 auto;
+
+      & > * {
+        flex: 0 0 auto;
+      }
+
+      & > form[data-cm-url$="/issues/context_menu"] {
+        flex: 1 1 auto;
+        overflow: hidden;
+
+        & > div.autoscroll {
+          height: calc(100% - 1em);
+          padding: 0;
+          margin: 0;
+          grid-template-columns: 1fr auto;
+        }
+      }
+    }
+
+    table.list.issues {
+      overflow: auto;
+      margin: 0;
+      & > thead {
+        position: sticky;
+        top: 0;
+        z-index: 20;
+      }
+    }
+  }
+
+  /* Styles for mobile layout */
+  @media screen and (max-width: 899px) {
+    #query_form_with_buttons > p.buttons > .query_form_cancel {
+      display: none;
+    }
+    #query_form {
+      display: block !important;
+    }
+  }
+
+  /* Styles for desktop layout */
+  @media screen and (min-width: 900px) {
+    #content {
+      & > div.contextual {
+        position: absolute;
+        right: 15px;
+      }
+
+      & > p.query-totals {
+        margin: 0;
+      }
+    }
+
+    #list-definition td.field {
+      min-width: 80px;
+    }
+
+    #query_form_open_button {
+      display: inline;
+      font-size: 0.6em;
+      margin-left: 20px;
+      background-position: left;
+      background-repeat: no-repeat;
+      padding-left: 20px;
+      cursor: pointer;
+    }
+
+    #query_form {
+      display: none;
+      position: absolute;
+      background-color: white;
+      z-index: 50;
+      width: max-content;
+      max-width: calc(100% - 50px);
+      box-shadow: 5px 5px 5px rgb(0 0 0 / 20%);
+      border-radius: 5px;
+      padding: 15px;
+      border: 1px #ccc solid;
+      top: 42px;
+      min-width: 900px;
+
+      #filters .add-filter {
+        min-width: 350px;
+      }
+    }
+
+    #query_form_with_buttons > p.buttons {
+      border-top: 1px solid #ccc;
+      padding-top: 10px;
+      margin: 15px 0 0;
+      display: flex;
+      justify-content: flex-end;
+      align-items: baseline;
+    }
+
+    #query_form_content fieldset {
+      margin-bottom: 20px;
+    }
+
+    #content > form[data-cm-url$="/issues/context_menu"] {
+      padding-bottom: 25px;
+    }
+  }
+
+  @media screen and (min-width: 900px) and (min-height: 400px) {
+    #content {
+      span.pagination {
+        position: absolute;
+        bottom: 10px;
+
+        ul.pages li {
+          margin-bottom: 0;
+        }
+      }
+
+      p.other-formats {
+        position: absolute;
+        bottom: 10px;
+        right: 20px;
+        margin: 0;
+      }
+    }
+  }
+
+  /* Sortable table header style settings */
+  #content table.list.issues > thead > tr > th {
+    box-shadow: 0px 3px 3px rgb(0 0 0 / 10%);
+
+    &.ui-sortable-handle {
+      cursor: ew-resize;
+    }
+
+    &.ui-sortable-placeholder {
+      visibility: visible !important;
+      opacity: 0.8;
+      background-color: #ffd;
+    }
+
+    &.ui-resizable-resizing {
+      background-color: #ffd;
+    }
+
+    &.ui-sortable-helper {
+      opacity: 80%;
+      box-shadow: 0 0 10px #0003;
+
+      & > div.ui-resizable-handle {
+        cursor: col-resize;
+        display: none;
+      }
+    }
+
+    & > span.icon-close {
+      display: none;
+      position: absolute;
+      right: 0;
+      cursor: pointer;
+      padding-left: 14px;
+      top: 50%;
+      transform: translate(0, -50%);
+    }
+
+    &:hover > span.icon-close {
+      display: inline;
+    }
+  }
+  #content
+    table.list.issues
+    > thead
+    > tr:hover
+    > th.ui-resizable
+    > div.ui-resizable-handle {
+    background-color: #0001;
+  }
+
+  /* Display done-ratio text */
+  table.list.issues > tbody > tr.issue > td.done_ratio {
+    position: relative;
+
+    & > table.progress {
+      width: 100%;
+    }
+    & > p.percent {
+      position: absolute;
+      width: 100%;
+      height: 100%;
+      top: 0;
+      left: 0;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      color: #777;
+    }
+  }
+  table.list.issues
+    > tbody
+    > tr.issue.context-menu-selection
+    > td.done_ratio
+    > p.percent {
+    color: #777 !important;
+  }
+
+  /* Sortable filter item cursor setting in query form */
+  #filters-table.ui-sortable {
+    tr,
+    tr label {
+      cursor: n-resize;
+    }
+  }
+
+  /* Display fixed width indicator */
+  table.list tr:hover th[style*="width"]:not(.buttons)::after {
+    width: 16px;
+    height: 16px;
+    display: block;
+    position: absolute;
+    top: 0;
+    opacity: 30%;
+    left: 5px;
+    transform: rotate(90deg);
+    filter: hue-rotate(180deg);
+    filter: grayscale(1);
+  }
+  body[class*="project-"] table.list tr:hover th::after {
+    background-image: url(../../images/reorder.png);
+    content: "";
+  }
+  body:not([class*="project-"]) table.list tr:hover th::after {
+    background-image: url(../images/reorder.png);
+    content: "";
+  }
+
+  /* Support for Redmine theme "farend bleuclair" */
+  body.theme-Bleuclair {
+    @media screen and (min-width: 900px) {
+      #content
+        > #sidebar-switch-panel:not([style*="display: none;"])
+        + div.contextual {
+        right: 45px;
+      }
+    }
+    @media screen and (min-height: 400px) {
+      #sidebar-switch-panel {
+        position: absolute;
+        top: 5px;
+        left: auto;
+        right: 4px;
+      }
+    }
+    table.list.issues > tbody > tr.issue > td.done_ratio > p.percent {
+      top: 2px;
+      align-items: start;
+    }
+  }
+</style>

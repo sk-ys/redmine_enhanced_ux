@@ -1,0 +1,471 @@
+<!--
+// Path pattern:
+// Insertion position: Head of all pages
+// Type:               HTML
+// Comment:            Direct edit on issue list
+-->
+<script>
+  $(() => {
+    if ($('form[data-cm-url$="/issues/context_menu"]').length === 0) return;
+
+    const resourcesAll = {
+      en: {
+        noItemAlertMessage: "No item is selected.",
+        applyLabel: "Apply",
+        cancelLabel: "Cancel",
+      },
+      ja: {
+        noItemAlertMessage: "何も選択されていません。",
+        applyLabel: "適用",
+        cancelLabel: "キャンセル",
+      },
+    };
+    const resources = {
+      ...resourcesAll["en"],
+      ...(resourcesAll[document.documentElement.lang] || {}),
+    };
+
+    const homeUrl = $("link[href*='favicon.ico']")
+      .attr("href")
+      .split("favicon.ico")[0];
+
+    const supportedFields = [
+      "status",
+      "tracker",
+      "priority",
+      "fixed_version",
+      "assigned_to",
+      "category",
+      "done_ratio",
+      "list",
+      "enumeration",
+      "version",
+      "user",
+      "bool",
+      "subject",
+      "string",
+      "link",
+      "int",
+      "float",
+      "start_date",
+      "due_date",
+      "date",
+      "estimated_hours",
+    ];
+
+    var targetElem = undefined;
+
+    // Utils
+    function getAbsUrl(url) {
+      const a = document.createElement("a");
+      a.href = url;
+      return a.href;
+    }
+
+    function timeStringToDecimal(timeString) {
+      const [hours, minutes] = timeString.split(":").map(Number);
+      return hours + minutes / 60;
+    }
+
+    // Add style to head tag
+    $("head").append(
+      $("<style>").text(
+        "table.list.issues>tbody>tr.issue>td.selected " +
+          "{box-shadow: inset #ffd 0px 0px 3px 0px;}"
+      )
+    );
+
+    class ContextInputForm {
+      constructor() {
+        // Set as singleton
+        if (ContextInputForm._instance) {
+          return ContextInputForm._instance;
+        }
+        ContextInputForm._instance = this;
+
+        this.$contextInputForm = this.#create().hide();
+        this.#setEvent();
+      }
+
+      #target = {};
+
+      show(left, top, form, field, fieldType, initialValue = "") {
+        this.#updateTarget(form, field, fieldType);
+        this.#resetApplyButton();
+        this.$contextInputForm.css({ left: left, top: top }).show();
+        this.#setupInput(field, fieldType, initialValue).focus().select();
+      }
+
+      #updateTarget(form, field, fieldType) {
+        this.#target.form = form;
+        this.#target.field = field;
+        this.#target.fieldType = fieldType;
+      }
+
+      #setupInput(field, fieldType, initialValue) {
+        this.$input
+          .attr({
+            type:
+              fieldType === "int" || fieldType === "float"
+                ? "number"
+                : fieldType,
+            step: fieldType === "int" ? 1 : fieldType === "float" ? 0.01 : "",
+          })
+          .val(
+            fieldType === "date"
+              ? initialValue
+                ? new Date(initialValue).toLocaleDateString("sv-SE")
+                : new Date().toLocaleDateString("sv-SE")
+              : field === "estimated_hours" && initialValue.includes(":")
+              ? timeStringToDecimal(initialValue)
+              : initialValue
+          );
+
+        return this.$input;
+      }
+
+      #create() {
+        this.$input = $("<input>")
+          .css({ flexGrow: 1, height: "auto", minWidth: 100 })
+          .on("click context", (e) => {
+            e.stopImmediatePropagation();
+          })
+          .on("keypress", (e) => {
+            if (e.which === 13) {
+              this.$applyButton[0].click();
+            }
+          });
+
+        this.$applyButton = $("<a>")
+          .button({
+            icon: "ui-icon-check",
+          })
+          .addClass("apply")
+          .attr({
+            rel: "nofollow",
+            "data-method": "patch",
+            title: resources.applyLabel,
+          })
+          .on("click", (e) => {
+            try {
+              this.#setupApplyButton();
+              if (this.$applyButton.attr("href") === "#") {
+                debugger;
+                // Rails.stopEverything(e);
+              }
+              setTimeout(() => {
+                this.$contextInputForm.hide();
+              });
+            } catch (e) {
+              console.error(e);
+              alert(e);
+            }
+          });
+
+        this.$cancelButton = $("<a>")
+          .button({
+            icon: "ui-icon-closethick",
+          })
+          .attr({ title: resources.cancelLabel })
+          .addClass("cancel")
+          .on("click", () => {
+            this.$contextInputForm.hide();
+          });
+
+        const $container = $("<div>")
+          .attr("id", "context-input-form")
+          .css({ position: "fixed" })
+          .append(this.$input)
+          .append(this.$applyButton)
+          .append(this.$cancelButton)
+          .resizable({ handles: "e,w", minWidth: 180 })
+          .draggable()
+          .appendTo("#content");
+
+        return $container;
+      }
+
+      #generateUrl(form, key, value) {
+        const $form = $(form);
+        const backUrl = $form.find("input[name=back_url]").val();
+        const $selectedIssueIds = $form.find('input[name="ids[]"]:checked');
+        const issueIdsParams = $selectedIssueIds.serialize();
+
+        if (issueIdsParams === "") {
+          throw new Error(resources.noItemAlertMessage);
+        }
+
+        const actionOrIssueId =
+          $selectedIssueIds.length > 1
+            ? "bulk_update"
+            : $selectedIssueIds.val();
+        const isCustomField = key.startsWith("cf_");
+        const cfId = isCustomField ? key.split("_")[1] : null;
+
+        return (
+          `${homeUrl}issues/${actionOrIssueId}?` +
+          `back_url=${encodeURIComponent(backUrl)}&` +
+          (actionOrIssueId === "bulk_update" ? `${issueIdsParams}&` : "") +
+          encodeURI(
+            isCustomField
+              ? `issue[custom_field_values[${cfId}]]=`
+              : `issue[${key}]=`
+          ) +
+          encodeURIComponent(value)
+        );
+      }
+
+      #setupApplyButton() {
+        if (this.$contextInputForm.length === 0) return;
+
+        const form = this.#target.form;
+        const field = this.#target.field;
+
+        const value = this.$input.val();
+        const url = this.#generateUrl(
+          form,
+          field.includes("cf_")
+            ? field.split(" ").filter((i) => i.startsWith("cf_"))[0]
+            : field,
+          value
+        );
+
+        return this.$applyButton.attr("href", url || "#");
+      }
+
+      #resetApplyButton() {
+        this.$applyButton.attr("href", "#");
+      }
+
+      #setEvent() {
+        $(document).on(
+          "mousedown.contextInput contextmenu.contextInput",
+          (e) => {
+            // Note:
+            //   The click and mouseup events are not suitable here.
+            //   Because mouse pointer may not be over the input field after
+            //   the selecting string.
+            if (!$(e.target).closest("#context-input-form").length) {
+              $("#context-input-form").hide();
+              $("table.list.issues>tbody>tr.issue>td.selected").removeClass(
+                "selected"
+              );
+            }
+          }
+        );
+      }
+    }
+
+    const contextInputForm = new ContextInputForm();
+
+    // Override the `contextMenuShow` function
+    const contextMenuShowOrg = contextMenuShow;
+    contextMenuShow = function (e) {
+      // Prevent to show the context menu when the ajax-indicator is displayed.
+      if ($("#ajax-indicator").is(":visible")) return;
+
+      targetElem = e.target;
+      const $form = $(e.target).closest("form");
+      const targetClass = $(e.target).closest("tr.issue>td").attr("class");
+      const availableFields = targetClass
+        ? targetClass
+            .split(" ")
+            .filter((i) => supportedFields.includes(i) || i.startsWith("cf_"))
+        : [];
+      const isCustomField = availableFields.some((i) => i.startsWith("cf_"));
+
+      if (availableFields.length && !(e.ctrlKey || e.metaKey || e.shiftKey)) {
+        try {
+          fieldMenuShow(e, $form, targetClass);
+        } catch (error) {
+          console.warn(error);
+          contextMenuShowOrg(e);
+        }
+      } else {
+        contextMenuShowOrg(e);
+      }
+    };
+
+    // Override the `contextMenuClick` function
+    const contextMenuClickOrg = contextMenuClick;
+    contextMenuClick = function (e) {
+      if ($("#context-input-form").is(":visible")) return;
+      contextMenuClickOrg.call(this, e);
+    };
+
+    function fieldMenuShow(e, form, field) {
+      if (!field) throw Error("Field has no value.");
+
+      // Hide the original context menu
+      $("#context-menu").hide();
+
+      $(e.target).closest("tr.issue>td").addClass("selected");
+
+      // Estimating field type
+      const fieldType = field.includes("date")
+        ? "date"
+        : field.includes("int")
+        ? "int"
+        : field.includes("float") || field.includes("estimated_hours")
+        ? "float"
+        : "text";
+
+      if (
+        [
+          "date",
+          "subject",
+          "string",
+          "link",
+          "int",
+          "float",
+          "estimated_hours",
+        ].some((i) => field.includes(i))
+      ) {
+        let currentText = $(e.target).text();
+        if (field === "subject") {
+          const anchor = $(e.target).closest("td.subject").find("a.issue");
+          if (anchor.length) {
+            const anchorText = anchor.text();
+
+            // Remove subject's header if owned.
+            if (new RegExp(anchorText + ": (.+)").test(currentText)) {
+              currentText = new RegExp(anchorText + ": (.+)").exec(
+                currentText
+              )[1];
+            }
+          }
+        }
+
+        contextInputForm.show(
+          e.pageX,
+          e.pageY,
+          form,
+          field,
+          fieldType,
+          currentText
+        );
+      } else {
+        const url = $(form).data("cm-url");
+        if (!url) throw Error("URL is not found.");
+
+        const searchParamsKeys = /cf_/.test(field)
+          ? [`issue[custom_field_values][${/cf_(\d+)/.exec(field)[1]}]`]
+          : [`issue[${field}]`, `issue[${field}_id]`];
+
+        $.ajax({
+          url: url,
+          data: $(form).serialize(),
+          success: (data) => {
+            const $fieldMenu = $('a[href][data-method="patch"]', data)
+              .filter((i, e) => {
+                const url = new URL(getAbsUrl($(e).attr("href")));
+                return Array.from(url.searchParams.keys()).some((key) =>
+                  searchParamsKeys.some((searchParamsKey) =>
+                    new RegExp(searchParamsKey.replace(/[\[\]]/g, "\\$&")).test(
+                      key
+                    )
+                  )
+                );
+              })
+              .closest("li.folder")
+              .children("ul");
+
+            if ($fieldMenu.length > 0) {
+              $("#context-menu")
+                .css({ left: e.pageX, top: e.pageY })
+                .html($fieldMenu)
+                .show();
+            } else {
+              // Show original context menu
+              contextMenuShowOrg(e);
+            }
+          },
+        });
+      }
+    }
+
+    function isContextMenuForm(target) {
+      const $form = $(target).closest("form");
+      return (
+        $form.parent()[0] === $("body")[0] &&
+        /\/issues\/(\d+|bulk_update)\?/.test($form.attr("action"))
+      );
+    }
+
+    // Context menu content is submit from dynamically generated form
+    $(document).on("click", 'input[type="submit"]', (e) => {
+      if (!isContextMenuForm(e.target)) return;
+      if (!window["ajaxUpdateIssueList"]) return;
+
+      e.preventDefault();
+      const form = e.target.closest("form");
+      const formData = new FormData(form);
+      $(form).remove();
+
+      $("#ajax-indicator").show();
+
+      fetch(form.action, {
+        method: "PATCH",
+        headers: {
+          "X-CSRF-Token": formData.get("authenticity_token"),
+          "Content-Type": "application/json",
+          Accept: "text/html",
+        },
+        body: JSON.stringify(Object.fromEntries(formData)),
+        redirect: "manual",
+      })
+        .then(async (response) => {
+          if (response.type === "opaqueredirect" || response.ok) {
+            // Note: In Redmine 5.1.2, the response is always `ok` even if the
+            //       update fails.
+            try {
+              await ajaxUpdateIssueList({ target: targetElem });
+            } catch (error) {
+              console.error(error);
+              alert(error);
+            }
+          } else {
+            console.error(
+              "Request failed:",
+              response.statusText,
+              response.status
+            );
+            alert(`Request failed: ${response.statusText}[${response.status}]`);
+          }
+        })
+        .finally(() => {
+          $("#ajax-indicator").hide();
+        });
+    });
+  });
+</script>
+<style>
+  div#context-menu {
+    position: fixed;
+  }
+  #context-input-form {
+    /* position: fixed; */
+    display: flex;
+    flex-direction: row;
+    background-color: #ddd;
+    padding: 1px 2px 1px 8px;
+    border-radius: 2px;
+    box-shadow: #0005 2px 2px 2px;
+    width: 200px;
+    box-sizing: border-box;
+    cursor: move;
+
+    a.ui-button {
+      padding: 4px 2px;
+      margin: 1px;
+      align-content: center;
+
+      &.apply {
+        margin-right: 0;
+      }
+      &.cancel {
+        margin-left: 0;
+      }
+    }
+  }
+</style>

@@ -1,0 +1,7 @@
+# English strings go here for Rails i18n
+en:
+  enhanced_ux:
+    label_module_specific_customization: Module-Specific Customization
+    label_issue_view_customization: Issue View Customization
+    label_wiki_customization: Wiki Customization
+    label_global_customization: Global Customization
