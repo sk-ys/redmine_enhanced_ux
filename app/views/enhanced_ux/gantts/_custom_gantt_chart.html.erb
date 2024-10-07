@@ -33,6 +33,18 @@
           return elem.offsetTop || parseInt(elem.style.top);
         }
 
+        function nextAll(elem, tagName) {
+          const nextAllElems = [];
+          let targetElem = elem.nextElementSibling;
+          while (targetElem) {
+            if (!tagName || targetElem.tagName === tagName) {
+              nextAllElems.push(targetElem);
+            }
+            targetElem = targetElem.nextElementSibling;
+          }
+          return nextAllElems;
+        }
+
         class GanttItem {
           constructor(elem) {
             this.elem = elem;
@@ -166,12 +178,9 @@
           }
         }
 
-        const nextItems = $(subjectElem)
-          .nextAll("div")
-          .map((_, elem) => new GanttItem(elem))
-          .toArray();
-
-        nextItems.forEach(updateGanttItemPosition);
+        nextAll(subjectElem, "DIV")
+          .map((elem) => new GanttItem(elem))
+          .forEach(updateGanttItemPosition);
 
         drawGanttHandler();
       };
