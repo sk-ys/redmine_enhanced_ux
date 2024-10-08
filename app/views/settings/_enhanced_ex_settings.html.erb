@@ -11,6 +11,11 @@
     <%= check_box_tag 'settings[custom_issue_list]', '1', @settings[:custom_issue_list] == '1' %>
   </p>
   <p class="">
+    <label for="enhanced_gantt_entry_click">Enhanced gantt entry click function:</label>
+    <input type="hidden" name="settings[enhanced_gantt_entry_click]" value="'0'">
+    <%= check_box_tag 'settings[enhanced_gantt_entry_click]', '1', @settings[:enhanced_gantt_entry_click] == '1' %>
+  </p>
+  <p class="">
     <label for="custom_gantt_chart">Custom gantt chart:</label>
     <input type="hidden" name="settings[custom_gantt_chart]" value="'0'">
     <%= check_box_tag 'settings[custom_gantt_chart]', '1', @settings[:custom_gantt_chart] == '1' %>

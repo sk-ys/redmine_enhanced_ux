@@ -16,6 +16,9 @@ module EnhancedUx
           end
 
           if /\/issues\/gantt$/.match?(path)
+            if Setting.plugin_redmine_enhanced_ux[:enhanced_gantt_entry_click] == '1'
+              tags << javascript_include_tag("gantt/enhanced_gantt_entry_click", :plugin => "redmine_enhanced_ux")
+            end
             if Setting.plugin_redmine_enhanced_ux[:custom_gantt_chart] == '1'
               tags << controller.render_to_string(partial: 'enhanced_ux/gantts/custom_gantt_chart')
             end

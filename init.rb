@@ -10,6 +10,7 @@ Redmine::Plugin.register :redmine_enhanced_ux do
     settings default: {
         custom_issue: '1',
         custom_issue_list: '1',
+        enhanced_gantt_entry_click: '1',
         custom_gantt_chart: '1',
         custom_roadmap_and_version: '1',
         custom_calendar: '1',
