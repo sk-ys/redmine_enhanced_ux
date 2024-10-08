@@ -260,20 +260,20 @@
 
         this._super();
         this.iframe.remove();
-        if (this._getActiveDialogs().length === 0) {
+        if (PopUp.getActiveDialogs().length === 0) {
           this.disableTiled();
         } else {
           this._removeOverflowStyle();
         }
         this.destroy();
 
-        if (this._getUnMinimizedDialogs().length === 0) {
+        if (PopUp.getUnMinimizedDialogs().length === 0) {
           this.disableTiled();
         }
       },
 
       closeAll: function () {
-        this._getActiveDialogs().each((_, e) => {
+        PopUp.getActiveDialogs().each((_, e) => {
           $(e).dialogPA("close");
         });
       },
@@ -328,17 +328,14 @@
             position: this.options.fixed ? "fixed" : "absolute",
           });
 
-          // Restore position after CSS transition
-          // setTimeout(() => this.restoreSizeAndPosition(false, true), 600);
-
-          if (this._getUnMinimizedDialogs().length === 0) {
+          if (PopUp.getUnMinimizedDialogs().length === 0) {
             this.disableTiled();
           }
         }
       },
 
       minimizeAll: function () {
-        this._getActiveDialogs().each((_, e) => {
+        PopUp.getActiveDialogs().each((_, e) => {
           $(e).dialogPA("minimize");
         });
       },
@@ -363,19 +360,19 @@
       },
 
       restoreAll: function () {
-        this._getActiveDialogs().each((_, e) => {
+        PopUp.getActiveDialogs().each((_, e) => {
           $(e).dialogPA("restore");
         });
       },
 
       enableTiled: function () {
         if (!this.isTiled()) {
-          const $dialogs = this._getActiveDialogs();
+          const $dialogs = PopUp.getActiveDialogs();
           if ($dialogs.length === 0) return;
 
-          const $unMinimizedDialogs = this._getUnMinimizedDialogs();
+          const $unMinimizedDialogs = PopUp.getUnMinimizedDialogs();
           if ($unMinimizedDialogs.length === 0) {
-            const $activeDialog = this._getActiveDialog();
+            const $activeDialog = PopUp.getActiveDialog();
             if ($activeDialog) {
               $activeDialog.dialogPA("restore");
             } else {
@@ -532,54 +529,7 @@
           this.maximize();
         }
       },
-
-      _getActiveDialogs: function (includeSelf = true) {
-        if (includeSelf) {
-          return this.uiDialog
-            .parent()
-            .children(".ui-dialog.popup-anywhere")
-            .map((_, e) => $(e).children(".ui-dialog-content"));
-        } else {
-          return this.uiDialog
-            .siblings(".ui-dialog.popup-anywhere")
-            .map((_, e) => $(e).children(".ui-dialog-content"));
-        }
-      },
-
-      _getUnMinimizedDialogs: function (includeSelf = true) {
-        if (includeSelf) {
-          return this.uiDialog
-            .parent()
-            .children(".ui-dialog.popup-anywhere:not(.popup-anywhere-minimize)")
-            .map((_, e) => $(e).children(".ui-dialog-content"));
-        } else {
-          return this.uiDialog
-            .siblings(".ui-dialog.popup-anywhere:not(.popup-anywhere-minimize)")
-            .map((_, e) => $(e).children(".ui-dialog-content"));
-        }
-      },
-
-      _getDialogZIndices: function (includeSelf = true) {
-        return this._getActiveDialogs(includeSelf)
-          .toArray()
-          .map((e) => {
-            return {
-              ui: $(e),
-              zIndex: parseInt($(e).parent().css("zIndex")),
-            };
-          });
-      },
-
-      _getActiveDialog: function (includeSelf = true) {
-        const zIndices = this._getDialogZIndices(includeSelf);
-
-        if (zIndices.length === 0) return undefined;
-
-        const highestZIndex = Math.max(...zIndices.map((i) => i.zIndex));
-
-        return zIndices.filter((item) => item.zIndex === highestZIndex)[0].ui;
-      },
-
+      
       _removeOverflowStyle: function () {
         if (
           !(
@@ -594,7 +544,7 @@
       },
 
       _calcOffsetPositionAt: function () {
-        const $activeDialog = this._getActiveDialog(false);
+        const $activeDialog = PopUp.getActiveDialog(this.element);
         if (!$activeDialog) return null;
 
         return (
@@ -917,11 +867,39 @@
         },
       };
 
+      static dialogSelector = "body > .ui-dialog.popup-anywhere";
+
       static specialStorageKeys = ["_default-width", "_default-height"];
 
       static getActiveDialogs() {
-        return $("body > .ui-dialog.popup-anywhere").map((_, e) =>
+        return $(PopUp.dialogSelector).map((_, e) =>
           $(e).children(".ui-dialog-content")
+        );
+      }
+
+      static getDialogZIndices() {
+        return PopUp.getActiveDialogs()
+          .toArray()
+          .map((e) => {
+            return {
+              ui: $(e),
+              zIndex: parseInt($(e).parent().css("zIndex")),
+            };
+          });
+      }
+
+      static getActiveDialog(excludeElem) {
+        const zIndices = PopUp.getDialogZIndices().filter(
+          (o) => !excludeElem || o.ui[0] !== excludeElem
+        );
+        if (zIndices.length === 0) return undefined;
+        const highestZIndex = Math.max(...zIndices.map((i) => i.zIndex));
+        return zIndices.filter((item) => item.zIndex === highestZIndex)[0].ui;
+      }
+
+      static getUnMinimizedDialogs() {
+        return $(PopUp.dialogSelector + ":not(.popup-anywhere-minimize)").map(
+          (_, e) => $(e).children(".ui-dialog-content")
         );
       }
 
