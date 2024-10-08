@@ -529,7 +529,7 @@
           this.maximize();
         }
       },
-      
+
       _removeOverflowStyle: function () {
         if (
           !(
@@ -1211,7 +1211,10 @@
     ),
   .ui-dialog.popup-anywhere-maximize
     .ui-dialog-titlebar-button-group
-    > button.ui-button-popup-anywhere-maximum {
+    > :is(
+      button.ui-button-popup-anywhere-maximum,
+      button.ui-button-popup-anywhere-enable-flex
+    ) {
     display: none;
   }
 
