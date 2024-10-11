@@ -7,7 +7,7 @@
 
   function replaceGanttEntryClick() {
     ganttEntryClick = function (e) {
-      const iconExpanderElem = e.target;
+      const iconExpanderElem = e.currentTarget;
       const subjectElem = iconExpanderElem.parentElement;
       const expanderWidth = iconExpanderElem.offsetWidth;
       const recursive = e.ctrlKey;
@@ -69,12 +69,19 @@
           if (this.isCollapsed === undefined) return false;
 
           this.elem.classList.remove("open");
+          const svgIcon = this.iconExpander.getElementsByTagName("svg");
 
           if ((force === true && !(force === false)) || this.isCollapsed) {
             toggleClass(this.iconExpander, "icon-collapsed", "icon-expanded");
             this.elem.classList.add("open");
+            if (svgIcon.length === 1 && window.updateSVGIcon) {
+              updateSVGIcon(this.iconExpander, 'angle-down');
+            }
           } else {
             toggleClass(this.iconExpander, "icon-expanded", "icon-collapsed");
+            if (svgIcon.length === 1 && window.updateSVGIcon) {
+              updateSVGIcon(this.iconExpander, 'angle-right');
+            }
           }
 
           this.isCollapsed = !this.isCollapsed;
@@ -83,10 +90,7 @@
 
         #setDisplayStyle(displayStyle) {
           this.taskBars.forEach((taskBar) => {
-            // TODO: Why exclude "tooltip"?
-            // if (!taskBar.classList.contains("tooltip")) {
             taskBar.style.display = displayStyle;
-            // }
           });
           this.selectedColumns.forEach((selectedColumn) => {
             selectedColumn.style.display = displayStyle;
@@ -122,11 +126,11 @@
       let totalHeight = 0;
       let outOfHierarchyTop = null;
       let firstItemTop = null;
-      let collapsedStateHierarchy = {};
-      collapsedStateHierarchy[subject.left] = subject.isCollapsed;
+      const collapsedStateHierarchy = new Map();
+      collapsedStateHierarchy.set(subject.left, subject.isCollapsed);
       let prevItemLeft = subject.left;
 
-      function updateGanttItemPosition(ganttItem) {
+      function updateGanttItemPositionAndView(ganttItem) {
         if (outOfHierarchyTop || ganttItem.left <= subject.left) {
           if (!outOfHierarchyTop) outOfHierarchyTop = ganttItem.top;
 
@@ -140,13 +144,15 @@
           return;
         }
 
+        // Clear the collapsed state for levels deeper than the current
+        // hierarchy level
         if (prevItemLeft > ganttItem.left) {
-          collapsedStateHierarchy = Object.fromEntries(
-            Object.entries(collapsedStateHierarchy).filter(
-              ([key, value]) => key < ganttItem.left
-            )
-          );
+          for (const left of collapsedStateHierarchy.keys()) {
+            if (left >= ganttItem.left) collapsedStateHierarchy.delete(left);
+          }
         }
+
+        // Update the stored left value for the next loop
         prevItemLeft = ganttItem.left;
 
         if (!firstItemTop) {
@@ -155,7 +161,7 @@
 
         if (
           (recursive && subject.isCollapsed) ||
-          (!recursive && Object.values(collapsedStateHierarchy).some((i) => i))
+          (!recursive && collapsedStateHierarchy.values().some((i) => i))
         ) {
           if (ganttItem.isShown) ganttItem.hide();
         } else {
@@ -165,16 +171,18 @@
         }
 
         if (ganttItem.iconExpander) {
-          collapsedStateHierarchy[ganttItem.left] = ganttItem.isCollapsed;
+          collapsedStateHierarchy.set(ganttItem.left, ganttItem.isCollapsed);
           if (recursive && ganttItem.isCollapsed !== subject.isCollapsed) {
             ganttItem.toggleIcon();
           }
         }
       }
 
+      // Get all subsequent DIV elements, convert to GanttItem,
+      // and update their positions and view states
       nextAll(subjectElem, "DIV")
         .map((elem) => new GanttItem(elem))
-        .forEach(updateGanttItemPosition);
+        .forEach(updateGanttItemPositionAndView);
 
       drawGanttHandler();
     };
@@ -207,7 +215,7 @@
     if (!ganttEntryClickReplaced) {
       console.warn(
         "Failed to replace ganttEntryClick function, " +
-          "so the process was aborted."
+        "so the process was aborted."
       );
       scriptTagAddedObserver.disconnect();
       return;

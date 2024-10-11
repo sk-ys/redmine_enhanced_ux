@@ -526,8 +526,10 @@
             .sort((a, b) => b.top - a.top)
             .sort((a, b) => b.left - a.left)
             .forEach((i) => {
+              const iconExpanderElem = i.elem.querySelector("span.expander");
               ganttEntryClickOrg({
-                target: $(i.elem).find("span.expander:first")[0],
+                target: iconExpanderElem,
+                currentTarget: iconExpanderElem,
               });
             });
         }
