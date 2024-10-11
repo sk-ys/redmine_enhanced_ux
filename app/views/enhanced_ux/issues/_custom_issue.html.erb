@@ -227,7 +227,7 @@
       const journals = $("#tab-content-history > .journal");
       if (journals.length > 1) {
         return journals
-          .map((i, e) => parseInt(e.id.split("-"[1])))
+          .map((i, e) => parseInt(e.id.split("-")[1]))
           .toArray()
           .every((v, i, arr) => i === 0 || arr[i - 1] <= v)
           ? "asc"
@@ -1863,6 +1863,7 @@
 
     #add_notes {
       flex: 1 1 auto;
+      height: 100%;
 
       .jstBlock {
         height: calc(100% - 30px);
