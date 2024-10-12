@@ -1,9 +1,9 @@
 require_dependency File.expand_path('../lib/enhanced_ux/hooks/view_layouts_base_html_head_hook.rb', __FILE__)
 
 Redmine::Plugin.register :redmine_enhanced_ux do
-  name 'Redmine Enhanced Ux plugin'
+  name 'Redmine Enhanced UX plugin'
   author 'sk-ys'
-  description 'This is a plugin for Redmine'
+  description 'This is a plugin for Redmine. This plugin improves various aspects of the user experience in Redmine.'
   version '0.0.1'
   url 'https://github.com/sk-ys/redmine_enhanced_ux'
   author_url 'https://github.com/sk-ys'
