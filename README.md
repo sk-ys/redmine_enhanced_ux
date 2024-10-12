@@ -2,7 +2,9 @@
 
 ## Overview
 
-This is a plugin for Redmine. This plugin  is designed to improve the user experience within Redmine by providing various usability enhancements.&#x20;
+This is a plugin for Redmine. This plugin is designed to improve the user experience within Redmine by providing various usability enhancements.  
+<a href=doc/images/issue_index_example.png><image src=doc/images/issue_index_example.png width=300></a>
+<a href=doc/images/issue_example.png><image src=doc/images/issue_example.png width=300></a>
 
 ## Features
 
