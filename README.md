@@ -62,10 +62,26 @@ This is a plugin for Redmine. This plugin is designed to improve the user experi
 - Two pane mode - Split the screen into two panes for easier multitasking.
 
 ## Installation
+### When using git
+1. Clone this repository to your Redmine plugins directory.
+    ```
+    cd YOUR_REDMINE_DIRECTORY/plugins
+    git clone https://github.com/sk-ys/redmine_enhanced_ux.git
+    ```
+2. Restart Redmine.
 
-1. Clone or download this repository.
-2. Place the plugin in your Redmine `plugins` directory.
-3. Restart your Redmine server.
+### When not using git
+1. Download zip file from the [release page](https://github.com/sk-ys/redmine_enhanced_ux/releases) or the [latest main repository](https://github.com/sk-ys/redmine_enhanced_ux/archive/refs/heads/main.zip). 
+2. Extract the ZIP file to your Redmine plugin directory. The name of the unzipped directory must be `redmine_enhanced_ux`.
+3. Restart Redmine.
+
+## Uninstallation
+1. Navigate to your Redmine plugin directory.
+2. Delete the directory for this plugin.
+   ```
+   rm -r redmine_enhanced_ux
+   ```
+3. Restart Redmine.
 
 ## Usage
 
