@@ -1,0 +1,111 @@
+<!-- 
+// Path pattern:       /issues/[0-9]+$
+// Insertion position: Head of all pages
+// Type:               HTML
+// Comment:            Scroll to top or bottom
+-->
+<script>
+  $(function () {
+    const BUTTON_SIZE = "30px";
+    const DURATION = 500;
+
+    const resourcesAll = {
+      en: {
+        button_title_top: "Top",
+        button_title_bottom: "Bottom",
+      },
+      ja: {
+        button_title_top: "上へ",
+        button_title_bottom: "下へ",
+      },
+    };
+    const resources = {
+      ...resourcesAll["en"],
+      ...(resourcesAll[document.documentElement.lang] || {}),
+    };
+
+    var btnBaseStyle = {
+      width: BUTTON_SIZE,
+      height: BUTTON_SIZE,
+      left: "calc(100vw - " + BUTTON_SIZE + " - 20px)",
+      top: "calc(100vh - " + BUTTON_SIZE + " - 10px)",
+    };
+
+    function scrollTo(direction) {
+      let $html = $("html");
+
+      const isIframeContent = Array.from(
+        window.parent.document.querySelectorAll("iframe")
+      )
+        .map((iframe) => iframe.contentWindow === window)
+        .some((v) => v);
+
+      let height = isIframeContent
+        ? $(document).height() - window.innerHeight
+        : $html.height() - window.innerHeight;
+
+      const $enableSideBySideMode = $("#enable_side_by_side_mode");
+      if ($enableSideBySideMode.length > 0) {
+        if (
+          $enableSideBySideMode.is(":checked") &&
+          $enableSideBySideMode.is(":visible")
+        ) {
+          $html = $("#history>.tab-content").filter(":visible");
+          height = $html[0].scrollHeight - $html.height();
+        }
+      }
+
+      $html.animate(
+        {
+          scrollTop: direction !== "bottom" ? 0 : height,
+        },
+        DURATION
+      );
+    }
+
+    const $btnTop = $("<div><span>↑</span></div>")
+      .css(btnBaseStyle)
+      .addClass("scroll_to_top_or_bottom_button")
+      .css({
+        left: "calc(100vw - (" + BUTTON_SIZE + ")*2.1 - 20px)",
+      })
+      .on("click", () => {
+        scrollTo("top");
+      })
+      .attr("title", resources.button_title_top);
+
+    const $btnBottom = $("<div><span>↓</span></div>")
+      .css(btnBaseStyle)
+      .addClass("scroll_to_top_or_bottom_button")
+      .on("click", () => {
+        scrollTo("bottom");
+      })
+      .attr("title", resources.button_title_bottom);
+
+    $("html body").append($btnTop);
+    $("html body").append($btnBottom);
+  });
+</script>
+<style>
+  .scroll_to_top_or_bottom_button {
+    position: fixed;
+    opacity: 0.3;
+    transition: opacity;
+    border-radius: 50%;
+    cursor: pointer;
+    background-color: #ccc;
+    z-index: 500;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    user-select: none;
+  }
+  .scroll_to_top_or_bottom_button:hover {
+    opacity: 1;
+  }
+  @media print {
+    .scroll_to_top_or_bottom_button {
+      display: none;
+    }
+  }
+</style>

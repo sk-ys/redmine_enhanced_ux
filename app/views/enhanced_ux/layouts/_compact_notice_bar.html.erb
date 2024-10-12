@@ -1,0 +1,161 @@
+<!-- 
+// Path pattern:
+// Insertion position: Head of all pages
+// Type:               HTML
+// Comment:            Compact notice bar
+// Note: flash type: :notice, :warning, :error
+-->
+<script type="text/javascript">
+  window.addEventListener("DOMContentLoaded", () => {
+    // Hide the notice bar when the page is displayed by using browser's
+    // back or forward.
+    if (performance.getEntriesByType("navigation")[0].type === "back_forward") {
+      $("#content > .flash").hide();
+      return;
+    }
+
+    class FadeOutNotice {
+      constructor(target) {
+        this.target = target;
+
+        setTimeout(
+          () => {
+            $(this.target).addClass("displayed");
+            this.set();
+          },
+          // Must match the settings on the CSS
+          2 * 1000
+        );
+      }
+      set() {
+        if ($(this.target).is(":hover")) {
+          this.clear();
+          return;
+        }
+
+        // Delay fading-out the notice
+        this.hideEventId = setTimeout(() => {
+          if (!$(this.target).is(":hover")) {
+            $(this.target).addClass("fadeout_notice");
+
+            // Delay hiding the notice
+            setTimeout(
+              () => {
+                if (
+                  !$(this.target).is(":hover") &&
+                  $(this.target).hasClass("fadeout_notice")
+                ) {
+                  $(this.target).hide();
+                }
+              },
+              // Must match the settings on the CSS
+              5 * 1000
+            );
+          }
+        }, 10 * 1000);
+      }
+      clear() {
+        $(this.target).removeClass("fadeout_notice");
+        clearTimeout(this.hideEventId);
+      }
+    }
+
+    // Add close button to notice bar
+    function addCloseButton(target) {
+      const $closeButton = $("<span>")
+        .addClass("icon icon-close flash_notice_close_button")
+        .on("click", () => {
+          $(target).hide();
+        })
+        .text(String.fromCharCode(160));
+      $(target).prepend($closeButton);
+    }
+
+    // Set fadeout event to notice bar
+    function setFadeOutEvent(target) {
+      const fadeOut = new FadeOutNotice(target);
+      $(target)
+        .on("mouseover", () => {
+          fadeOut.clear();
+        })
+        .on("mouseout", () => {
+          fadeOut.set();
+        });
+    }
+
+    function invoke(target) {
+      $(target).each((_, e) => {
+        if (!document.contains(e)) return;
+
+        addCloseButton(e);
+        setFadeOutEvent(e);
+      });
+    }
+
+    // Handling dynamically added flash messages
+    new MutationObserver((mutations) => {
+      mutations.forEach((mutation) => {
+        if (mutation.addedNodes.length > 0) {
+          mutation.addedNodes.forEach((node) => {
+            if ($(node).hasClass("flash")) {
+              invoke(node);
+            }
+          });
+        }
+      });
+    }).observe($("#content")[0], {
+      subtree: false,
+      childList: true,
+    });
+
+    invoke($("#content > div.flash"));
+  });
+</script>
+<style>
+  #flash_notice {
+    opacity: 90%;
+  }
+  .flash_notice_close_button {
+    padding: 0;
+    float: right;
+    cursor: pointer;
+    margin-left: 0.5em;
+    width: 2em;
+  }
+  #flash_notice.notice.fadeout_notice {
+    animation-name: fade_out_notice;
+    animation-duration: 5s;
+    animation-fill-mode: forwards;
+  }
+  @keyframes fade_out_notice {
+    0% {
+      opacity: 90%;
+    }
+    100% {
+      opacity: 0;
+    }
+  }
+
+  @media (min-width: 900px) {
+    #flash_notice:not(.fadeout_notice):not(.displayed) {
+      animation-name: fade_in_notice;
+      animation-duration: 2s;
+      animation-fill-mode: forwards;
+    }
+    @keyframes fade_in_notice {
+      0% {
+        opacity: 0;
+      }
+      100% {
+        opacity: 90%;
+      }
+    }
+    #flash_notice {
+      position: fixed;
+      max-width: calc(100vw - 40px);
+      left: 20px;
+      box-sizing: border-box;
+      z-index: 300;
+    }
+  }
+</style>

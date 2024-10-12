@@ -1,0 +1,202 @@
+<!--
+// Path pattern:       /((issues|versions)/[0-9]+|roadmap)
+// Project pattern:
+// Insertion position: Head of all pages
+// Type:               HTML
+// Comment:            Show only opened issues
+-->
+<script>
+  var setupShowOnlyOpenedIssues = undefined;
+
+  //<![CDATA[
+  window.addEventListener("DOMContentLoaded", function () {
+    // ----- settings start -----
+    const issueHiddenDefault = true;
+    // ----- settings end -----
+
+    const resourcesAll = {
+      en: { labelHideClosed: "Hide closed issues" },
+      ja: { labelHideClosed: "完了したチケットを隠す" },
+    };
+    const resources =
+      resourcesAll[document.documentElement.lang] || resourcesAll["en"];
+
+    const pageTypes = {
+      issues: /\/issues\/[0-9]+$/,
+      roadmap: /\/roadmap$/,
+      versions: /\/versions\/[0-9]+$/,
+    };
+    const pageType = Object.keys(pageTypes).find((key) =>
+      pageTypes[key].test(location.pathname)
+    );
+    if (!pageType) return;
+
+    const queries = {
+      issues: {
+        baseTarget: "#issue_tree, #relations",
+        closest: "#issue_tree, #relations",
+        table: "table.list.issues",
+        checkBoxAppendTarget: "div.contextual+p:first",
+      },
+      roadmap: {
+        baseTarget: "#roadmap>form, article.version-article>form",
+        closest: null,
+        table: "table.list.related-issues",
+        checkBoxAppendTarget: "table.list>caption",
+      },
+      versions: {
+        baseTarget: "#roadmap>form, article.version-article>form",
+        closest: null,
+        table: "table.list.related-issues",
+        checkBoxAppendTarget: "table.list>caption",
+      },
+    }[pageType];
+
+    function findTable(target) {
+      if (pageType === "issues") {
+        return $(target).closest(queries.closest).find(queries.table);
+      } else {
+        const $table = $(target).find(queries.table);
+        if ($table.length > 0) {
+          return $table;
+        } else {
+          return $(target).closest(queries.table);
+        }
+      }
+    }
+
+    if ( $(queries.baseTarget).length == 0) return;
+
+    function createCheckBox() {
+      return $("<input>")
+        .attr({
+          type: "checkbox",
+        })
+        .prop("checked", issueHiddenDefault)
+        .addClass("hide_closed_issue")
+        .on("change", function () {
+          const $table = findTable(this);
+          toggleIssueView($table, this.checked);
+        });
+    }
+
+    function toggleIssueView($table, hide = null) {
+      hide = hide ?? !$table.hasClass("closed_issue_hidden");
+
+      if (hide) {
+        // Replace TR to DIV
+        $table
+          .find("tr.issue.closed")
+          .addClass("hidden")
+          .replaceWith(function () {
+            return $("<div>")
+              .append($(this).contents())
+              .addClass($(this).attr("class"));
+          });
+      } else {
+        // Replace DIV to TR
+        $table.find("div.issue.hidden").replaceWith(function () {
+          return $("<tr>")
+            .append($(this).contents())
+            .addClass($(this).attr("class"));
+        });
+        $table.find("tr.issue").removeClass("hidden");
+      }
+      $table.toggleClass("closed_issue_hidden", hide);
+    }
+
+    function setup(target) {
+      const $table = findTable(target);
+
+      // Exit if there are no items
+      if ($table.length === 0) return;
+
+      // Exit if all issue is opened or closed
+      const count_all = $table.find("tr.issue").length;
+      const count_closed = $table.find("tr.issue.closed").length;
+      if (count_closed === 0 || count_all === count_closed) return;
+
+      // Add CheckBox
+      $(target)
+        .find(queries.checkBoxAppendTarget)
+        .append(
+          $("<span/>")
+            .addClass("hide_closed_issue_button_outer")
+            .append(
+              $("<label>")
+                .text(resources.labelHideClosed)
+                .prepend(createCheckBox())
+            )
+        );
+
+      // Set default state
+      toggleIssueView($table, issueHiddenDefault);
+    }
+
+    setupShowOnlyOpenedIssues = function () {
+      $(queries.baseTarget).each((_, element) => {
+        if (
+          $(element)
+            .find(queries.checkBoxAppendTarget)
+            .find("input.hide_closed_issue").length === 0
+        ) {
+          setup(element);
+
+          new MutationObserver((mutationList, observer) => {
+            for (const mutation of mutationList) {
+              setup(element);
+            }
+          }).observe(element, {
+            childList: true,
+          });
+        }
+      });
+    };
+
+    // Initial invoke
+    setupShowOnlyOpenedIssues();
+  });
+  //]]>
+</script>
+
+<style>
+  :is(#issue_tree, #relations) {
+    label:has(input.hide_closed_issue) {
+      margin-left: 0px;
+      font-size: 0.8em;
+      cursor: pointer;
+    }
+    input.hide_closed_issue {
+      width: 0.8em;
+      margin-left: 5px;
+      cursor: pointer;
+    }
+  }
+
+  #roadmap table.list.related-issues {
+    span.hide_closed_issue_button_outer {
+      float: right;
+
+      label {
+        margin-left: 5px;
+        font-size: 0.9em;
+        cursor: pointer;
+      }
+      input.hide_closed_issue {
+        width: 0.9em;
+        cursor: pointer;
+      }
+    }
+    & > tbody {
+      & > :is(tr.hidden, span.hidden) {
+        display: none;
+      }
+      & > :is(tr.even, tr.issue.hascontextmenu:nth-of-type(even)) {
+        background-color: #fff;
+      }
+      & > :is(tr.odd, tr.issue.hascontextmenu:nth-of-type(odd)) {
+        background-color: #f6f7f8;
+      }
+    }
+  }
+</style>

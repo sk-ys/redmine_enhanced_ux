@@ -1,0 +1,2306 @@
+<!-- 
+// Path pattern:       /issues/[0-9]+$
+// Insertion position: Head of all pages
+// Type:               HTML
+// Comment:            Custom issue
+  -->
+<script>
+  var ajaxUpdateIssueList;
+
+  window.addEventListener("DOMContentLoaded", function () {
+    // ----- settings start -----
+    const dialogBaseConfig = {
+      minWidth: 500,
+      minHeight: 200,
+    };
+    const commentDialogConfig = {
+      width: 750,
+      height: 520,
+    };
+    const openDescriptionEditFieldAutomatically = true;
+    // ----- settings end -----
+
+    // i18n
+    const resourcesAll = {
+      en: {
+        sideBySideMode: "Side-by-side mode",
+        labelView: "View",
+        labelEdit: "Edit",
+        labelAddQuickComment: "Add quick comment",
+        labelCancel: "Cancel",
+        labelFixed: "Fixed",
+        labelUnfixed: "Unfixed",
+        labelAddChildIssue: "Add child issue",
+        labelPopOut: "Pop-out",
+        labelRestore: "Restore",
+        labelMaximize: "Maximize",
+        labelClose: "Close",
+        messageSubmitAll:
+          "⚠️Sends all changes in edit fields, quick notes fields, " +
+          "and attachments, and reloads the page.",
+        labelSubmitAll: "Submit all",
+        labelSubmitQuickCommentWithAttachments:
+          "Submit quick comment with attachments",
+        titleSubmitComment: "Note: Attachments are sent at the same time",
+        confirmResetWidth: "Do you want to reset the width?",
+        helpSideBySideMode:
+          "Display the history column to the right of the issue description " +
+          "column.",
+        labelQuickNotes: "Quick notes",
+        closeQuickNotes: "Close Quick notes",
+        labelSwitchQuickNotesPosition: "Switch Quick notes position",
+        messageFailedToSend: "Failed to send",
+        messageDisplayCommentFieldHere: "Display the comment field here",
+        messageQuickNotesWillBeClosed: "⚠️The quick notes will be closed",
+      },
+      ja: {
+        sideBySideMode: "左右に並べて表示",
+        labelView: "表示",
+        labelEdit: "編集",
+        labelAddQuickComment: "クイックコメントの追加",
+        labelCancel: "キャンセル",
+        labelFixed: "固定",
+        labelUnfixed: "固定解除",
+        labelAddChildIssue: "子チケットの追加",
+        labelPopOut: "ポップアウト",
+        labelMaximize: "最大化",
+        labelClose: "閉じる",
+        labelRestore: "元の場所に戻す",
+        messageSubmitAll:
+          "⚠️編集欄、クイックコメント欄、添付ファイルの変更内容の全てを送信し、" +
+          "ページを再読み込みします。",
+        labelSubmitAll: "全てを送信",
+        labelSubmitQuickCommentWithAttachments:
+          "クイックコメントと添付ファイルを送信",
+        confirmResetWidth: "幅をリセットしますか？",
+        helpSideBySideMode: "履歴欄をチケット説明欄の右隣に表示します。",
+        labelQuickNotes: "クイックコメント",
+        closeQuickNotes: "クイックコメントを閉じる",
+        labelSwitchQuickNotesPosition: "クイックコメントの位置を切り替え",
+        messageFailedToSend: "送信に失敗しました",
+        messageDisplayCommentFieldHere: "コメント欄をここに表示する",
+        messageQuickNotesWillBeClosed: "⚠️クイックコメント欄は閉じられます",
+      },
+    };
+    const resources = {
+      ...resourcesAll["en"],
+      ...(resourcesAll[document.documentElement.lang] || {}),
+    };
+
+    const isMac = navigator.platform.indexOf("Mac") !== -1;
+    const issuePathname = location.pathname;
+    const issueUrl = location.origin + location.pathname;
+    const issueEditUrl = issueUrl + "/edit";
+    const issueId = Number(location.pathname.match(/([0-9]+)\/{0,1}$/)[1]);
+    const viewOnly = $("#update").length === 0;
+    let hasHistoryData = $("#history>p.nodata").length === 0;
+    const issueNotesTextareaRowsDefault = $("#issue_notes").attr("rows");
+    const addNotesLegendDefault = $("#add_notes>legend:first").text();
+    const $submitButton = $('#issue-form input[type="submit"]')
+      .on("click", resetForm)
+      .on("mouseenter", () => {
+        if ($("#quick_notes2 #add_notes").length > 0) {
+          $submitButton.attr("title", resources.messageSubmitAll);
+        }
+      })
+      .tooltip({
+        position: { my: "right center", at: "left center" },
+        close: (e, ui) => {
+          $submitButton.attr("title", "");
+        },
+      });
+    const enableRedmineRT = $("#quick_notes").length > 0;
+    let quickNotes2 = null;
+
+    const sideBySideProperty = {
+      get enabled() {
+        return localStorage.getItem("side-by-side-enabled") === "true";
+      },
+      set enabled(value) {
+        localStorage.setItem("side-by-side-enabled", value);
+      },
+      get issueContainerWidth() {
+        return localStorage.getItem("side-by-side-issue-container-width");
+      },
+      set issueContainerWidth(value) {
+        localStorage.setItem("side-by-side-issue-container-width", value);
+      },
+    };
+
+    const $history = $("#history");
+
+    const $container = $("<div>").attr("id", "container");
+    const $issueContainer = $("<div>")
+      .attr("id", "issue-container")
+      .resizable({
+        handles: "e",
+        create: function () {
+          $(this)
+            .children(".ui-resizable-handle")
+            .on("dblclick", () => {
+              if (confirm(resources.confirmResetWidth)) {
+                $issueContainer.css("width", "");
+                sideBySideProperty.issueContainerWidth = null;
+              }
+            });
+        },
+      });
+
+    const $issueTabs = $("<div>").addClass("tabs").append("<ul>");
+
+    const $issueTabView = $("<li>").append(
+      $("<a>")
+        .html(resources.labelView)
+        .attr({
+          id: "tab-issue-view",
+          href: issueUrl,
+        })
+        .on("click", (e) => {
+          getRemoteTab("view", issueUrl, issueUrl, true);
+          e.preventDefault();
+          e.stopPropagation();
+        })
+        .addClass("selected")
+    );
+
+    const $issueTabEdit = viewOnly
+      ? null
+      : $("<li>").append(
+          $("<a>")
+            .text(resources.labelEdit)
+            .attr({
+              id: "tab-issue-edit",
+              href: issueEditUrl,
+            })
+            .on("click", (e) => {
+              getRemoteTab(
+                "edit",
+                issueUrl + "/edit",
+                issueUrl + "?tab=edit",
+                true
+              );
+              e.preventDefault();
+              e.stopPropagation();
+
+              resetForm();
+            })
+        );
+
+    function setupTabs() {
+      // [Original structure]
+      // #content
+      // ├─ div.issue.details
+      // ├─ #update
+      // └─ #history
+      //
+      // [Structure after tabbed]
+      // #content
+      // └─ #container
+      //       ├─ #issue-container
+      //       │    ├─ .tabs
+      //       │    │    └─ ul
+      //       │    │         ├─ #tab-issue-view
+      //       │    │         └─ #tab-issue-edit
+      //       │    ├─ div.issue.details
+      //       │    └─ #update
+      //       └─ #history-container
+      //             ├─ #history
+      //             ├─ #quick_notes2
+      //             └─ #quick_notes(by Redmine RT, always hidden)
+
+      $container.insertBefore($("div.issue.details"));
+
+      $issueTabs.children("ul").append($issueTabView).append($issueTabEdit);
+      $issueContainer
+        .append($issueTabs)
+        .append($("div.issue.details"))
+        .append($("#update"));
+
+      const $historyContainer = $("<div>")
+        .attr("id", "history-container")
+        .append($history);
+
+      $container.append($issueContainer).append($historyContainer);
+    }
+
+    function detectHistoryDirection() {
+      if (enableRedmineRT) {
+        return $history.data("comment_sorting") === "desc" ? "desc" : "asc";
+      }
+
+      const journals = $("#tab-content-history > .journal");
+      if (journals.length > 1) {
+        return journals
+          .map((i, e) => parseInt(e.id.split("-")[1]))
+          .toArray()
+          .every((v, i, arr) => i === 0 || arr[i - 1] <= v)
+          ? "asc"
+          : "desc";
+      }
+
+      // Default direction
+      return "asc";
+    }
+
+    class QuickNotes2 {
+      #$elem = null;
+      constructor() {
+        if ($("form.edit_issue").length > 0) {
+          this.position =
+            detectHistoryDirection() === "desc" ? "top" : "bottom";
+          this.#init();
+        }
+      }
+      initialized() {
+        return this.#$elem !== null;
+      }
+      resetHeight() {
+        this.#$elem.css("height", "");
+      }
+      switchPosition(position = null) {
+        if (
+          (position && position === "top") ||
+          (!position && this.position === "bottom")
+        ) {
+          this.#$elem.insertBefore($history).resizable({
+            handles: "s",
+            alsoResize: "#quick_notes2 .wiki-preview",
+          });
+          this.position = "top";
+        } else {
+          this.#$elem.insertAfter($history);
+          this.#$elem.resizable({
+            handles: "n",
+            alsoResize: "#quick_notes2 .wiki-preview",
+          });
+          this.position = "bottom";
+        }
+      }
+      show() {
+        if (this.initialized()) {
+          this.#$elem
+            .children("div.box")
+            .prepend($("#add_attachments"))
+            .prepend($("#add_notes"));
+        }
+      }
+      #init() {
+        this.#$elem = $("<form>")
+          .attr("id", "quick_notes2")
+          .on({
+            dragover: dragOverHandler,
+            dragleave: dragOutHandler,
+            drop: handleFileDropEvent,
+            paste: copyImageFromClipboard,
+          })
+          .append($("<div>").addClass("box filedroplistner"));
+
+        this.switchPosition(this.position);
+
+        const $quickNotes2Buttons = $("<div>")
+          .attr("id", "quick_notes2-buttons")
+          .appendTo(this.#$elem);
+
+        const $buttonOpenQuickNotes = $("<button>")
+          .attr("type", "button")
+          .attr("id", "quick_notes2-open-button")
+          .text(resources.labelQuickNotes)
+          .appendTo($quickNotes2Buttons)
+          .on("click", enableInlineComment);
+
+        const $buttonCloseQuickNotes = $("<button>")
+          .attr("type", "button")
+          .attr("id", "quick_notes2-close-button")
+          .text(resources.closeQuickNotes)
+          .appendTo($quickNotes2Buttons)
+          .on("click", () => {
+            resetForm();
+            $("#issue_notes")[0].focus();
+          });
+
+        const $buttonSubmitComment = $("<button>")
+          .attr("type", "button")
+          .attr("id", "quick_notes2-submit-button")
+          .text(resources.labelSubmitQuickCommentWithAttachments)
+          .on("click", () => {
+            asyncAjaxSubmitCommentWithAttachments().then(resetForm);
+          })
+          .appendTo($quickNotes2Buttons);
+
+        const $issueFormButtons = $("<div>")
+          .attr("id", "issue-form-buttons")
+          .appendTo($("#issue-form>.box:first"));
+
+        const $buttonRestoreCommentPane = $("<button>")
+          .attr("type", "button")
+          .attr("id", "restore-comment-pane-button")
+          .text(resources.messageDisplayCommentFieldHere)
+          .attr("title", resources.messageQuickNotesWillBeClosed)
+          .appendTo($issueFormButtons)
+          .on("click", () => {
+            resetForm();
+            $("#issue_notes")[0].focus();
+          });
+
+        const $buttonSwitchPosition = $("<span>")
+          .attr({
+            id: "switch-quicknotes2-position-button",
+            title: resources.labelSwitchQuickNotesPosition,
+          })
+          .addClass("ui-icon ui-icon-transferthick-e-w")
+          .on("click", (e) => {
+            e.preventDefault();
+            this.switchPosition();
+          })
+          .appendTo(this.#$elem);
+      }
+    }
+
+    // Generate a toggle switch to enable/disable
+    const $toggleSwitch = $('<input type="checkbox">')
+      .attr({
+        type: "checkbox",
+        id: "enable_side_by_side_mode",
+      })
+      .on("click", function () {
+        $toggleSwitch.check($(this).is(":checked"));
+      });
+
+    const $switchBox = $("<div>")
+      .append($toggleSwitch)
+      .append(
+        $("<label>")
+          .attr({ for: "enable_side_by_side_mode" })
+          .html(resources.sideBySideMode)
+      )
+      .attr({ title: resources.helpSideBySideMode });
+
+    $toggleSwitch.check = function (state = true) {
+      if (state === true) {
+        $("#wrapper").addClass("side-by-side");
+        $issueContainer.css("width", sideBySideProperty.issueContainerWidth);
+      } else {
+        $("#wrapper").removeClass("side-by-side");
+        $issueContainer.css("width", "");
+      }
+      $(this).prop("checked", state);
+      sideBySideProperty.enabled = state;
+      updateSubmitButtonPosition();
+    };
+
+    function enableDialogComment(state, fromInline = false) {
+      if ($("#update").length === 0) return;
+
+      if (state) {
+        resetForm();
+        $commentDialog.dialog("open");
+        $commentDialog.fromInline = fromInline;
+      } else {
+        $commentDialog.dialog("close");
+      }
+    }
+
+    function enableInlineComment() {
+      if (!quickNotes2.initialized()) return;
+
+      enableDialogComment(false);
+      quickNotes2.show();
+
+      // Change textarea rows
+      $("#issue_notes").attr("rows", 4);
+
+      // Change legend
+      $("#add_notes>legend:first").text(resources.labelQuickNotes);
+
+      // Add notes pop-out button
+      addPopOutButton();
+
+      // Focus to comment field
+      $("#issue_notes")[0].focus();
+    }
+
+    function resetForm() {
+      // Restore Edit form
+      if ($("#issue-container #update").length === 0) {
+        $("#update").appendTo("#issue-container");
+      }
+
+      // Restore notes
+      $("#add_notes").appendTo($("#issue-form>.box.filedroplistner:last"));
+
+      // Restore add_attachments
+      $("#add_attachments").appendTo(
+        $("#issue-form>.box.filedroplistner:last")
+      );
+
+      // Restore textarea rows
+      $("#issue_notes").attr("rows", issueNotesTextareaRowsDefault);
+
+      // Restore legend
+      $("#add_notes>legend:first").text(addNotesLegendDefault);
+
+      // Reset height for history and quick notes2
+      $("#history").css("height", "");
+      $("#quick_notes2").css("height", "");
+
+      // Add notes pop-out button
+      addPopOutButton();
+
+      // Focus to comment field
+      // const scrollTop = $(".edit_issue > .box.filedroplistner").scrollTop();
+      // $("#issue_notes")[0].focus();
+      // setTimeout(() => {
+      //   $(".edit_issue > .box.filedroplistner").scrollTop(scrollTop);
+      // });
+    }
+
+    // Issue tab selected event
+    function selectIssueTab(e, isCommentOnlyMode = false) {
+      if (viewOnly) {
+        $issueTabView.children("a").addClass("selected");
+        return;
+      }
+
+      $issueTabs.find("a").removeClass("selected");
+
+      let isEditMode = false;
+      if (e === undefined) {
+        isEditMode = /tab=edit/.test(location.search);
+      } else if ($(e.target).length > 0) {
+        isEditMode =
+          $(e.target).attr("id") === "tab-issue-edit" ||
+          new RegExp(`/issues/${issueId}/edit`).test($(e.target).attr("href"));
+      }
+
+      (isEditMode ? $issueTabEdit : $issueTabView)
+        .children("a")
+        .addClass("selected");
+
+      if (isEditMode) {
+        $("div.issue.details").hide();
+        $("#update").show();
+        // $("#issue_notes")[0].focus();
+      } else {
+        $("#update").hide();
+        $("div.issue.details").show();
+      }
+
+      // Redraw dialog if already open
+      if ($commentDialog.dialog("isOpen")) {
+        $commentDialog.dialog("close");
+        resetForm();
+        $commentDialog.dialog("open");
+
+        // TODO: Height cannot be adjusted in just one run. Unexplained.
+        $commentDialog.dialog("close");
+        resetForm();
+        $commentDialog.dialog("open");
+      }
+
+      updateSubmitButtonPosition();
+      if (!isCommentOnlyMode && $("#update").hasClass("comment-only")) return;
+      if (isCommentOnlyMode) $("#issue_notes")[0].focus();
+    }
+
+    function resetHeightOfAttachmentTable() {
+      const $attachmentsTable = $(".attachments > table");
+      if ($attachmentsTable.length === 0) return;
+
+      $attachmentsTable.css({ height: "", maxHeight: "" });
+    }
+
+    $("#content")
+      .on("dblclick", ".attachments > table", resetHeightOfAttachmentTable)
+      .on("mouseover", ".attachments > table", () => {
+        const $attachmentsTable = $(".attachments > table");
+        if ($attachmentsTable.css("max-height") !== "none") {
+          $attachmentsTable.css({
+            height: Math.min($attachmentsTable.outerHeight(), 100),
+            maxHeight: "none",
+          });
+        }
+      });
+
+    function addButtonToDialogTitlebar($dialog) {
+      const $dialogBase = $dialog.parent();
+      const $titleBar = $dialogBase.find(".ui-dialog-titlebar");
+
+      const $btnToggleFixed = $("<button>")
+        .attr("type", "button")
+        .addClass("comment-dialog-titlebar-button")
+        .addClass("comment-dialog-toggle-fixed-position")
+        .button({
+          // Default position is "fixed"
+          icon: "ui-icon-pin-w",
+          label: resources.labelUnfixed,
+          showLabel: false,
+        })
+        .click(function (e) {
+          e.preventDefault();
+          const currentContent = $commentDialog.dialog("option", "appendTo");
+          const baseContent = "#content";
+          const contentPosition = {
+            left:
+              $(currentContent).offset().left -
+              $(baseContent).offset().left -
+              ($(currentContent).position().left -
+                $(baseContent).position().left),
+            top:
+              $(currentContent).offset().top -
+              $(baseContent).offset().top -
+              ($(currentContent).position().top -
+                $(baseContent).position().top),
+          };
+
+          if ($dialogBase.css("position") !== "fixed") {
+            // Set position to fixed
+            $dialogBase.css({
+              position: "fixed",
+              left:
+                $dialogBase.position().left -
+                $(document).scrollLeft() +
+                contentPosition.left,
+              top:
+                $dialogBase.position().top -
+                $(document).scrollTop() +
+                contentPosition.top,
+            });
+            $(this)
+              .button("option", {
+                icon: "ui-icon-pin-w",
+                label: resources.labelUnfixed,
+              })
+              .attr("title", resources.labelUnfixed);
+          } else {
+            // Set position to absolute
+            $dialogBase.css({
+              position: "absolute",
+              left:
+                $dialogBase.position().left +
+                $(document).scrollLeft() -
+                contentPosition.left,
+              top:
+                $dialogBase.position().top +
+                $(document).scrollTop() -
+                contentPosition.top,
+            });
+            $(this)
+              .button("option", {
+                icon: "ui-icon-pin-s",
+                label: resources.labelFixed,
+              })
+              .attr("title", resources.labelFixed);
+          }
+        });
+
+      const $btnRestore = $("<button>")
+        .addClass("ui-button-issue-view-customize-restore")
+        .button({
+          icon: "ui-icon-newwin",
+          label: resources.labelRestore,
+          showLabel: false,
+        })
+        .click((e) => {
+          e.preventDefault();
+          $dialogBase.removeClass("issue-view-customize-maximize");
+
+          // Restore size
+          $dialogBase.resizable("enable");
+          $("html").css({ overflow: "" });
+        });
+
+      const $btnMaximize = $("<button>")
+        .addClass("ui-button-issue-view-customize-maximum")
+        .button({
+          icon: "ui-icon-stop",
+          label: resources.labelMaximize,
+          showLabel: false,
+        })
+        .click((e) => {
+          e.preventDefault();
+          $dialogBase.addClass("issue-view-customize-maximize");
+          $("html").css({ overflow: "hidden" });
+          $dialogBase.resizable("disable");
+        });
+
+      const $btnGroup = $("<div>")
+        .addClass("ui-dialog-titlebar-button-group")
+        .append($btnToggleFixed)
+        .append($btnRestore)
+        .append($btnMaximize)
+        .appendTo($titleBar);
+    }
+
+    async function asyncAjaxSubmitCommentWithAttachments() {
+      const url = $("#issue-form").attr("action");
+
+      // Serialize basic informations
+      const formData =
+        $("#issue-form")
+          .find("input, textarea")
+          .filter((_, e) =>
+            ["utf8", "_method", "authenticity_token"].includes(
+              $(e).attr("name")
+            )
+          )
+          .serialize() +
+        "&" +
+        $("#issue_notes").serialize() +
+        "&" +
+        $("#new-attachments input").serialize();
+
+      // Post data
+      await new Promise((resolve, reject) => {
+        $.ajax({
+          url: url,
+          type: "post",
+          data: formData,
+          dataType: "html",
+        })
+          .done((data) => {
+            // Clear form
+            $("#issue_notes").val("").removeData("changed");
+            $("#new-attachments .attachments_fields").empty();
+
+            updateFormCore(data, !enableRedmineRT);
+
+            // Change tab to edit
+            $("#add_notes .tab-edit")[0].click();
+
+            if (!enableRedmineRT) {
+              resetHeightOfAttachmentTable(data);
+            }
+            resolve(data);
+          })
+          .fail((res) => {
+            alert(resources.messageFailedToSend);
+            reject(res);
+          });
+      });
+    }
+
+    const documentScrollPosition = { left: undefined, top: undefined };
+    const $commentDialog = $("<div>")
+      .attr("id", "comment-dialog-content")
+      .dialog({
+        ...dialogBaseConfig,
+        ...commentDialogConfig,
+        ...{
+          width: 750,
+          height: 520,
+          title: resources.labelAddQuickComment,
+          autoOpen: false,
+          position: { my: "left+100 top+200", at: "left top", of: window },
+          buttons: [
+            {
+              text: resources.labelSubmitQuickCommentWithAttachments,
+              click: asyncAjaxSubmitCommentWithAttachments,
+            },
+            {
+              text: resources.labelSubmitAll,
+              click: () => {
+                $("#issue-form").submit();
+              },
+              title: resources.messageSubmitAll,
+            },
+          ],
+          create: function () {
+            $(this).parent().css({ position: "fixed" });
+            $(this)
+              .parent()
+              .attr("id", "comment-dialog")
+              .addClass("issue-view-customize");
+            addButtonToDialogTitlebar($(this));
+          },
+          open: function () {
+            if ($issueContainer.find("#update").length === 0) {
+              console.log("Edit form is not found.");
+              return;
+            }
+
+            // Reset history and quickNotes2 height
+            $history.css("height", "");
+            quickNotes2.resetHeight();
+
+            const $dialogCloseButton = $(this)
+              .parent()
+              .find(".ui-dialog-titlebar-close");
+
+            // Open comment dialog
+            if ($("#tab-issue-view").hasClass("selected")) {
+              $(this).dialog("option", "appendTo", "#content");
+              $("#update").appendTo($(this)).show();
+
+              // Setup dialog close button
+              $dialogCloseButton
+                .button({ icon: "ui-icon-closethick" })
+                .attr("title", resources.labelClose);
+            } else {
+              $(this).dialog(
+                "option",
+                "appendTo",
+                "#issue-form > .box.filedroplistner"
+              );
+              $("<div>")
+                .addClass("box")
+                .addClass("filedroplistner")
+                .on({
+                  dragover: dragOverHandler,
+                  dragleave: dragOutHandler,
+                  drop: handleFileDropEvent,
+                })
+                .append($("#add_notes"))
+                .append($("#add_attachments"))
+                .appendTo($(this));
+
+              // Setup dialog close button
+              $dialogCloseButton
+                .button({ icon: "ui-icon-arrowreturnthick-1-s" })
+                .attr("title", resources.labelRestore);
+            }
+
+            // Reset position
+            $(this).dialog(
+              "option",
+              "position",
+              $(this).dialog("option", "position")
+            );
+
+            updateSubmitButtonPosition();
+
+            $("#issue_notes").focus();
+          },
+          close: function () {
+            if ($("#tab-issue-view").hasClass("selected")) {
+              $("#update").hide();
+            }
+
+            resetForm();
+
+            // Clear dialog contents
+            $("#comment-dialog-content").empty();
+
+            // Scroll to backed up scroll position
+            $(document).scrollLeft(documentScrollPosition.left);
+            $(document).scrollTop(documentScrollPosition.top);
+
+            updateSubmitButtonPosition();
+
+            if ($commentDialog.fromInline) {
+              enableInlineComment();
+            }
+          },
+          beforeClose: function () {
+            // Back up the document scroll position
+            documentScrollPosition.left = $(document).scrollLeft();
+            documentScrollPosition.top = $(document).scrollTop();
+          },
+        },
+      });
+
+    function addPopOutButton() {
+      if (viewOnly) return;
+      if ($("#add_notes").length === 0) return;
+      if ($("#comment-dialog-pop-out-button").length > 0) return;
+
+      const $button = $("<span >")
+        .attr("id", "comment-dialog-pop-out-button")
+        .attr("title", resources.labelPopOut)
+        .addClass("ui-icon")
+        .addClass("ui-icon-arrowreturnthick-1-n")
+        .on("click", (e) => {
+          e.preventDefault();
+          const fromInline = $(e.target).closest("#quick_notes2").length > 0;
+          resetForm();
+          enableDialogComment(true, fromInline);
+        })
+        .prependTo($("#add_notes>legend"));
+    }
+
+    // Correcting the placement of attributes in the edit view
+    function correctAttributesPositionInEditView() {
+      if (viewOnly) return;
+
+      // Move hidden attributes to top
+      $("#all_attributes")
+        .prepend(
+          $("#issue_parent_issue_id").parent().addClass("header_attribute")
+        )
+        .prepend(
+          $("#issue_tracker_id")
+            .parent()
+            .addClass("header_attribute")
+            .addClass("header_attribute_float-left")
+            .css({ clear: "none" })
+        )
+        .prepend(
+          $("#issue_project_id")
+            .parent()
+            .addClass("header_attribute")
+            .addClass("header_attribute_float-left")
+        );
+
+      $("#attributes").css("clear: both");
+
+      // Move subject and is_private checkbox
+      $("#all_attributes")
+        .prepend(
+          $("#issue_subject")
+            .parent()
+            .addClass("header_attribute")
+            .addClass("header_attribute_float-left")
+        )
+        .prepend(
+          $("#issue_is_private")
+            .parent()
+            .css({ clear: "both", paddingLeft: 0 })
+            .addClass("header_attribute")
+        );
+
+      // Move estimated_time
+      $("#issue_estimated_hours")
+        .parent()
+        .parent()
+        .append($("#issue_estimated_hours").parent());
+
+      // Move description attribute to after the #attributes
+      const $descriptionAttribute = $("label[for=issue_description]").parent();
+      $("div#attributes").after($descriptionAttribute);
+
+      // Add <hr>
+      $("#attributes").before($("<hr>")).after($("<hr>"));
+
+      // Show description edit field
+      if (openDescriptionEditFieldAutomatically) {
+        setTimeout(() => {
+          $("#issue_description_and_toolbar").show();
+          const descriptionDrawLink = $("label[for=issue_description]")
+            .parent()
+            .find("a")
+            .eq(0)
+            .hide();
+        });
+      }
+
+      // Fix placement of "assign to me" button
+      $("#issue_assigned_to_id").after($("<br>"));
+    }
+
+    function showTimeEntryDialog(e) {
+      e.preventDefault();
+
+      function updateTimeEntry() {
+        if ($("#tab-content-time_entries").length > 0) {
+          $("#tab-content-time_entries").empty();
+          $("#tab-time_entries").click();
+          $.ajax({ url: issueUrl, dataType: "html" }).done((data) => {
+            const query = "div.issue div.attributes .spent-time.attribute";
+            $(query).empty().append($(query, data).children());
+          });
+        } else {
+          location.reload();
+        }
+      }
+
+      function isActionCompleted($contents) {
+        if (RegExp(issuePathname + "$").test($contents[0].location.pathname)) {
+          // Current issue page
+          return 2;
+        } else if (
+          /\/time_entries\/.*[new|edit]$/.test($contents[0].location.pathname)
+        ) {
+          if ($contents.find("#flash_notice.notice").length > 0) {
+            // Continue editing
+            return 1;
+          } else {
+            return 0;
+          }
+        }
+
+        // Another page
+        return -1;
+      }
+
+      const url = $(this).attr("href");
+      const $iframe = $("<iframe>")
+        .hide()
+        .attr("src", url)
+        .on("load", function () {
+          const $dialog = $(this)
+            .closest(".ui-dialog")
+            .find(".ui-dialog-content");
+          const $contents = $(this).contents();
+          switch (isActionCompleted($contents)) {
+            case -1:
+              // Go to another issue page
+              location.href = $contents[0].documentURI;
+              return;
+            case 1:
+              if ($("#tab-content-time_entries").length > 0) {
+                updateTimeEntry();
+              } else {
+                // Update close event (reload page)
+                $dialog.dialog("option", "close", updateTimeEntry);
+              }
+              break;
+            case 2:
+              updateTimeEntry();
+              $iframe.parent().dialog("close");
+              return;
+          }
+
+          // Set up time-entries view
+          $contents.find("#wrapper>div:not(#main)").remove();
+          $contents.find("#main").css({ padding: 0 });
+          $contents.find("#content>h2").remove();
+          $contents
+            .find("#time_entry_issue_id, #time_entry_project_id")
+            .prop({ disabled: true });
+          $(this)[0].contentWindow.onbeforeunload = function () {
+            $iframe.hide();
+          };
+          const $cancelButton = $contents
+            .find(
+              "#content>form.new_time_entry>input[type=submit]+a, " +
+                "#content>form.edit_time_entry>input[type=submit]+a"
+            )
+            .hide()
+            .on("click", (e) => {
+              $(this).parent().dialog("close");
+              e.preventDefault();
+              e.stopPropagation();
+            });
+
+          // Show content
+          $(this).show();
+
+          // Create submit button in the dialog
+          const submitButtons = $contents
+            .find(
+              "#content>form.new_time_entry>input[type=submit], " +
+                "#content>form.edit_time_entry>input[type=submit]"
+            )
+            .hide()
+            .on("submit", (e) => {
+              $contents
+                .find("#time_entry_issue_id, #time_entry_project_id")
+                .prop({ disabled: false });
+            })
+            .toArray()
+            .map((element) => {
+              return {
+                text: $(element).val(),
+                click: () => {
+                  $(element).click();
+                },
+              };
+            });
+          if (submitButtons.length > 0) {
+            const cancelButton = $dialog.dialog("option", "buttons").pop();
+            $dialog.dialog(
+              "option",
+              "buttons",
+              submitButtons.concat(cancelButton)
+            );
+          }
+        });
+      $("<div>")
+        .append($iframe)
+        .dialog({
+          ...dialogBaseConfig,
+          ...{
+            width: 500,
+            height: 640,
+            modal: true,
+            title: $(this).text(),
+            buttons: [
+              {
+                text: resources.labelCancel,
+                click: function () {
+                  $(this).dialog("close");
+                },
+              },
+            ],
+            close: function () {
+              $(this).dialog("destroy");
+            },
+            create: function () {
+              $(this)
+                .parent()
+                .attr("id", "time-entries-dialog")
+                .addClass("issue-view-customize");
+            },
+          },
+        });
+    }
+
+    function showEditAttachmentsDialog(e) {
+      e.preventDefault();
+      const url = $(this).attr("href");
+      const $iframe = $("<iframe>")
+        .hide()
+        .attr("src", url)
+        .on("load", function () {
+          const $contents = $(this).contents();
+          if (
+            /\/issues\/[0-9]+(|\/|\?.+)$/.test($contents[0].location.pathname)
+          ) {
+            // Action completed
+            $iframe.parent().dialog("close");
+
+            // Update attachments
+            $.ajax({ url: issueUrl, dataType: "html" }).done((data) => {
+              $("#content .attachments>table").remove();
+              $("#content .attachments>.contextual").after(
+                $("#content .attachments>table", data).css({ maxHeight: 100 })
+              );
+              resetHeightOfAttachmentTable();
+            });
+            return;
+          }
+
+          // Set up edit-attachments view
+          $contents.find("#wrapper>div:not(#main)").remove();
+          $contents.find("#main").css({ padding: 0 });
+          $contents.find("#content>h2").remove();
+          $contents.find('#content input[type="submit"]').parent().hide();
+          $(this)[0].contentWindow.onbeforeunload = () => {
+            $iframe.hide();
+          };
+          const $attachmentsSubmitButton = $contents.find(
+            "form div.box.attachments+p input[type=submit]"
+          );
+          const $cancelButton = $contents
+            .find("form div.box.attachments+p input[type=submit]+a")
+            .on("click", (e) => {
+              $(this).parent().dialog("close");
+              e.preventDefault();
+              e.stopPropagation();
+            });
+
+          // Additional style
+          $contents.find("head").append(
+            $("<style>").text(`
+                        #content > form > .box.attachments {
+                          overflow-x: auto;
+            
+                          &>table {
+                            width: max(700px, 100%);
+            
+                            tr {
+                              display: flex;
+            
+                              td:has(input[id$="description"]) {
+                                flex: 1 1 auto;
+            
+                                input { width: 100%; }
+                              }
+                            }
+                          }
+                        }
+                        `)
+          );
+
+          // Show content
+          $(this).show();
+
+          // Create submit button in the dialog
+
+          const $dialog = $(this)
+            .closest(".ui-dialog")
+            .find(".ui-dialog-content");
+          if ($attachmentsSubmitButton.length > 0) {
+            const $dialogButtons = $dialog.dialog("option", "buttons");
+            $dialog.dialog(
+              "option",
+              "buttons",
+              [
+                {
+                  text: $attachmentsSubmitButton.val(),
+                  click: () => {
+                    $attachmentsSubmitButton.click();
+                  },
+                },
+              ].concat($dialogButtons)
+            );
+          }
+        });
+      $("<div>")
+        .append($iframe)
+        .dialog({
+          ...dialogBaseConfig,
+          ...{
+            width: 980,
+            height: 540,
+            modal: true,
+            title: $(this).text(),
+            buttons: [
+              {
+                text: resources.labelCancel,
+                click: function () {
+                  $(this).dialog("close");
+                },
+              },
+            ],
+            close: function () {
+              $(this).dialog("destroy");
+            },
+            create: function () {
+              $(this)
+                .parent()
+                .attr("id", "edit-attachments-dialog")
+                .addClass("issue-view-customize");
+            },
+          },
+        });
+    }
+
+    function showAddChildIssueDialog(e) {
+      e.preventDefault();
+
+      function isActionCompleted($contents) {
+        if (RegExp(issuePathname + "$").test($contents[0].location.pathname)) {
+          // Is current issue page
+          return 2;
+        } else if (/issues\/new$/.test($contents[0].location.pathname)) {
+          if ($contents.find("#flash_notice.notice").length > 0) {
+            // Continue editing
+            return 1;
+          } else {
+            return 0;
+          }
+        }
+
+        // Is another page
+        return -1;
+      }
+
+      const url = $(this).attr("href");
+      const $iframe = $("<iframe>")
+        .hide()
+        .attr("src", url)
+        .on("load", function () {
+          const $contents = $(this).contents();
+          switch (isActionCompleted($contents)) {
+            case -1:
+              // Go to another issue page
+              location.href = $contents[0].documentURI;
+              return;
+            case 1:
+              ajaxUpdateIssueList();
+              break;
+            case 2:
+              ajaxUpdateIssueList();
+              $iframe.parent().dialog("close");
+              return;
+          }
+
+          // Set up a new child issue page
+          $contents.find("#wrapper>div:not(#main)").remove();
+          $contents.find("#main").css({ padding: 0 });
+          $contents.find("#content>h2:first").remove();
+          $contents.find("#parent_issue>input").prop({ readonly: true });
+          $contents.find('#issue-form>input[type="submit"]').hide();
+          $(this)[0].contentWindow.onbeforeunload = () => {
+            $iframe.hide();
+          };
+          const $cancelButton = $contents
+            .find("form input[type=submit]+a")
+            .on("click", (e) => {
+              $(this).parent().dialog("close");
+              e.preventDefault();
+              e.stopPropagation();
+            });
+
+          // Show content
+          $(this).show();
+
+          // Create submit button in the dialog
+          const $dialog = $(this)
+            .closest(".ui-dialog")
+            .find(".ui-dialog-content");
+          const submitButtons = $contents
+            .find('#issue-form>input[type="submit"]')
+            .toArray()
+            .map((element) => {
+              return {
+                text: $(element).val(),
+                click: () => {
+                  $(element).click();
+                },
+              };
+            });
+          if (submitButtons.length > 0) {
+            const cancelButton = $dialog.dialog("option", "buttons").pop();
+            $dialog.dialog(
+              "option",
+              "buttons",
+              submitButtons.concat(cancelButton)
+            );
+          }
+        });
+
+      $("<div>")
+        .append($iframe)
+        .dialog({
+          ...dialogBaseConfig,
+          ...{
+            width: 980,
+            height: 750,
+            modal: true,
+            title: resources.labelAddChildIssue,
+            buttons: [
+              {
+                text: resources.labelCancel,
+                click: function () {
+                  $(this).dialog("close");
+                },
+              },
+            ],
+            close: function () {
+              $(this).dialog("destroy");
+            },
+            create: function () {
+              $(this)
+                .parent()
+                .attr("id", "add-child-issue-dialog")
+                .addClass("issue-view-customize");
+            },
+          },
+        });
+    }
+
+    function updateSubmitButtonPosition() {
+      const $box = $("#issue-form>div.box").eq(0);
+      if (!$submitButton.is(":visible")) return;
+      const isOverFlow =
+        sideBySideProperty.enabled && $switchBox.is(":visible")
+          ? $box[0].scrollHeight > $box.outerHeight() + $box.scrollTop()
+          : $box.outerHeight() + $box.offset().top >
+            $(window).scrollTop() + $(window).height() - 40;
+      if (isOverFlow) {
+        $submitButton.addClass("fixed-position");
+      } else {
+        $submitButton.removeClass("fixed-position");
+      }
+    }
+
+    function updateHistoryAndAttachments(data) {
+      // Update history if history is empty
+      if (!hasHistoryData) {
+        $("#history p.nodata").replaceWith($("#history", data).children());
+        hasHistoryData = true;
+        initializeSideBySideMode();
+      } else {
+        // Update tab if tab is not exist
+        if ("#tab-notes".length === 0) {
+          $("#history > .tabs").replaceWith($("#history > .tabs", data));
+        }
+
+        // Update tab content
+        $("#tab-content-history")
+          .empty()
+          .html($("#tab-content-history", data).children());
+        $("#history > .tabs a.selected")[0].click();
+      }
+
+      // Update issue
+      $("#content div.issue").replaceWith($("#content div.issue", data));
+
+      // Update attachments
+      $("#add_attachments").replaceWith($("#add_attachments", data));
+
+      // Update lock version
+      $("#issue_lock_version").replaceWith($("#issue_lock_version", data));
+    }
+
+    function initializeSideBySideMode() {
+      $switchBox
+        .attr("id", "side-by-side-switch-box")
+        .insertBefore($("#container"));
+
+      if (sideBySideProperty.enabled) {
+        $toggleSwitch.check();
+      }
+
+      // Add ResizeObserver to issue-container and save the width of
+      // issue-container
+      new ResizeObserver((mutations) => {
+        if (
+          $switchBox.is(":visible") &&
+          $("#wrapper").hasClass("side-by-side")
+        ) {
+          sideBySideProperty.issueContainerWidth =
+            mutations[0].target.clientWidth;
+        }
+      }).observe($issueContainer[0], { attributes: true });
+    }
+
+    function updateWikiPreview($jstBlock) {
+      var element = encodeURIComponent($jstBlock.find(".wiki-edit").val());
+      var attachments = $("#issue-form")
+        .find(".attachments_fields input")
+        .serialize();
+
+      return $.ajax({
+        url: $jstBlock.find(".tab-preview").data("url"),
+        type: "post",
+        data: "text=" + element + "&" + attachments,
+      }).done((data) => {
+        $jstBlock.find(".wiki-preview").html(data);
+        setupWikiTableSortableHeader();
+      });
+    }
+
+    function initialize() {
+      setupTabs();
+
+      quickNotes2 = new QuickNotes2();
+
+      // Enable checkbox and side-by-side mode if history exists
+      if (hasHistoryData) {
+        initializeSideBySideMode();
+      }
+
+      // Add or replace the Links for editing
+      if (!viewOnly) {
+        // Set select event to tabs of issue
+        $issueTabs.find("a").on("click", selectIssueTab);
+
+        // Replace edit link actions
+        $(`#content>.contextual>a[href$="/issues/${issueId}/edit"]`)
+          .removeAttr("onclick")
+          .on("click", (e) => {
+            if (e.ctrlKey) {
+              enableDialogComment(true);
+            } else {
+              selectIssueTab(e, false);
+              resetForm();
+              $("html, body").animate({ scrollTop: 0 }, "slow");
+            }
+            e.preventDefault();
+            e.stopPropagation();
+          })
+          .addClass("prevent-popup-anywhere");
+
+        // Replace attachments-edit link action
+        $("#issue-container")
+          .off(
+            "click.showEditAttachmentsDialog",
+            '.attachments .contextual a[href$="edit"]'
+          )
+          .on(
+            "click.showEditAttachmentsDialog",
+            '.attachments .contextual a[href$="edit"]',
+            showEditAttachmentsDialog
+          )
+          .find('.attachments .contextual a[href$="edit"]')
+          .addClass("prevent-popup-anywhere");
+
+        // Replace child-issue-add link action
+        $("#issue-container")
+          .off("click.showAddChildIssueDialog", "#issue_tree>.contextual>a")
+          .on(
+            "click.showAddChildIssueDialog",
+            "#issue_tree>.contextual>a",
+            showAddChildIssueDialog
+          )
+          .addClass("prevent-popup-anywhere");
+
+        // Replace cancel link action
+        $("form.edit_issue input[type=submit]+a").on("click", (e) => {
+          $issueTabView.click();
+          e.preventDefault();
+          e.stopPropagation();
+        });
+
+        if (quickNotes2.initialized()) {
+          // Replace edit-comment link in history
+          $("#history").on("click", ".journal-actions>a.icon-comment", () => {
+            if (!$("#update").is(":visible")) {
+              if (!$("#comment-dialog-content").dialog("isOpen")) {
+                enableInlineComment();
+              }
+            }
+          });
+
+          // Replace quoted link
+          $("#issue-container").on(
+            "click",
+            'div.description>div.contextual>a[href$="quoted"]',
+            () => {
+              if (
+                !$("#update").is(":visible") &&
+                !$("#comment-dialog-content").dialog("isOpen")
+              ) {
+                enableInlineComment();
+              }
+            }
+          );
+        }
+
+        // Replace updateIssueFrom function
+        const updateIssueFromOrg = updateIssueFrom;
+        updateIssueFrom = function (url, el) {
+          return updateIssueFromOrg(url, el).then(() => {
+            correctAttributesPositionInEditView();
+            addPopOutButton();
+          });
+        };
+
+        // Replace time_entries add link
+        $('#content .contextual a[href$="/time_entries/new"]')
+          .off("click.showTimeEntryDialog")
+          .on("click.showTimeEntryDialog", showTimeEntryDialog)
+          .addClass("prevent-popup-anywhere");
+
+        // Replace time_entries edit link in history
+        $("#tab-content-time_entries")
+          .off("click.showTimeEntryDialog", '.contextual a[href$="/edit"]')
+          .on(
+            "click.showTimeEntryDialog",
+            '.contextual a[href$="/edit"]',
+            showTimeEntryDialog
+          );
+
+        // Set up an event to update the position of the submit button
+        $(window)
+          .on("scroll", updateSubmitButtonPosition)
+          .on("resize", updateSubmitButtonPosition);
+        $("#issue-form>.box").on("scroll", updateSubmitButtonPosition);
+
+        // Fix height of wiki-preview with scrollbar
+        // Override jsToolBar.showPreview function
+        const jsToolBarShowPreviewOrg = jsToolBar.prototype.showPreview;
+        jsToolBar.prototype.showPreview = function (event) {
+          const textareaHeight = $(this.textarea).outerHeight();
+          jsToolBarShowPreviewOrg.call(this, event);
+          if (textareaHeight > 0) {
+            // TODO:
+            // this.preview.setAttribute(
+            //   "style",
+            //   "height: " + textareaHeight + "px;"
+            // );
+            $(this.preview).css({
+              height: textareaHeight,
+              minHeight: textareaHeight,
+              boxSizing: "border-box",
+            });
+          }
+        };
+
+        // Override showAndScrollTo function
+        const showAndScrollToOrg = showAndScrollTo;
+        showAndScrollTo = function (id, focus) {
+          if (id === "update" && !$("#tab-issue-edit").hasClass("selected")) {
+            if (!$commentDialog.dialog("isOpen")) {
+              $("html, body").animate(
+                { scrollTop: $("#add_notes").offset().top },
+                100
+              );
+            }
+            return;
+          }
+          showAndScrollToOrg.call(this, id, focus);
+        };
+
+        selectIssueTab();
+        addPopOutButton();
+        correctAttributesPositionInEditView();
+        resetHeightOfAttachmentTable();
+        updateSubmitButtonPosition();
+
+        // Show RedmineRT QuickNotes -> stop
+        // $("#quick_notes").slideDown();
+
+        // Set up mutation observer for div.issue.details
+        // and hide div.issue.details when edit mode
+        new MutationObserver(function (mutations) {
+          if (!$("#tab-issue-edit").hasClass("selected")) return;
+          mutations.forEach((mutation) => {
+            Array.from(mutation.addedNodes)
+              .filter((addedNode) => $(addedNode).is(".issue.details"))
+              .forEach((addedNode) => $(addedNode).hide());
+          });
+        }).observe($("#issue-container")[0], {
+          attributes: false,
+          childList: true,
+          subtree: false,
+        });
+      }
+    }
+
+    function updateFormCore(data, updateHistory = true) {
+      // Update csrf-token
+      $("head meta[name='csrf-token']").attr(
+        "content",
+        $("head meta[name='csrf-token']", data).attr("content")
+      );
+
+      // Update issue lock version
+      $("#issue-form>input#issue_lock_version").val(
+        $("#issue-form>input#issue_lock_version", data).val()
+      );
+
+      // Update last journal ID
+      $("#last_journal_id").val($("#last_journal_id", data).val());
+
+      // Update issue edit form authenticity token
+      $("#issue-form input[name=authenticity_token]").val(
+        $("#issue-form input[name=authenticity_token]", data).val()
+      );
+
+      // Update content history tab
+      if (updateHistory) {
+        $("#tab-content-history")
+          .empty()
+          .append($("#tab-content-history", data).children());
+        $("#history>.tabs>ul>li>a.selected").click();
+      }
+
+      // Update subtasks pane
+      $("#issue_tree").empty().append($("#issue_tree", data).children());
+
+      // Update relations pane
+      $("#relations").empty().append($("#relations", data).children());
+
+      // Show flash
+      const $flash = $("#content > div.flash", data);
+      if ($flash.length) {
+        $("#content > div.flash").remove();
+        $flash.prependTo("#content");
+      }
+    }
+
+    ajaxUpdateIssueList = async function (settings) {
+      const settingsDefault = {
+        search: location.search,
+        noSearch: false,
+        target: undefined,
+      };
+      settings = { ...settingsDefault, ...settings };
+
+      settings.search = settings.noSearch
+        ? ""
+        : settings.search[0] === "?"
+        ? settings.search
+        : "?" +
+          (settings.search[0] === "&"
+            ? settings.search.slice(1)
+            : settings.search);
+
+      const url = location.origin + location.pathname + settings.search;
+
+      await $.ajax({ url: url, dataType: "html" }).done((data) => {
+        updateFormCore(data);
+      });
+    };
+
+    initialize();
+  });
+</script>
+<style>
+  /* Hide issue edit cancel button */
+  #issue-form input[type="submit"] + a {
+    display: none;
+  }
+  #side-by-side-switch-box {
+    display: none;
+    margin: 0 10px;
+  }
+
+  #issue-container {
+    & > div.tabs {
+      width: 100%;
+      margin: 0;
+    }
+
+    & > div.issue {
+      border: 1px solid #dfe8f1;
+      border-top: 0;
+      margin: 0;
+    }
+  }
+
+  #update {
+    margin-bottom: 2em;
+
+    /* Hide edit title */
+    & > h3:nth-of-type(1) {
+      display: none;
+      margin: 0;
+      padding: 10px;
+      border-left: 1px solid #dfe8f1;
+      border-right: 1px solid #dfe8f1;
+      background: #fff;
+    }
+
+    form.edit_issue > div.box {
+      border-top: 0;
+    }
+  }
+
+  #comment-dialog-content #update div.box fieldset.tabular {
+    display: none;
+  }
+
+  #wrapper.side-by-side {
+    #container ~ div.contextual {
+      display: none;
+    }
+
+    #container ~ p.other-formats {
+      display: none;
+    }
+  }
+
+  #issue-container.ui-resizable > .ui-resizable-handle {
+    display: none;
+  }
+
+  #parent_issue {
+    clear: none;
+    margin-bottom: 6px;
+  }
+
+  @media screen and (max-width: 899px) {
+    .header_attribute
+      :where(select, input, input#issue_subject, input#document_title),
+    #all_attributes .header_attribute select#issue_tracker_id {
+      width: 100%;
+    }
+
+    #parent_issue {
+      float: left;
+    }
+
+    #content > .contextual > a.icon-comment,
+    #comment-dialog-pop-out-button {
+      display: none;
+    }
+  }
+
+  @media screen and (min-width: 900px) {
+    .header_attribute :where(select, input) {
+      max-width: 100%;
+    }
+
+    .header_attribute_float-left {
+      float: left;
+    }
+
+    #parent_issue {
+      clear: right;
+      float: right;
+    }
+  }
+
+  @media screen and (width <= 1280px) {
+    /* Disable side-by-side mode */
+    #issue-container {
+      width: 100% !important;
+    }
+
+    #quick_notes2 {
+      height: auto !important;
+
+      /* Hide resize handle if side-by-side mode is not enabled */
+      & > .ui-resizable-handle {
+        display: none !important;
+      }
+    }
+  }
+
+  @media screen and (width > 1280px) {
+    #side-by-side-switch-box {
+      display: inline;
+      & > * {
+        cursor: pointer;
+      }
+    }
+
+    #wrapper.side-by-side {
+      height: 100vh;
+
+      #top-menu,
+      #header {
+        flex: 0 0 auto;
+      }
+
+      #main {
+        flex: 1 1 auto;
+        overflow: hidden;
+      }
+
+      #container {
+        display: grid;
+        grid-template: "issue-container history-container" 100% / min-content 1fr;
+        height: calc(100% - 50px);
+        #issue-container {
+          resize: horizontal;
+          grid-area: issue-container;
+          width: 800px;
+          min-width: 450px;
+          display: flex;
+          flex-direction: column;
+          & > div.issue {
+            max-height: 100%;
+            overflow: auto;
+          }
+          & > .tabs {
+            flex: 0 0 auto;
+          }
+          & > div.ui-resizable-handle.ui-resizable-e {
+            display: block;
+          }
+        }
+        #update {
+          margin-bottom: 0;
+          overflow: hidden;
+          flex: 1 1 auto;
+
+          form.edit_issue > div.box {
+            max-height: 100%;
+            overflow: auto;
+            box-sizing: border-box;
+            margin: 0;
+          }
+        }
+
+        #history-container {
+          margin-left: 10px;
+          grid-area: history-container;
+          min-width: 350px;
+          width: calc(100% - 10px);
+          display: flex;
+          flex-direction: column;
+          overflow: hidden;
+        }
+        #history {
+          height: 100%;
+          overflow: hidden;
+          flex: 1 1 auto;
+
+          &[data-comment_sorting="desc"] {
+            flex: 1 1 auto;
+          }
+
+          & > .tabs {
+            flex: 0 0 auto;
+            margin-bottom: 0;
+          }
+
+          & > .tab-content {
+            max-height: calc(100% - 40px); /* TODO: -40px */
+            box-sizing: border-box;
+            overflow: auto;
+            margin: 0;
+            padding: 10px;
+          }
+        }
+
+        /* Support for RedmineRT */
+        #quick_notes {
+          grid-area: quick_notes;
+          flex: 1 1 auto;
+
+          fieldset {
+            height: 100%;
+            box-sizing: border-box;
+            textarea.wiki-edit {
+              height: calc(100% - 40px) !important;
+              resize: none;
+            }
+          }
+
+          /* If the history is sorted in descending order */
+          &:first-child {
+            flex: 0 0 auto;
+          }
+        }
+
+        #quick_notes2 {
+          flex: 0 0 auto;
+
+          #issue_notes:not(.hidden) {
+            height: 100% !important;
+            resize: none;
+          }
+        }
+      }
+    }
+
+    #wrapper:not(.side-by-side) {
+      #quick_notes2 {
+        height: auto !important;
+
+        & > .ui-resizable-handle {
+          display: none !important;
+        }
+      }
+    }
+
+    #wrapper.side-by-side
+      #issue-form
+      input[type="submit"]:not(.fixed-position) {
+      margin-top: -83px;
+    }
+  }
+
+  #quick_notes2 {
+    background-color: #f4f7f9;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: stretch;
+    border-radius: 3px;
+    margin: 0;
+    padding: 5px;
+    /* Prevent the change of the top by Resizable event */
+    top: 0 !important;
+
+    &:hover,
+    &:has(#add_notes) {
+      padding: 10px;
+    }
+
+    & > div.box {
+      flex: 1 1 auto;
+      overflow: auto;
+      padding: 0;
+      margin: 0;
+      border: 0;
+      display: flex;
+      flex-direction: column;
+      background-color: inherit;
+    }
+
+    #add_notes {
+      flex: 1 1 auto;
+      height: 100%;
+
+      .jstBlock {
+        height: calc(100% - 30px);
+        position: relative;
+
+        .jstEditor {
+          height: calc(100% - 35px);
+          position: relative;
+
+          .wiki-preview {
+            box-sizing: border-box;
+          }
+        }
+      }
+    }
+
+    &.fileover {
+      background-color: lavender;
+    }
+  }
+
+  #quick_notes2-buttons {
+    display: flex;
+    justify-content: space-between;
+  }
+  #issue-form-buttons {
+    text-align: right;
+  }
+  #quick_notes2-open-button,
+  #quick_notes2-close-button,
+  #quick_notes2-submit-button,
+  #restore-comment-pane-button {
+    cursor: pointer;
+    margin: 0;
+    color: #999;
+    height: auto;
+
+    &:hover {
+      font-weight: bold;
+      color: #444;
+    }
+  }
+  #quick_notes2-open-button {
+    display: none;
+    width: 100%;
+    background-color: transparent;
+
+    &:hover {
+      background-color: #fff;
+    }
+  }
+  #quick_notes2:hover:not(:has(#add_notes)) #quick_notes2-open-button {
+    display: block;
+  }
+  #quick_notes2-close-button,
+  #quick_notes2-submit-button {
+    margin-top: 10px;
+  }
+  #quick_notes2:has(#add_notes) #quick_notes2-open-button,
+  #quick_notes2:not(:has(#add_notes)) > div.box,
+  #quick_notes2:not(:has(#add_notes))
+    :is(
+      #quick_notes2-close-button,
+      #quick_notes2-submit-button,
+      #switch-quicknotes2-position-button
+    ),
+  #issue-form:has(#add_notes) #restore-comment-pane-button {
+    display: none;
+  }
+
+  #quick_notes2:not(:has(#add_notes)) .ui-resizable-handle {
+    display: none !important;
+  }
+
+  #switch-quicknotes2-position-button {
+    position: absolute;
+    top: 0;
+    right: 0;
+    cursor: pointer;
+    transform: rotate(90deg);
+    margin: 3px;
+    opacity: 0.3;
+
+    &:hover {
+      opacity: 1;
+    }
+  }
+
+  /* Support for RedmineRT */
+  #quick_notes {
+    /* Initial state for anti-flicker */
+    display: none;
+    margin: 10px 0;
+  }
+
+  #issue-container > .ui-resizable-handle {
+    height: calc(100% - 34px);
+    top: 34px;
+  }
+
+  :where(#issue-container, #quick_notes2) > .ui-resizable-handle {
+    border-radius: 3px;
+    &:hover {
+      background-color: #759fcf99;
+    }
+  }
+
+  .ui-dialog {
+    box-shadow: rgba(0, 0, 0, 0.2) 0px 0px 10px;
+  }
+
+  /* Fix height of the dialog button */
+  .ui-dialog.issue-view-customize
+    > div.ui-dialog-buttonpane
+    div.ui-dialog-buttonset
+    button {
+    height: auto;
+  }
+
+  #comment-dialog {
+    &:not(.ui-dialog-resizing):not(.ui-dialog-dragging):not(
+        .ui-dialog-position-changing
+      ) {
+      transition: width 0.5s, height 0.5s, top 0.5s, left 0.5s;
+    }
+
+    & > .ui-dialog-titlebar {
+      & > button.comment-dialog-titlebar-button {
+        position: absolute;
+        top: 50%;
+        width: 20px;
+        margin: -10px 0 0 0;
+        padding: 1px;
+        height: 20px;
+      }
+
+      & > button.comment-dialog-toggle-fixed-position {
+        right: 25px;
+      }
+    }
+
+    .ui-dialog-titlebar-button-group {
+      position: absolute;
+      right: 30px;
+      height: 20px;
+      top: 50%;
+      margin-top: -10px;
+      display: inline-flex;
+
+      button {
+        width: 20px;
+        height: 20px;
+        padding: 0;
+        margin-top: 0;
+        margin-bottom: 0;
+      }
+    }
+  }
+
+  .ui-dialog {
+    &:not(.issue-view-customize-maximize)
+      .ui-dialog-titlebar-button-group
+      > button.ui-button-issue-view-customize-restore {
+      display: none;
+    }
+
+    &.issue-view-customize-maximize {
+      width: 100% !important;
+      height: 100% !important;
+      box-sizing: border-box !important;
+      top: 0 !important;
+      left: 0 !important;
+      position: fixed !important;
+      display: flex;
+      flex-direction: column;
+
+      .ui-dialog-content {
+        flex: 1 1 auto;
+        width: 100% !important;
+        height: auto !important;
+      }
+
+      .ui-dialog-titlebar-button-group
+        > button.ui-button-issue-view-customize-maximum {
+        display: none;
+      }
+    }
+
+    .ui-dialog-title {
+      line-height: normal;
+    }
+  }
+
+  textarea#issue_notes:not(.hidden) {
+    display: block;
+    min-height: 60px;
+  }
+
+  /* Comment dialog style settings */
+  #comment-dialog-content {
+    display: flex;
+    flex-direction: column;
+    width: 100% !important;
+    box-sizing: border-box;
+
+    #add_notes {
+      background: none;
+      border: 0;
+      padding: 0;
+
+      & > legend {
+        display: none;
+      }
+    }
+
+    #issue-form input[type="submit"] {
+      display: none;
+
+      /* Always hide the cancel button */
+      & + a {
+        display: none;
+      }
+    }
+
+    #new-attachments .add_attachment {
+      font-size: unset;
+    }
+
+    /* Automatically adjust the height of the textarea in the comment dialog */
+    #update {
+      margin: 0;
+      height: 100%;
+    }
+
+    #update form.edit_issue > div.box,
+    & > div.box {
+      padding: 0;
+      border: 0;
+      background: none;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+
+      /* Countermeasure for the suspected incorrect height calculation
+        when the dialog content is switched, including margins. */
+      margin: 0;
+    }
+
+    #add_notes {
+      flex: 1;
+
+      .jstBlock {
+        /* note: 30px is private comment checkbox height + space */
+        height: calc(100% - 30px);
+      }
+
+      .jstEditor {
+        /* note: 30px is private comment checkbox height + space */
+        height: calc(100% - 30px);
+
+        textarea,
+        .wiki-preview {
+          height: 100% !important;
+          resize: none;
+        }
+      }
+    }
+
+    &:has(.box.filedroplistner.fileover) {
+      background-color: lavender;
+    }
+  }
+
+  #comment-dialog-pop-out-button {
+    cursor: pointer;
+    opacity: 0.3;
+    float: right;
+    margin: auto;
+
+    &:hover {
+      opacity: 1;
+    }
+  }
+
+  /* Settings for time-entries-dialog and attachments-dialog and
+  add-child-issue dialog */
+  :is(#time-entries-dialog, #edit-attachments-dialog, #add-child-issue-dialog)
+    .ui-dialog-content {
+    margin: auto;
+    padding: 0;
+    overflow: hidden;
+
+    iframe {
+      width: 100%;
+      height: 100%;
+      border: 0;
+    }
+  }
+
+  /* Add shade to the attachments area and also limits the height */
+  div.issue > div.attachments > table {
+    background-color: rgba(0, 0, 0, 0.02);
+    border: 1px solid rgba(0, 0, 0, 0.1);
+    border-radius: 5px;
+    display: block;
+    overflow: auto;
+    resize: vertical;
+    max-height: 100px;
+  }
+
+  /* Submit button space */
+  #update form.edit_issue > div.box {
+    padding-bottom: 120px;
+  }
+  #issue-form {
+    input[type="submit"] {
+      position: absolute;
+      border-radius: 50%;
+      width: 70px;
+      height: 70px;
+      box-shadow: 0 0 10px 0px rgb(0 0 0 / 50%);
+      z-index: 6;
+      margin-left: 20px;
+
+      &.fixed-position {
+        position: fixed;
+        margin-top: 0;
+        bottom: 60px;
+        opacity: 0.5;
+
+        &:hover {
+          opacity: 1;
+        }
+      }
+
+      &:not(.fixed-position) {
+        margin-top: -100px;
+        box-shadow: none;
+      }
+    }
+  }
+
+  #content #enable_side_by_side_mode {
+    margin-left: 10px;
+    margin-right: 5px;
+  }
+
+  /* Prevent tooltip flickering on dialog */
+  #comment-dialog > .ui-tooltip {
+    width: max-content;
+  }
+
+  /* Fix jsToolbar item z-indicies */
+  /* jsToolBar table generator */
+  table.table-generator {
+    z-index: 200;
+  }
+
+  /* jsToolBar code highlight option */
+  body > ul.ui-menu {
+    z-index: 200;
+  }
+
+  /* Support Redmine theme Bleuclair */
+  body.theme-Bleuclair {
+    #update form.edit_issue > div.box {
+      padding-bottom: 90px;
+    }
+    #issue-form input[type="submit"]:not(.fixed-position) {
+      margin-top: -110px;
+    }
+
+    @media screen and (width > 1280px) {
+      #wrapper.side-by-side
+        #issue-form
+        input[type="submit"]:not(.fixed-position) {
+        margin-top: -80px;
+      }
+    }
+  }
+
+  /* Support for RedmineRT */
+  .quick_notes_tooltip.ui-tooltip {
+    opacity: 0.8;
+  }
+
+  /* Fix attachment field */
+  #new-attachments {
+    width: 100%;
+  }
+  :is(.attachments_fields, #existing-attachments) > span {
+    display: flex;
+    overflow-x: auto;
+    align-items: center;
+  }
+  #existing-attachments label {
+    margin-left: 5px;
+  }
+
+  /* Fix height of wiki-preview with scrollbar */
+  .wiki-preview {
+    overflow: auto;
+  }
+
+  @media print {
+    #quick_notes2 {
+      display: none;
+    }
+    #issue-container {
+      width: 100% !important;
+
+      & > div.issue {
+        display: block !important;
+        border-top: 1px solid #dfe8f1;
+      }
+      & > div#update,
+      & > .tabs {
+        display: none !important;
+      }
+    }
+    #main {
+      margin-top: 0 !important;
+    }
+  }
+</style>

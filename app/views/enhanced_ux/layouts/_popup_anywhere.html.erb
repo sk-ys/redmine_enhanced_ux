@@ -1,0 +1,1303 @@
+<!-- 
+// Path pattern:
+// Insertion position: Head of all pages
+// Type:               HTML
+// Comment:            Popup anywhere
+-->
+<script>
+  //<![CDATA[
+  $(function () {
+    // ----- settings start -----
+    let initialWidth = 1000;
+    let initialHeight = 600;
+
+    // Target link query
+    const targetLinkQueries =
+      "#content a" +
+      ":not(a[data-method])" +
+      ":not(a[onclick])" +
+      ":not(.thumbnail)" +
+      ':not(a[href^="#"])' +
+      ":not(a.prevent-popup-anywhere)";
+
+    const modalMode = false;
+    const disablePopupInPopup = true;
+    const MaximumNumberOfStates = 5;
+    // ----- settings end -----
+
+    const homeUrl = $("link[href*='favicon.ico']")
+      .attr("href")
+      .split("favicon.ico")[0];
+
+    // i18n
+    const resourcesAll = {
+      en: {
+        labelClose: "Close",
+        labelCopyURL: "Copy URL",
+        labelExpandWidth: "Expand width",
+        labelReduceWidth: "Reduce width",
+        labelCollapseExpand: "Collapse/Expand",
+        labelFixed: "Fixed",
+        labelUnfixed: "Unfixed",
+        labelMaximize: "Maximize",
+        labelMinimize: "Minimize",
+        labelRestore: "Restore",
+        labelOpenInNewTab: "Open in new tab",
+        labelBack: "Back",
+        labelForward: "Forward",
+        labelReload: "Reload",
+        messageExternalLinkIsNotSupported: "External link is not supported.",
+        messageChangesDetected:
+          "Changes detected. Do you want to reload the page?",
+        labelTileAllWindows: "Tile all Windows",
+        labelDisableTileAllWindows: "Disable tiled windows",
+        labelRowDirection: "Aligned in row direction",
+        labelColumnDirection: "Aligned in column direction",
+        messageCloseAllDialogs: "Close all dialogs?",
+      },
+      ja: {
+        labelClose: "閉じる",
+        labelCopyURL: "URLをコピーする",
+        labelExpandWidth: "横幅を拡張",
+        labelReduceWidth: "横幅を縮小",
+        labelCollapseExpand: "縮小/拡大",
+        labelFixed: "固定",
+        labelUnfixed: "固定解除",
+        labelMaximize: "最大化",
+        labelMinimize: "最小化",
+        labelRestore: "元に戻す",
+        labelOpenInNewTab: "新しいタブで開く",
+        labelBack: "戻る",
+        labelForward: "進む",
+        labelReload: "再読み込み",
+        messageExternalLinkIsNotSupported:
+          "外部リンクはポップアップ表示非対応です。",
+        messageChangesDetected:
+          "変更を検知しました。ページを再読み込みしますか？",
+        labelTileAllWindows: "全てのウィンドウを並べて配置",
+        labelDisableTileAllWindows: "並べて配置を解除",
+        labelRowDirection: "行方向に整列",
+        labelColumnDirection: "列方向に整列",
+        messageCloseAllDialogs: "全てのダイアログを閉じますか？",
+      },
+    };
+    const resources = {
+      ...resourcesAll["en"],
+      ...(resourcesAll[document.documentElement.lang] || {}),
+    };
+
+    const utils = {
+      getAbsUrl: (url) => {
+        const a = document.createElement("a");
+        a.href = url;
+        return a.href;
+      },
+      copyToClipboard: (value) => {
+        const tempInput = $("<input>")
+          .val(value)
+          .css({
+            position: "fixed",
+            top: 0,
+            left: 0,
+            opacity: 0,
+            zIndex: -100,
+            cssText: "display: block !important",
+          })
+          .appendTo("body")
+          .select();
+        document.execCommand("copy");
+        tempInput.remove();
+      },
+      sameAsThisLocationPathname: (url) => {
+        try {
+          return new URL(utils.getAbsUrl(url)).pathname === location.pathname;
+        } catch {
+          return false;
+        }
+      },
+      isInternalUrl: (url) => {
+        return RegExp("^" + utils.getAbsUrl(homeUrl)).test(
+          utils.getAbsUrl(url)
+        );
+      },
+    };
+
+    class History {
+      #iframe;
+      #list = [];
+
+      constructor(iframe) {
+        this.#iframe = iframe;
+        this.pos = -1;
+        this.#list = [];
+      }
+
+      push(url) {
+        this.pos += 1;
+        if (this.pos > 0) {
+          this.#list = this.#list.slice(0, this.pos);
+        }
+        this.#list.push(url);
+      }
+
+      back() {
+        if (this.pos < 1) return undefined;
+        this.pos -= 1;
+        this.#iframe.src = this.#list[this.pos];
+      }
+
+      forward() {
+        if (this.pos >= this.#list.length - 1) return undefined;
+        this.pos += 1;
+        this.#iframe.src = this.#list[this.pos];
+      }
+
+      get list() {
+        return this.#list;
+      }
+    }
+
+    // Extend jQuery UI Dialog Widget
+    $.widget("ui.dialogPA", $.ui.dialog, {
+      options: {
+        maximized: false,
+        minimized: false,
+        src: null,
+        positionAt: null,
+        offsetLeftAt: 20,
+        offsetTopAt: 40,
+        fixed: false,
+        minWidth: 300,
+        minHeight: 150,
+        widthAtMinimized: 300,
+      },
+
+      _create: function () {
+        if (!this.options.src) throw new Error("src must not be null");
+        this.contentsUpdated = false;
+
+        this._super();
+
+        this.uiDialog.addClass("popup-anywhere");
+        this._addButtonsToDialogTitlebar();
+        this._addClickEventToDialogTitlebar();
+        this._setUpIframe();
+        this.history = new History(this.iframe[0]);
+
+        this._on(this.uiDialogTitlebar.find(".ui-dialog-title"), {
+          dblclick: "_toggleMaximize",
+        });
+
+        this.toggleFixed();
+
+        if (!this.options.positionAt) {
+          this.option("positionAt", this._calcOffsetPositionAt());
+        }
+        if (this.options.positionAt) {
+          this._setDialogPositionToLeftTop();
+        }
+
+        this._on(this.uiDialog, {
+          dragstop: function (event, ui) {
+            this._dragStop(event, ui);
+          },
+        });
+
+        this._on(this.uiDialog, {
+          resizestop: function (event, ui) {
+            this._resizeStop(event, ui);
+          },
+        });
+      },
+
+      open: function () {
+        this._super();
+
+        if (!this.options.positionAt) {
+          this.option("positionAt", this._calcOffsetPositionAt());
+          this._setDialogPositionToLeftTop();
+        }
+
+        this.storeSizeAndPosition();
+
+        this._dialogHeightAtMinimized = this._getHeightAtMinimized();
+        this.restoreSizeAndPosition(!this.options.minimized, true);
+
+        if (this.options.maximized) {
+          this.maximize();
+        } else if (this.options.minimized) {
+          this.minimize(false);
+        }
+      },
+
+      _getHeightAtMinimized() {
+        this.element.hide();
+        const height = this.uiDialog.outerHeight();
+        this.element.show();
+        return height;
+      },
+
+      _calcMaxWidth: function () {
+        return Math.max(
+          this.options.minWidth,
+          document.body.clientWidth -
+            (this.uiDialog.outerWidth() - this.uiDialog.width())
+        );
+      },
+
+      _calcMaxHeight: function () {
+        return Math.max(this.options.minHeight, document.body.clientHeight);
+      },
+
+      close: function (e) {
+        if (e?.ctrlKey) {
+          if (confirm(resources.messageCloseAllDialogs)) {
+            this.closeAll();
+          } else {
+            return;
+          }
+        }
+
+        this._super();
+        this.iframe.remove();
+        if (PopUp.getActiveDialogs().length === 0) {
+          this.disableTiled();
+        } else {
+          this._removeOverflowStyle();
+        }
+        this.destroy();
+
+        if (PopUp.getUnMinimizedDialogs().length === 0) {
+          this.disableTiled();
+        }
+      },
+
+      closeAll: function () {
+        PopUp.getActiveDialogs().each((_, e) => {
+          $(e).dialogPA("close");
+        });
+      },
+
+      _dragStop: function (event, ui) {
+        setTimeout(() => {
+          this.storeSizeAndPosition(false, true);
+        });
+      },
+
+      _resizeStop: function (event, ui) {
+        setTimeout(() => {
+          this.storeSizeAndPosition(true, false);
+        });
+      },
+
+      maximize: function () {
+        if (!this.isMaximized()) {
+          this.storeSizeAndPosition(!this.isMinimized());
+          this.uiDialog.removeClass("popup-anywhere-minimize");
+
+          this.option("maximized", true);
+          this.option("minimized", false);
+
+          this.uiDialog.addClass("popup-anywhere-maximize");
+
+          this.uiDialog.resizable("disable");
+          this.uiDialog.draggable("disable");
+        }
+      },
+
+      minimize: function (storeSizeAndPositionBeforeAction = true) {
+        if (!this.isMinimized()) {
+          this.uiDialog.removeClass("popup-anywhere-maximize");
+          if (
+            storeSizeAndPositionBeforeAction &&
+            !this.options.maximized &&
+            !this.isTiled()
+          ) {
+            this.storeSizeAndPosition();
+          }
+
+          this.uiDialog.addClass("popup-anywhere-minimize");
+          this._resizeDialog(this.options.widthAtMinimized, 0);
+          this.option("maximized", false);
+          this.option("minimized", true);
+
+          this.uiDialog.resizable("disable");
+          this.uiDialog.draggable("enable");
+
+          this.uiDialog.css({
+            position: this.options.fixed ? "fixed" : "absolute",
+          });
+
+          if (PopUp.getUnMinimizedDialogs().length === 0) {
+            this.disableTiled();
+          }
+        }
+      },
+
+      minimizeAll: function () {
+        PopUp.getActiveDialogs().each((_, e) => {
+          $(e).dialogPA("minimize");
+        });
+      },
+
+      restore: function () {
+        if (this.isMaximized() || this.isMinimized()) {
+          if (this.isMinimized()) this.storeSizeAndPosition(false, true);
+
+          this.uiDialog.removeClass("popup-anywhere-maximize");
+          this.uiDialog.removeClass("popup-anywhere-minimize");
+
+          this.option("maximized", false);
+          this.option("minimized", false);
+          this.restoreSizeAndPosition();
+          this.storeSizeAndPosition();
+
+          this.uiDialog.resizable("enable");
+          this.uiDialog.draggable("enable");
+
+          this._removeOverflowStyle();
+        }
+      },
+
+      restoreAll: function () {
+        PopUp.getActiveDialogs().each((_, e) => {
+          $(e).dialogPA("restore");
+        });
+      },
+
+      enableTiled: function () {
+        if (!this.isTiled()) {
+          const $dialogs = PopUp.getActiveDialogs();
+          if ($dialogs.length === 0) return;
+
+          const $unMinimizedDialogs = PopUp.getUnMinimizedDialogs();
+          if ($unMinimizedDialogs.length === 0) {
+            const $activeDialog = PopUp.getActiveDialog();
+            if ($activeDialog) {
+              $activeDialog.dialogPA("restore");
+            } else {
+              return;
+            }
+          } else {
+            $unMinimizedDialogs.each((_, e) => {
+              $(e)
+                .filter(
+                  (_, e) => !$(e).parent().hasClass("popup-anywhere-maximize")
+                )
+                .dialogPA("storeSizeAndPosition");
+            });
+          }
+
+          $("body").addClass("popup-anywhere-flex");
+          $("html").css({ overflow: "hidden" });
+        }
+      },
+
+      disableTiled: function () {
+        $("body").removeClass("popup-anywhere-flex");
+        this._removeOverflowStyle();
+      },
+
+      isMaximized: function () {
+        return this.uiDialog.hasClass("popup-anywhere-maximize");
+      },
+
+      isMinimized: function () {
+        return this.uiDialog.hasClass("popup-anywhere-minimize");
+      },
+
+      isTiled: function () {
+        return $("body").hasClass("popup-anywhere-flex");
+      },
+
+      fixed: function () {
+        if (!this.options.fixed || this.uiDialog.css("position") !== "fixed") {
+          this.uiDialog.css({
+            position: "fixed",
+            top: this.uiDialog.position().top - $(document).scrollTop(),
+            left: this.uiDialog.position().left - $(document).scrollLeft(),
+          });
+
+          this.uiDialogTitlebarButtonGroup
+            .find("button.ui-button-popup-anywhere-toggle-fixed")
+            .button("option", {
+              icon: "ui-icon-pin-w",
+              label: resources.labelUnfixed,
+            })
+            .attr("title", resources.labelUnfixed);
+        }
+        this.option("fixed", true);
+      },
+
+      unFixed: function () {
+        if (this.options.fixed || this.uiDialog.css("position") == "fixed") {
+          this.uiDialog.css({
+            position: "absolute",
+            top: this.uiDialog.position().top + $(document).scrollTop(),
+            left: this.uiDialog.position().left + $(document).scrollLeft(),
+          });
+
+          this.uiDialogTitlebarButtonGroup
+            .find("button.ui-button-popup-anywhere-toggle-fixed")
+            .button("option", {
+              icon: "ui-icon-pin-s",
+              label: resources.labelFixed,
+            })
+            .attr("title", resources.labelFixed);
+        }
+        this.option("fixed", false);
+      },
+
+      toggleFixed: function () {
+        if (!this.options.fixed || this.uiDialog.css("position") !== "fixed") {
+          this.fixed();
+        } else {
+          this.unFixed();
+        }
+      },
+
+      storeSizeAndPosition: function (size = true, position = true) {
+        this.storedSizeAndPosition = {
+          width: size ? this.options.width : this.storedSizeAndPosition.width,
+          height: size
+            ? this.options.height
+            : this.storedSizeAndPosition.height,
+          position: position
+            ? this.uiDialog.position()
+            : this.storedSizeAndPosition.position,
+        };
+
+        // console.debug(
+        //   "storeSizeAndPosition",
+        //   size,
+        //   position,
+        //   this.storedSizeAndPosition
+        // );
+
+        if (size) {
+          this.element.data("width", this.storedSizeAndPosition.width);
+          this.element.data("height", this.storedSizeAndPosition.height);
+        }
+      },
+
+      restoreSizeAndPosition: function (resize = true, move = true) {
+        const maxWidth = this._calcMaxWidth();
+        const maxHeight = this._calcMaxHeight();
+        const offset = this.uiDialog.offset();
+
+        const width = Math.min(
+          this.storedSizeAndPosition.width,
+          this.options.minimized ? this.options.widthAtMinimized : maxWidth
+        );
+        const height = Math.min(
+          this.storedSizeAndPosition.height,
+          this.options.minimized ? this._dialogHeightAtMinimized : maxHeight
+        );
+        if (resize) this._resizeDialog(width, height);
+        if (move) {
+          const left = Math.max(this.storedSizeAndPosition.position.left, 0);
+          const top = Math.max(this.storedSizeAndPosition.position.top, 0);
+          this._moveDialog(
+            left + width > maxWidth ? maxWidth - width : left,
+            top + height > maxHeight ? maxHeight - height : top
+          );
+        }
+      },
+
+      isUpdated: function () {
+        return this.contentsUpdated;
+      },
+
+      _resizeDialog: function (width, height) {
+        this.option("width", width);
+        this.option("height", height);
+        this._trigger("resize");
+      },
+
+      _moveDialog: function (left, top) {
+        this.option("position", {
+          ...this.options.position,
+          ...{ at: `left+${left} top+${top}` },
+        });
+        this._trigger("drag");
+      },
+
+      _toggleMaximize: function () {
+        if (this.options.maximized) {
+          this.restore();
+        } else {
+          this.maximize();
+        }
+      },
+
+      _removeOverflowStyle: function () {
+        if (
+          !(
+            $("body").hasClass("popup-anywhere-flex") ||
+            this.uiDialog.siblings(
+              ".ui-dialog.popup-anywhere.popup-anywhere-maximize"
+            ).length > 0
+          )
+        ) {
+          $("html").css({ overflow: "" });
+        }
+      },
+
+      _calcOffsetPositionAt: function () {
+        const $activeDialog = PopUp.getActiveDialog(this.element);
+        if (!$activeDialog) return null;
+
+        return (
+          `left+${
+            $activeDialog.parent().offset().left + this.options.offsetLeftAt
+          } ` +
+          `top+${
+            $activeDialog.parent().offset().top + this.options.offsetTopAt
+          }`
+        );
+      },
+
+      _setDialogPositionToLeftTop: function () {
+        this.option("position", {
+          my: "left top",
+          at:
+            this.options.positionAt ||
+            `left+${
+              this.uiDialog.position().left - $(document).scrollLeft()
+            } ` +
+              `top+${this.uiDialog.position().top - $(document).scrollTop()}`,
+          of: window,
+        });
+      },
+
+      _addButtonsToDialogTitlebar: function () {
+        const $btnFlex = $("<button>")
+          .button({
+            icon: "ui-icon-calculator",
+            label: resources.labelTileAllWindows,
+            showLabel: false,
+          })
+          .addClass("ui-button-popup-anywhere-enable-flex")
+          .click(() => {
+            this.enableTiled();
+          });
+
+        const $btnDisableFlex = $("<button>")
+          .addClass("ui-button-popup-anywhere-flex")
+          .addClass("ui-button-popup-anywhere-disable-flex")
+          .button({
+            icon: "ui-icon-cancel",
+            label: resources.labelDisableTileAllWindows,
+            showLabel: false,
+          })
+          .click(() => {
+            this.disableTiled();
+          });
+
+        const $btnFlexDirectionColumn = $("<button>")
+          .addClass("ui-button-popup-anywhere-flex")
+          .addClass("ui-button-popup-anywhere-flex-direction-column")
+          .button({
+            icon: "ui-icon-arrowthick-2-e-w",
+            label: resources.labelColumnDirection,
+            showLabel: false,
+          })
+          .click(() => {
+            $("body").addClass("popup-anywhere-flex-column");
+          });
+
+        const $btnFlexDirectionRow = $("<button>")
+          .addClass("ui-button-popup-anywhere-flex")
+          .addClass("ui-button-popup-anywhere-flex-direction-row")
+          .button({
+            icon: "ui-icon-arrowthick-2-n-s",
+            label: resources.labelRowDirection,
+            showLabel: false,
+          })
+          .click(() => {
+            $("body").removeClass("popup-anywhere-flex-column");
+          });
+
+        const $btnToggleFixed = $("<button>")
+          .addClass("ui-button-popup-anywhere-toggle-fixed")
+          .button({
+            icon: "ui-icon-pin-s",
+            label: resources.labelFixed,
+            showLabel: false,
+          })
+          .click(() => {
+            this.uiDialog.addClass("ui-dialog-position-changing");
+
+            setTimeout(() => {
+              this.uiDialog.removeClass("ui-dialog-position-changing");
+            });
+
+            this.toggleFixed();
+          });
+
+        const $btnOpenInNewTab = $("<button>")
+          .addClass("ui-button-popup-anywhere-new-tab")
+          .button({
+            icon: "ui-icon-extlink",
+            label: resources.labelOpenInNewTab,
+            showLabel: false,
+          })
+          .click(() => {
+            const location = this.iframe.contents()[0].location;
+            window.open(location.origin + location.pathname, "_blank");
+          });
+
+        this.$btnBack = $("<button>")
+          .addClass("ui-button-popup-anywhere-back")
+          .button({
+            icon: "ui-icon-caret-1-w",
+            label: resources.labelBack,
+            showLabel: false,
+            disabled: true,
+          })
+          .click(() => {
+            this.history.back();
+          });
+
+        this.$btnForward = $("<button>")
+          .addClass("ui-button-popup-anywhere-forward")
+          .button({
+            icon: "ui-icon-caret-1-e",
+            label: resources.labelForward,
+            showLabel: false,
+            disabled: true,
+          })
+          .click(() => {
+            this.history.forward();
+          });
+
+        const $btnReload = $("<button>")
+          .addClass("ui-button-popup-anywhere-reload")
+          .button({
+            icon: "ui-icon-arrowrefresh-1-e",
+            label: resources.labelReload,
+            showLabel: false,
+          })
+          .click(() => {
+            this.iframe.contents()[0].location.reload();
+          });
+
+        const $btnCopyUrl = $("<button>")
+          .addClass("ui-button-popup-anywhere-copy-url")
+          .button({
+            icon: "ui-icon-copy",
+            label: resources.labelCopyURL,
+            showLabel: false,
+          })
+          .on("click", () => {
+            const location = this.iframe.contents()[0].location;
+            utils.copyToClipboard(location.origin + location.pathname);
+          });
+
+        const $btnMinimize = $("<button>")
+          .addClass("ui-button-popup-anywhere-minimum")
+          .button({
+            icon: "ui-icon-minus",
+            label: resources.labelMinimize,
+            showLabel: false,
+          })
+          .click((e) => {
+            if (e.ctrlKey) {
+              this.minimizeAll();
+            } else {
+              this.minimize();
+            }
+          });
+
+        const $btnRestore = $("<button>")
+          .addClass("ui-button-popup-anywhere-restore")
+          .button({
+            icon: "ui-icon-newwin",
+            label: resources.labelRestore,
+            showLabel: false,
+          })
+          .click((e) => {
+            if (e.ctrlKey) {
+              this.restoreAll();
+            } else {
+              this.restore();
+            }
+          });
+
+        const $btnMaximize = $("<button>")
+          .addClass("ui-button-popup-anywhere-maximum")
+          .button({
+            icon: "ui-icon-stop",
+            label: resources.labelMaximize,
+            showLabel: false,
+          })
+          .click(() => {
+            this.maximize();
+          });
+
+        this.uiDialogTitlebarButtonGroup = $("<div>")
+          .addClass("ui-dialog-titlebar-button-group")
+          .append($btnFlex)
+          .append($btnDisableFlex)
+          .append($btnFlexDirectionColumn)
+          .append($btnFlexDirectionRow)
+          .append($btnToggleFixed)
+          .append($btnOpenInNewTab)
+          .append(this.$btnBack)
+          .append(this.$btnForward)
+          .append($btnReload)
+          .append($btnCopyUrl)
+          .append($btnMinimize)
+          .append($btnRestore)
+          .append($btnMaximize)
+          .appendTo(this.uiDialogTitlebar);
+      },
+
+      _addClickEventToDialogTitlebar: function () {
+        const $invisibleCloseButton = $("<div>")
+          .addClass("invisible-close-button")
+          .on("dblclick", () => {
+            this.close();
+          })
+          .prependTo(this.uiDialogTitlebar);
+      },
+
+      _setUpIframe: function () {
+        this.iframe = $("<iframe>")
+          .css("visibility", "hidden")
+          .on("load", (e) => {
+            const $contents = $(e.target).contents();
+            const iframeHref = $contents[0].location.href;
+
+            // Update history
+            if (this.history.list[this.history.pos] === iframeHref) {
+              // Reload action detected
+            } else if (this.history.list[this.history.pos - 1] === iframeHref) {
+              // Back action detected
+              this.history.pos -= 1;
+            } else if (this.history.list[this.history.pos + 1] === iframeHref) {
+              // Forward action detected
+              this.history.pos += 1;
+            } else {
+              // Append new history
+              this.history.push(iframeHref);
+            }
+
+            // Update state of buttons
+            this.$btnBack.button("option", "disabled", this.history.pos <= 0);
+            this.$btnForward.button(
+              "option",
+              "disabled",
+              this.history.pos >= this.history.list.length - 1
+            );
+
+            // Set title
+            this.option("title", $contents[0].title);
+            this.uiDialog
+              .find(".ui-dialog-titlebar")
+              .attr("title", $contents[0].title);
+
+            // Styling
+            $contents.find("#main").css({
+              cssText: "padding: 0 !important;",
+            });
+            $contents
+              .find("#wrapper>div.flyout-menu, #top-menu, #header, #footer")
+              .remove();
+            $contents.find("#main>div:not(#content)").remove();
+
+            // Support Theme Farend Bleuclair
+            $contents.find("#sidebar-switch-panel").remove();
+
+            // Hide the window before unload to prevent flickering
+            $($(e.target).contents()[0].defaultView).on("beforeunload", () => {
+              $(e.target).css("visibility", "hidden");
+            });
+
+            if ($contents.find("#flash_notice.notice").length > 0) {
+              this.contentsUpdated = true;
+              if (window.ajaxUpdateIssueList) {
+                try {
+                  ajaxUpdateIssueList();
+                  this.contentsUpdated = false;
+                } catch (error) {
+                  console.error(error);
+                }
+              }
+            }
+            if (disablePopupInPopup) {
+              $contents.find("a").addClass("prevent-popup-anywhere");
+            }
+
+            // Add click event to bring the window to the front
+            $contents.on("click", () => {
+              this.moveToTop();
+            });
+
+            $(e.target).css("visibility", "");
+          })
+          .attr("src", this.options.src)
+          .appendTo(this.element);
+      },
+    });
+
+    class PopUp {
+      static size = {
+        get width() {
+          const states =
+            JSON.parse(localStorage.getItem("popup-anywhere-state")) || {};
+          return states["_default-width"] ?? initialWidth;
+        },
+        set width(value) {
+          const states =
+            JSON.parse(localStorage.getItem("popup-anywhere-state")) || {};
+          states["_default-width"] = value;
+          localStorage.setItem("popup-anywhere-state", JSON.stringify(states));
+        },
+        get height() {
+          const states =
+            JSON.parse(localStorage.getItem("popup-anywhere-state")) || {};
+          return states["_default-height"] ?? initialHeight;
+        },
+        set height(value) {
+          const states =
+            JSON.parse(localStorage.getItem("popup-anywhere-state")) || {};
+          states["_default-height"] = value;
+          localStorage.setItem("popup-anywhere-state", JSON.stringify(states));
+        },
+      };
+
+      static dialogSelector = "body > .ui-dialog.popup-anywhere";
+
+      static specialStorageKeys = ["_default-width", "_default-height"];
+
+      static getActiveDialogs() {
+        return $(PopUp.dialogSelector).map((_, e) =>
+          $(e).children(".ui-dialog-content")
+        );
+      }
+
+      static getDialogZIndices() {
+        return PopUp.getActiveDialogs()
+          .toArray()
+          .map((e) => {
+            return {
+              ui: $(e),
+              zIndex: parseInt($(e).parent().css("zIndex")),
+            };
+          });
+      }
+
+      static getActiveDialog(excludeElem) {
+        const zIndices = PopUp.getDialogZIndices().filter(
+          (o) => !excludeElem || o.ui[0] !== excludeElem
+        );
+        if (zIndices.length === 0) return undefined;
+        const highestZIndex = Math.max(...zIndices.map((i) => i.zIndex));
+        return zIndices.filter((item) => item.zIndex === highestZIndex)[0].ui;
+      }
+
+      static getUnMinimizedDialogs() {
+        return $(PopUp.dialogSelector + ":not(.popup-anywhere-minimize)").map(
+          (_, e) => $(e).children(".ui-dialog-content")
+        );
+      }
+
+      static saveDialogState() {
+        const states =
+          JSON.parse(localStorage.getItem("popup-anywhere-state")) || {};
+
+        if (PopUp.getActiveDialogs().length === 0) {
+          delete states[location.pathname];
+        } else {
+          states[location.pathname] = {
+            timeStamp: Date.now(),
+            flex: $("body").hasClass("popup-anywhere-flex"),
+            flexDirection: $("body").hasClass("popup-anywhere-flex-column")
+              ? "column"
+              : "row",
+            dialogs: $(".ui-dialog.popup-anywhere")
+              .toArray()
+              .filter((e) => {
+                // Prevent saving with the same pathname as the current location.
+                return (
+                  utils.sameAsThisLocationPathname(
+                    $(e)
+                      .children(".ui-dialog-content")
+                      .find("iframe")
+                      .attr("src")
+                  ) === false
+                );
+              })
+              .map((e) => {
+                const $dialog = $(e).children(".ui-dialog-content");
+                return {
+                  title: $dialog.dialogPA("option", "title"),
+                  src: $dialog.find("iframe").attr("src"),
+                  positionAt: $dialog.dialogPA("option", "position").at,
+                  height: $dialog.data("height"),
+                  width: $dialog.data("width"),
+                  maximized: $dialog.dialogPA("option", "maximized"),
+                  minimized: $dialog.dialogPA("option", "minimized"),
+                  fixed: $dialog.dialogPA("option", "fixed"),
+                };
+              }),
+          };
+
+          // Delete undefined timestamp objects
+          for (const [key, value] of Object.entries(states)) {
+            if (PopUp.specialStorageKeys.includes(key)) continue;
+            if (value.timeStamp === undefined) {
+              delete states[key];
+            }
+          }
+
+          // Delete old timestamp objects
+          while (
+            Object.keys(states).length >
+            MaximumNumberOfStates + PopUp.specialStorageKeys.length
+          ) {
+            const maxTimeStamp = Math.max(
+              ...Object.keys(states)
+                .filter((key) => !PopUp.specialStorageKeys.includes(key))
+                .map((k) => {
+                  Number(states[k].timeStamp);
+                })
+            );
+
+            for (const [key, value] of Object.entries(states)) {
+              if (PopUp.specialStorageKeys.includes(key)) continue;
+              if (value.timeStamp === maxTimeStamp) {
+                delete states[key];
+                break;
+              }
+            }
+          }
+        }
+
+        if (states[location.pathname]?.dialogs?.length === 0) {
+          delete states[location.pathname];
+        }
+
+        localStorage.setItem("popup-anywhere-state", JSON.stringify(states));
+      }
+
+      static restoreDialogState() {
+        const states = JSON.parse(localStorage.getItem("popup-anywhere-state"));
+        if (states === null || states[location.pathname] === undefined) return;
+        const state = states[location.pathname];
+        state.dialogs
+          .filter((d) => {
+            // Prevent loading of the same path as the current location.
+            return utils.sameAsThisLocationPathname(d.src) === false;
+          })
+          .forEach((dialogProps) => {
+            try {
+              new PopUp(
+                dialogProps.title,
+                dialogProps.src,
+                dialogProps.positionAt,
+                dialogProps.height,
+                dialogProps.width,
+                dialogProps.maximized,
+                dialogProps.minimized,
+                dialogProps.fixed
+              );
+            } catch (e) {
+              console.error(e);
+            }
+          });
+
+        const dialogs = PopUp.getActiveDialogs();
+        if (state.flex && dialogs.length > 0) {
+          setTimeout(() => dialogs[0].dialogPA("enableTiled"));
+        }
+        $("body").addClass(`popup-anywhere-flex-${state.flexDirection}`);
+      }
+
+      constructor(
+        title,
+        url,
+        positionAt = null,
+        height = PopUp.size.height,
+        width = PopUp.size.width,
+        maximized = false,
+        minimized = false,
+        fixed = false
+      ) {
+        if (!url) throw new Error("url must not be null");
+
+        this.title = title;
+        this.url = url;
+        this.positionAt = positionAt;
+        this.height = height;
+        this.width = width;
+        this.maximized = maximized;
+        this.minimized = minimized;
+        this.fixed = fixed;
+
+        this.$dialog = $("<div>")
+          .attr("title", title)
+          .addClass("popup-anywhere-container")
+          .css({
+            backgroundImage: `url(${homeUrl}images/loading.gif)`,
+            backgroundPosition: "center center",
+            backgroundRepeat: "no-repeat",
+          })
+          .data("height", this.height)
+          .data("width", this.width);
+
+        this.$dialog.dialogPA({
+          closeText: resources.labelClose,
+          autoOpen: true,
+          height: this.height,
+          width: this.width,
+          modal: modalMode,
+          positionAt: this.positionAt,
+          src: this.url,
+          maximized: this.maximized,
+          minimized: this.minimized,
+          fixed: this.fixed,
+          close: () => {
+            let updated = this.$dialog.dialogPA("isUpdated");
+            setTimeout(async () => {
+              if (updated) {
+                if (window.ajaxUpdateIssueList) {
+                  try {
+                    await ajaxUpdateIssueList();
+                    updated = false;
+                  } catch {}
+                }
+                if (updated) {
+                  if (confirm(resources.messageChangesDetected)) {
+                    location.reload();
+                  }
+                }
+              }
+            });
+          },
+          resizeStop: () => {
+            if (
+              this.$dialog.dialogPA("option", "minimized") ||
+              this.$dialog.dialogPA("option", "maximized")
+            )
+              return;
+
+            // Back up the current size
+            const height = this.$dialog.dialogPA("option", "height");
+            PopUp.size.height = height;
+
+            const width = this.$dialog.dialogPA("option", "width");
+            PopUp.size.width = width;
+          },
+        });
+      }
+    }
+
+    function replaceClickEventsForAllAnchorTags() {
+      $(document)
+        .off("click.popup-anywhere")
+        .on("click.popup-anywhere", targetLinkQueries, (e) => {
+          if (e.ctrlKey) {
+            const $anchor = $(e.target).closest("a");
+            const title = $anchor.text();
+            const href = $anchor.attr("href");
+            if (href && utils.isInternalUrl(href)) {
+              new PopUp(title, href);
+              e.preventDefault();
+              e.stopPropagation();
+            } else {
+              console.log(e, href);
+              alert(resources.messageExternalLinkIsNotSupported);
+            }
+          }
+        });
+    }
+
+    function Initialize() {
+      replaceClickEventsForAllAnchorTags();
+      PopUp.restoreDialogState();
+      window.addEventListener(
+        "beforeunload",
+        (e) => {
+          if (window === window.parent) {
+            PopUp.saveDialogState();
+          }
+        },
+        { capture: true }
+      );
+    }
+
+    Initialize();
+  });
+  //]]>
+</script>
+
+<style type="text/css">
+  .ui-dialog.popup-anywhere:not(.ui-dialog-resizing):not(
+      .ui-dialog-dragging
+    ):not(.ui-dialog-position-changing) {
+    transition: width 0.5s, height 0.5s, top 0.5s, left 0.5s;
+  }
+
+  .ui-dialog.popup-anywhere {
+    flex-grow: 1;
+    box-shadow: 0 0 5px rgb(0 0 0 / 20%);
+  }
+
+  .ui-dialog.popup-anywhere .ui-dialog-titlebar-button-group {
+    position: absolute;
+    right: 30px;
+    height: 20px;
+    top: 50%;
+    margin-top: -10px;
+    display: inline-flex;
+  }
+
+  .ui-dialog.popup-anywhere .ui-dialog-titlebar-button-group button {
+    width: 20px;
+    height: 20px;
+    padding: 0;
+    margin-top: 0;
+    margin-bottom: 0;
+  }
+
+  .ui-dialog.popup-anywhere .ui-dialog-content.popup-anywhere-container {
+    display: flex;
+    overflow: hidden !important;
+    padding: 0;
+  }
+
+  .ui-dialog.popup-anywhere
+    .ui-dialog-content.popup-anywhere-container
+    > iframe {
+    flex-grow: 1;
+    border: none;
+  }
+
+  .ui-dialog.popup-anywhere-maximize {
+    width: 100% !important;
+    height: 100% !important;
+    box-sizing: border-box !important;
+    top: 0 !important;
+    left: 0 !important;
+    position: fixed !important;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .ui-dialog.popup-anywhere-maximize .ui-dialog-content {
+    flex: 1 1 auto;
+    width: 100% !important;
+    height: auto !important;
+  }
+
+  .ui-dialog.popup-anywhere:not(.popup-anywhere-minimize):not(
+      .popup-anywhere-maximize
+    )
+    .ui-dialog-titlebar-button-group
+    > button.ui-button-popup-anywhere-restore {
+    display: none;
+  }
+
+  .ui-dialog.popup-anywhere-minimize
+    .ui-dialog-titlebar-button-group
+    > :is(
+      button.ui-button-popup-anywhere-enable-flex,
+      button.ui-button-popup-anywhere-minimum,
+      button.ui-button-popup-anywhere-back,
+      button.ui-button-popup-anywhere-forward,
+      button.ui-button-popup-anywhere-reload
+    ),
+  .ui-dialog.popup-anywhere-maximize
+    .ui-dialog-titlebar-button-group
+    > :is(
+      button.ui-button-popup-anywhere-maximum,
+      button.ui-button-popup-anywhere-enable-flex
+    ) {
+    display: none;
+  }
+
+  body.popup-anywhere-flex {
+    height: 100vh !important;
+    display: flex !important;
+    flex-wrap: wrap !important;
+    flex-direction: row;
+  }
+
+  body.popup-anywhere-flex.popup-anywhere-flex-column {
+    flex-direction: column;
+  }
+
+  body.popup-anywhere-flex > *:not(.ui-dialog.popup-anywhere) {
+    display: none !important;
+  }
+
+  body.popup-anywhere-flex
+    > .ui-dialog.popup-anywhere:not(.popup-anywhere-minimize) {
+    display: flex !important;
+    flex-wrap: nowrap !important;
+    flex-direction: column !important;
+    position: static !important;
+    width: auto !important;
+    height: auto !important;
+    flex: 1 1 auto !important;
+    min-width: 500px !important;
+    box-shadow: none !important;
+  }
+
+  body.popup-anywhere-flex > .ui-dialog.popup-anywhere.popup-anywhere-minimize {
+    /* Note: If `display: none`, the offset position calculation fails
+       in jQuery UI setOffset method. */
+    /* display: none; */
+    visibility: hidden;
+  }
+
+  body.popup-anywhere-flex > .ui-dialog.popup-anywhere > .ui-dialog-content {
+    flex: 1 1 auto !important;
+    width: 100% !important;
+    height: auto !important;
+  }
+
+  body.popup-anywhere-flex
+    > .ui-dialog.popup-anywhere
+    .ui-dialog-titlebar-button-group
+    > button:not(.ui-button-popup-anywhere-flex):not(
+      .ui-button-popup-anywhere-back
+    ):not(.ui-button-popup-anywhere-forward):not(
+      .ui-button-popup-anywhere-reload
+    ):not(.ui-button-popup-anywhere-new-tab):not(
+      .ui-button-popup-anywhere-copy-url
+    ):not(.ui-button-popup-anywhere-copy-url):not(
+      .ui-button-popup-anywhere-minimum
+    ) {
+    display: none;
+  }
+
+  body:not(.popup-anywhere-flex)
+    > .ui-dialog.popup-anywhere
+    .ui-dialog-titlebar-button-group
+    > :is(
+      button.ui-button-popup-anywhere-disable-flex,
+      button.ui-button-popup-anywhere-flex-direction-column,
+      button.ui-button-popup-anywhere-flex-direction-row
+    ),
+  body.popup-anywhere-flex.popup-anywhere-flex-column
+    > .ui-dialog.popup-anywhere
+    .ui-dialog-titlebar-button-group
+    > button.ui-button-popup-anywhere-flex-direction-column,
+  body.popup-anywhere-flex:not(.popup-anywhere-flex-column)
+    > .ui-dialog.popup-anywhere
+    .ui-dialog-titlebar-button-group
+    > button.ui-button-popup-anywhere-flex-direction-row {
+    display: none;
+  }
+
+  .invisible-close-button {
+    width: 40px;
+    height: 100%;
+    position: absolute;
+    top: 0;
+    left: 0;
+  }
+</style>

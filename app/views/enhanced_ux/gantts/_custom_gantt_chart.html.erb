@@ -1,0 +1,1118 @@
+<!-- 
+// Path pattern:       /issues/gantt
+// Insertion position: Head of all pages
+// Type:               HTML
+// Comment:            Custom gantt chart
+  -->
+<script>
+  var ajaxUpdateIssueList = false;
+
+  window.addEventListener("DOMContentLoaded", () => {
+    // ----- settings start -----
+    const MAXIMUM_NUMBER_OF_BACKUP_STATES = 10;
+    // ----- settings end -----
+
+    const resourcesAll = {
+      en: {
+        labelCancel: "Cancel",
+        labelCriteria: "Criteria",
+        labelDisplayPeriod: "Display Period",
+        labelDisplayStartMonth: "Display start month",
+        labelIssueNew: "New Issue",
+      },
+      ja: {
+        labelCancel: "キャンセル",
+        labelCriteria: "抽出条件",
+        labelDisplayPeriod: "表示期間",
+        labelDisplayStartMonth: "表示開始年月",
+        labelIssueNew: "新しいチケット",
+      },
+    };
+    const resources = {
+      ...resourcesAll["en"],
+      ...(resourcesAll[document.documentElement.lang] || {}),
+    };
+
+    const homeUrl = $("link[href*='favicon.ico']")
+      .attr("href")
+      .split("favicon.ico")[0];
+
+    const projectName = (() => {
+      const res = /\/projects\/(.+)\/issues\/gantt/.exec(location.pathname);
+      return res ? res[1] : null;
+    })();
+
+    // Utils
+    function getAbsUrl(url) {
+      const a = document.createElement("a");
+      a.href = url;
+      return a.href;
+    }
+
+    function extractSearch(url) {
+      return new URL(getAbsUrl(url)).search;
+    }
+
+    function getBackgroundColorRecursively(target) {
+      const $target = $(target);
+      const defaultBackgroundColor = "rgb(255, 255, 255)";
+      const backgroundColor = $target.css("backgroundColor");
+
+      if (
+        backgroundColor === "rgba(0, 0, 0, 0)" ||
+        backgroundColor === "transparent"
+      ) {
+        const $parent = $target.parent();
+        if ($parent.length > 0) {
+          return getBackgroundColorRecursively($parent);
+        } else {
+          return defaultBackgroundColor;
+        }
+      } else {
+        return backgroundColor;
+      }
+    }
+
+    // Cloning gantt-table
+    function cloneGanttTable($ganttTable) {
+      const $ganttTableCloned = $ganttTable
+        .clone()
+        .addClass("cloned")
+        .css({
+          position: "absolute",
+          top: $ganttTable.position().top,
+          width: $ganttTable.width(),
+          backgroundColor: getBackgroundColorRecursively($ganttTable),
+          zIndex: 99,
+        });
+
+      // Remove all ids
+      $ganttTableCloned.find("[id]").removeAttr("id");
+
+      // Remove classes
+      $ganttTableCloned
+        .find(".gantt_subjects_column")
+        .removeClass("gantt_subjects_column");
+
+      // Replace classes
+      $ganttTableCloned
+        .find(".gantt_subjects_container")
+        .removeClass("gantt_subjects_container")
+        .addClass("gantt_subjects_container_cloned");
+
+      // Remove classes while maintaining column widths
+      $ganttTableCloned
+        .find(".gantt_selected_column")
+        .each((_, e) => {
+          $(e).width($(e).width());
+        })
+        .removeClass("gantt_selected_column")
+        .addClass("gantt_selected_column_cloned");
+
+      // Support for ganttEntryClick()
+      $ganttTableCloned
+        .find(".gantt_subjects>form>div")
+        .removeData("collapseExpand");
+
+      // Support for getProgressLinesArray()
+      $ganttTableCloned.find("div.issue-subject").removeClass("issue-subject");
+      $ganttTableCloned.find("div.version-name").removeClass("version-name");
+
+      // Support for getRelationsArray()
+      $ganttTableCloned.find("div.task_todo[data-rels]").removeData("dataRels");
+
+      return $ganttTableCloned;
+    }
+
+    function moveContextualButtons(htmlString) {
+      // Update contextual
+      $("#content>div.contextual:first")
+        .children("span")
+        .remove()
+        .end()
+        .append(
+          $("#query_form_with_buttons > p.contextual", htmlString).children()
+        )
+        .find("a")
+        .addClass("prevent-popup-anywhere");
+
+      // Update anchor tags except contextual of header
+      [
+        ".contextual a.icon-zoom-in",
+        ".contextual a.icon-zoom-out",
+        '.contextual a[accesskey="p"]',
+        '.contextual a[accesskey="n"]',
+        "ul.pages > li.previous.page > a",
+        "ul.pages > li.next.page > a",
+        "p.other-formats a.pdf",
+        "p.other-formats a.png",
+      ].forEach((s) => {
+        if ($(s).parents(".contextual").length === 0) {
+          $(s).attr("href", $(s, htmlString).attr("href"));
+        }
+      });
+    }
+
+    ajaxUpdateIssueList = async function (settings = {}) {
+      const settingsDefault = {
+        search: location.search,
+        noSearch: false,
+        target: undefined,
+      };
+      settings = { ...settingsDefault, ...settings };
+
+      settings.search = settings.noSearch
+        ? ""
+        : settings.search[0] === "?"
+        ? settings.search
+        : "?" +
+          (settings.search[0] === "&"
+            ? settings.search.slice(1)
+            : settings.search);
+
+      const url = location.origin + location.pathname + settings.search;
+
+      if ($("table.gantt-table").length === 0) {
+        // If table is not found, hard load the page
+        window.location.href = url;
+        return;
+      }
+
+      function ajaxPostProcess(htmlString) {
+        const data = new DOMParser().parseFromString(htmlString, "text/html");
+
+        // Execute actual dates plugin startup script
+        try {
+          const $headData = $("head", data);
+          const scriptActualDates = $headData
+            .filter((i, e) => e.nodeName === "SCRIPT")
+            .map((i, e) => $(e).text())
+            .toArray()
+            .filter((s) => !s.includes("function ajaxUpdateIssueList"))
+            .filter((s) => s.includes("ActualDates ="))[0];
+          if (scriptActualDates) {
+            eval(
+              scriptActualDates.replace("let ActualDates =", "ActualDates =")
+            );
+          }
+        } catch (error) {
+          console.error(error);
+        }
+
+        if (url !== location.href) {
+          // Update history
+          window.history.pushState({}, "", url);
+
+          // Update back url
+          $('input[name*="back_url"]').attr("value", url);
+        }
+
+        // Show flash
+        const $flash = $("#content > div.flash", data);
+        if ($flash.length) {
+          $("#content > div.flash").remove();
+          $flash.prependTo("#content");
+        }
+
+        // Update query form
+        $("#query_form")
+          .empty()
+          .append($("#query_form", htmlString).children());
+        setUpQueryFormButtons();
+        setFilterItemToSortable();
+
+        // Update list title
+        $("#content>h2:first")
+          .contents()
+          .each((i, e) => {
+            if (e.nodeType === Node.TEXT_NODE) {
+              e.nodeValue = $("#content>h2", htmlString).text();
+            }
+          });
+        $("head>title").text($("title", htmlString).text());
+
+        // Update sidebar
+        $("#sidebar").replaceWith($("#sidebar", htmlString));
+
+        // Support for RedmineUp issue_tags plugin
+        if (typeof setSelect2Filter) {
+          if (availableFilters["issue_tags"]) {
+            setSelect2Filter("issue_tags", {
+              url: homeUrl + "auto_completes/redmine_tags",
+            });
+          }
+        }
+
+        // Update query-totals
+        $("#content>p.query-totals").remove();
+        $("#query_form+p.query-totals", htmlString).insertAfter("#query_form");
+
+        // Update issue list
+        const scrollTargetSelector = "#gantt_area";
+        const scrollPositionBeforeUpdate = {
+          top: $(scrollTargetSelector).scrollTop(),
+          left: $(settings.target).parent().hasClass("previous page")
+            ? $(scrollTargetSelector).width()
+            : $(settings.target).parent().hasClass("next page")
+            ? 0
+            : $(scrollTargetSelector).scrollLeft(),
+        };
+
+        const $ganttTable = $("table.gantt-table");
+
+        const $ganttTableCloned = cloneGanttTable($ganttTable);
+
+        const $ganttAreaCloned = $ganttTableCloned
+          .find("#gantt_area")
+          .attr("id", "gantt_area_cloned");
+
+        $ganttTableCloned.insertBefore($ganttTable);
+
+        // Restore scrolling
+        $ganttAreaCloned
+          .scrollTop(scrollPositionBeforeUpdate.top)
+          .scrollLeft(scrollPositionBeforeUpdate.left);
+
+        // Hide original gantt by opacity settings
+        $ganttTable.css({ opacity: 0 });
+
+        // Update gantt-table element
+        $ganttTable
+          .empty()
+          .append($("table.gantt-table", htmlString).children());
+
+        moveContextualButtons(htmlString);
+
+        // Reset svg
+        $("#gantt_draw_area").empty();
+        draw_gantt = null;
+
+        // Execute original gantt setup script
+        eval(
+          $("#content>script:first")
+            .text()
+            .match(/\$\(function\(\) {([\s\S]*?)}\)\;/)[1]
+        );
+
+        // Restore scroll position
+        setTimeout(() => {
+          let offsetLeft = 0;
+
+          // Offset to previous or next month
+          if ($(settings.target).attr("accesskey") === "p") {
+            offsetLeft = $("#gantt_area>.gantt_hdr").eq(1).width();
+          } else if ($(settings.target).attr("accesskey") === "n") {
+            offsetLeft = -$("#gantt_area>.gantt_hdr")
+              .eq(Number($("#months").prop("value")))
+              .width();
+          }
+          $ganttTable
+            .find("#gantt_area")
+            .scrollTop(scrollPositionBeforeUpdate.top)
+            .scrollLeft(scrollPositionBeforeUpdate.left + offsetLeft);
+        });
+      }
+
+      try {
+        // Add query parameters to url
+        const response = await fetch(url);
+        if (!response.ok) {
+          throw new Error(`Error ${response.status}: ${response.statusText}`);
+        }
+
+        // Show ajax indicator
+        $("#ajax-indicator").show();
+
+        const htmlString = await response.text();
+
+        // Show flash
+        const $flash = $("#content > div.flash", htmlString);
+        if ($flash.length) {
+          $("#content > div.flash").remove();
+          $flash.prependTo("#content");
+        }
+
+        ajaxPostProcess(htmlString, response.status, response);
+
+        // Hide ajax indicator
+        $("#ajax-indicator").hide();
+      } catch (error) {
+        console.error("Fetch error:", error);
+        alert("Fetch error:", error);
+      }
+    };
+
+    function adjustGanttAreaSize() {
+      $("table.gantt-table:not(.cloned)")
+        .find(
+          ".gantt_subjects_container, " +
+            ".gantt_selected_column_container, " +
+            "#gantt_area"
+        )
+        .height(100)
+        .height(
+          Math.min(
+            // Calculate the height of the gantt from span.pagination.
+            // To do so, span.pagination should have flex-grow set to 1.
+            $("#content > span.pagination").height() + 100 - 30,
+            // If height of gantt is less than the draw area,
+            // do the following
+            $("table.gantt-table:not(.cloned) #gantt_draw_area").height() +
+              $(
+                "table.gantt-table:not(.cloned) #gantt_area div.gantt_hdr:first"
+              ).height() +
+              1
+          )
+        );
+
+      $("table.gantt-table:not(.cloned)")
+        .find("#gantt_header_cloned>div.gantt_hdr:first")
+        .width(Math.max($("#gantt_area")[0].scrollWidth, $(window).width()));
+    }
+
+    let defaultSubjectColumnWidth;
+    setTimeout(() => {
+      // Retrieve values after other scripts have completed their operation.
+      defaultSubjectColumnWidth = $("td.gantt_subjects_column").width();
+    });
+
+    const ganttCollapseExpandState = {
+      localStorageKey: "gantt-closed-items",
+      getCollapsableElements: (context) => {
+        return $(".gantt_subjects>form>div", context).filter(
+          (_, e) => $(e).find("span.expander").length > 0
+        );
+      },
+      getClosedElements: (context) => {
+        return ganttCollapseExpandState
+          .getCollapsableElements(context)
+          .filter(":not(.open)")
+          .filter((_, e) => {
+            return $(e).children("span.expander").length > 0;
+          });
+      },
+      getChildElements: (parent, context) => {
+        const itemCount =
+          ganttCollapseExpandState.getCollapsableElements(context).length;
+        const firstIndex =
+          ganttCollapseExpandState
+            .getCollapsableElements(context)
+            .toArray()
+            .indexOf(parent) + 1;
+        const parentLeft = $(parent).position().left;
+
+        const childElements = [];
+        for (i = firstIndex; i < itemCount; i++) {
+          const $elem = ganttCollapseExpandState
+            .getCollapsableElements(context)
+            .eq(i);
+          if (Number($elem.css("left").replace("px", "")) > parentLeft) {
+            childElements.push($elem[0]);
+          } else {
+            break;
+          }
+        }
+
+        return childElements;
+      },
+      load: () => {
+        return (
+          JSON.parse(
+            localStorage.getItem(ganttCollapseExpandState.localStorageKey)
+          ) || {}
+        );
+      },
+      save: (target, collapseWithChildren = false, context = null) => {
+        const $parent = $(target).closest(
+          ".project-name, .version-name, .issue-subject"
+        );
+        const $anchor = $parent.find("a");
+        const states = ganttCollapseExpandState.load();
+
+        let closedItems =
+          states[location.pathname] === undefined
+            ? []
+            : states[location.pathname].closedItems;
+
+        const childElements = collapseWithChildren
+          ? ganttCollapseExpandState
+              .getChildElements($parent[0], context)
+              .map((e) => $(e).find("a").attr("href"))
+          : [];
+
+        if ($parent.hasClass("open")) {
+          closedItems = closedItems.filter((i) => i !== $anchor.attr("href"));
+
+          if (collapseWithChildren) {
+            closedItems = closedItems.filter(
+              (item) => !childElements.includes(item)
+            );
+          }
+        } else {
+          closedItems.push($anchor.attr("href"));
+
+          if (collapseWithChildren) {
+            closedItems = closedItems.concat(childElements);
+          }
+        }
+
+        // Unique
+        closedItems = [...new Set(closedItems)];
+
+        if (closedItems.length === 0) {
+          delete states[location.pathname];
+        } else {
+          states[location.pathname] = {
+            timeStamp: Date.now(),
+            closedItems: closedItems,
+          };
+
+          // Delete undefined timestamp objects
+          for (const [key, value] of Object.entries(states)) {
+            if (value.timeStamp === undefined) {
+              delete states[key];
+            }
+          }
+
+          // Delete old timestamp objects
+          while (Object.keys(states).length > MAXIMUM_NUMBER_OF_BACKUP_STATES) {
+            const maxTimeStamp = Math.max(
+              ...Object.values(states).map((s) => {
+                Number(s.timeStamp);
+              })
+            );
+
+            for (const [key, value] of Object.entries(states)) {
+              if (value.timeStamp === maxTimeStamp) {
+                delete states[key];
+                break;
+              }
+            }
+          }
+        }
+
+        localStorage.setItem(
+          ganttCollapseExpandState.localStorageKey,
+          JSON.stringify(states)
+        );
+      },
+      /**
+       * Restore the collapse-expand status of the gantt-subjects.
+       * Caution:
+       *   If setTimeout is not used at the time of the call, it may not work
+       *   correctly.
+       */
+      restore: (context) => {
+        const states = ganttCollapseExpandState.load();
+
+        if (states === null || states[location.pathname] === undefined) return;
+
+        const state = states[location.pathname];
+        if (state.closedItems.length > 0) {
+          ganttCollapseExpandState
+            .getCollapsableElements(context)
+            .toArray()
+            .filter(
+              (e) =>
+                state.closedItems.includes($(e).find("a").attr("href")) &&
+                $(e)
+                  .closest(".project-name, .version-name, .issue-subject")
+                  .hasClass("open")
+            )
+            .map((e) => ({
+              elem: e,
+              left: $(e).position().left,
+            }))
+            .sort((a, b) => b.top - a.top)
+            .sort((a, b) => b.left - a.left)
+            .forEach((i) => {
+              const iconExpanderElem = i.elem.querySelector("span.expander");
+              ganttEntryClickOrg({
+                target: iconExpanderElem,
+                currentTarget: iconExpanderElem,
+              });
+            });
+        }
+      },
+    };
+
+    const ganttColumnWidth = {
+      localStorageKey: "gantt-column-width",
+      getColumnName: (elem) => {
+        return $(elem)
+          .attr("class")
+          .split(" ")
+          .filter((s) => /_column$/.test(s) && s != "gantt_selected_column")[0];
+      },
+      loadList: () => {
+        return JSON.parse(
+          localStorage.getItem(ganttColumnWidth.localStorageKey) || "{}"
+        );
+      },
+      saveList: (elem) => {
+        const ganttColumnWidthList = ganttColumnWidth.loadList();
+        const columnName = $(elem)
+          .attr("class")
+          .split(" ")
+          .filter((s) => /_column$/.test(s) && s != "gantt_selected_column")[0];
+
+        if (columnName === undefined) return;
+
+        ganttColumnWidthList[columnName] = $(elem).width();
+
+        localStorage.setItem(
+          ganttColumnWidth.localStorageKey,
+          JSON.stringify(ganttColumnWidthList)
+        );
+      },
+      restoreAll: () => {
+        const ganttColumnWidthList = ganttColumnWidth.loadList();
+        for (const [columnName, columnWidth] of Object.entries(
+          ganttColumnWidthList
+        )) {
+          ganttColumnWidth.set(columnName, columnWidth);
+        }
+      },
+      set: (columnName, columnWidth) => {
+        const diffWidth =
+          columnWidth -
+          $("table.gantt-table:not(.cloned) td." + columnName).width();
+        $("table.gantt-table:not(.cloned) td." + columnName)
+          .width(columnWidth)
+          .children('div[class*="container"]')
+          .each((_, e) => $(e).width($(e).width() + diffWidth))
+          .find(
+            ".gantt_hdr, " +
+              ".gantt_subjects .project-name, " +
+              ".gantt_subjects .issue-subject, " +
+              ".gantt_subjects .version-name"
+          )
+          .each((_, e) => $(e).width($(e).width() + diffWidth));
+      },
+      reset: (elem) => {
+        const ganttColumnWidthList = ganttColumnWidth.loadList();
+        const columnName = ganttColumnWidth.getColumnName(elem);
+
+        if (columnName === "gantt_subjects_column") {
+          ganttColumnWidth.set(columnName, defaultSubjectColumnWidth);
+        } else {
+          $("table.gantt-table:not(.cloned) td." + columnName)
+            .css("width", "")
+            .children('div[class*="container"]')
+            .css("width", "")
+            .children("div.gantt_hdr")
+            .css("width", "");
+        }
+
+        delete ganttColumnWidthList[columnName];
+
+        localStorage.setItem(
+          ganttColumnWidth.localStorageKey,
+          JSON.stringify(ganttColumnWidthList)
+        );
+      },
+    };
+
+    // Replace the original function to keep state of collapsed/expanded.
+    const ganttEntryClickOrg = ganttEntryClick;
+
+    ganttEntryClick = (e) => {
+      ganttEntryClickOrg(e);
+      setTimeout(() => ganttCollapseExpandState.save(e.target, e.ctrlKey));
+    };
+
+    function setUpQueryForm() {
+      // Create query form open button and append it to h2 tag.
+      const $queryFormOpenButton = $("<a>")
+        .attr("id", "query_form_open_button")
+        .text(resources.labelCriteria)
+        .css({ backgroundImage: `url(${homeUrl}images/magnifier.png)` })
+        .on("click", (e) => {
+          e.preventDefault();
+          $("#query_form").show();
+        })
+        .on("mouseenter", () => {
+          $("#query_form").show();
+        })
+        .appendTo("#content>h2:first");
+
+      // Close the query form when the outside of the form is clicked.
+      $(document).click((e) => {
+        if (
+          e.target !== $("#query_form")[0] &&
+          $(e.target).parents("#query_form").length === 0 &&
+          e.target !== $("#query_form_open_button")[0] &&
+          $(window).width() >= 900
+        ) {
+          $("#query_form").hide();
+        }
+      });
+
+      setUpQueryFormButtons();
+    }
+
+    function setUpQueryFormButtons() {
+      // Add cancel button to query form.
+      $("#query_form_with_buttons>.buttons").append(
+        $("<a>")
+          .text(resources.labelCancel)
+          .addClass("icon icon-close query_form_cancel")
+          .css("cursor", "pointer")
+          .on("click", () => {
+            $("#query_form").hide();
+          })
+      );
+
+      // Add label for display settings
+      $("<label>")
+        .text(resources.labelDisplayPeriod + ":")
+        .insertBefore("input#months")
+        .css({ marginRight: "0.5em" });
+      $("<label>")
+        .text(resources.labelDisplayStartMonth + ":")
+        .insertBefore("select#month")
+        .css({ marginLeft: "1em", marginRight: "0.5em" });
+
+      // Replace apply button with Ajax update
+      $("#query_form_with_buttons p.buttons>a.icon-checked:first")
+        .attr("onclick", "")
+        .on("click", (e) => {
+          e.preventDefault();
+
+          if (e.ctrlKey) {
+            $("#query_form").submit();
+            return;
+          }
+
+          // Select or deselect all columns before serializing
+          $("#selected_c option").prop("selected", true);
+          $("#available_c option").prop("selected", false);
+
+          ajaxUpdateIssueList({
+            search: $("#query_form").serialize(),
+            target: e.target,
+          });
+
+          $("#query_form").hide();
+        });
+
+      // Replace clear button with Ajax update
+      $("#query_form_with_buttons p.buttons>a.icon-reload:first")
+        .addClass("prevent-popup-anywhere")
+        .on("click", (e) => {
+          if (e.ctrlKey) return;
+
+          e.preventDefault();
+          ajaxUpdateIssueList({
+            search: extractSearch($(e.target).attr("href")),
+            target: e.target,
+          });
+        });
+
+      $("#query_form").hide();
+    }
+
+    function setFilterItemToSortable() {
+      $("#filters-table").sortable({
+        revert: true,
+      });
+    }
+
+    function setUpAnchorTags() {
+      // Move contextual
+      $("#query_form_with_buttons > p.contextual")
+        .children()
+        .appendTo("#content>div.contextual:first");
+
+      // Replace some anchor tag click events to update the Gantt chart.
+      $("#content").on("click", ".contextual a, ul.pages a", (e) => {
+        // Prevent Ajax updating when clicking with the Ctrl key
+        if (e.ctrlKey) return;
+
+        const url = location.origin + $(e.target).attr("href");
+
+        // Prevent Ajax updating if location pathname is different
+        if (location.pathname !== new URL(url).pathname) return;
+
+        e.preventDefault();
+        ajaxUpdateIssueList({ search: extractSearch(url), target: e.target });
+      });
+
+      // Prevent popup-anywhere
+      $(".contextual a, ul.pages a").addClass("prevent-popup-anywhere");
+    }
+
+    function replaceProjectLinks() {
+      $(".gantt_subjects > form > div.project-name a").each((_, e) => {
+        const href = $(e).attr("href");
+        if (/projects\/.+/.test(href)) {
+          $(e).attr("href", href + "/issues/gantt");
+        }
+      });
+    }
+
+    function setUpGanttTable() {
+      // Add dummy space
+      $("table.gantt-table:not(.cloned)")
+        .find(".gantt_subjects_container, .gantt_selected_column_container")
+        .find('div.gantt_hdr[style*="overflow: hidden"]')
+        .css({ paddingBottom: 20 });
+
+      // Clone Gantt header
+      const $fixedGanttHeader = $("<div>")
+        .attr("id", "gantt_header_cloned")
+        .append(
+          $("table.gantt-table:not(.cloned) #gantt_area div.gantt_hdr").clone()
+        )
+        .css({
+          height:
+            $(
+              "table.gantt-table:not(.cloned) #gantt_area div.gantt_hdr:first"
+            ).height() + 1,
+        })
+        .prependTo("table.gantt-table:not(.cloned) #gantt_area");
+
+      // Add scroll event to gantt_area
+      $("table.gantt-table:not(.cloned) #gantt_area").on("scroll", () => {
+        // Scroll subjects and selected columns
+        $(
+          ".gantt_subjects_container, .gantt_selected_column_container"
+        ).scrollTop($("#gantt_area").scrollTop());
+
+        // Scroll gantt header
+        $("#gantt_header_cloned").scrollLeft($("#gantt_area").scrollLeft());
+      });
+
+      // Add scroll event to some columns
+      $("table.gantt-table:not(.cloned) ")
+        .find(
+          "td.gantt_subjects_column, " +
+            "td.gantt_project_column, " +
+            "td.gantt_selected_column"
+        )
+        .on("wheel", (e) => {
+          $("#gantt_area").scrollTop(
+            $("#gantt_area").scrollTop() + e.originalEvent.deltaY
+          );
+        });
+
+      // Execute
+      adjustGanttAreaSize();
+      setTimeout(() => {
+        ganttColumnWidth.restoreAll();
+        ganttCollapseExpandState.restore($("table.gantt-table:not(.cloned)"));
+        $("#content.gantt_content > table.gantt-table").addClass("restored");
+      });
+
+      // Remove cloned gantt-table
+      setTimeout(() => {
+        $("table.gantt-table.cloned").fadeOut(1000, function () {
+          $(this).remove();
+        });
+        $("table.gantt-table:not(.cloned)").animate(
+          {
+            opacity: 1,
+          },
+          500,
+          null,
+          function () {
+            $(this).css({ opacity: "" });
+          }
+        );
+      });
+
+      replaceProjectLinks();
+    }
+
+    // Set up a resize observer to resize the Gantt chart
+    new ResizeObserver((e) => {
+      adjustGanttAreaSize();
+      if ($(window).width() < 900) {
+        $("#query_form").css({ display: "" });
+      }
+    }).observe($("#content > span.pagination")[0]);
+
+    // Set up a mutation observer to setup the Gantt chart
+    new MutationObserver((mutations) => {
+      mutations.forEach((mutation) => {
+        if (mutation.addedNodes.length > 0) {
+          setUpGanttTable();
+        }
+      });
+    }).observe($("table.gantt-table:not(.cloned)")[0], { childList: true });
+
+    // Add event about column width change to ui-resizable-handle.
+    $("table.gantt-table")
+      .on("mouseup", "td.ui-resizable>.ui-resizable-handle", (e) => {
+        ganttColumnWidth.saveList($(e.target).parent());
+      })
+      .on("dblclick", "td.ui-resizable>.ui-resizable-handle", (e) => {
+        ganttColumnWidth.reset($(e.target).parent());
+      });
+
+    // Add adding new issue link
+    if ($("#content > .contextual a.new-issue").length === 0) {
+      const newIssueUrl =
+        `${homeUrl}` +
+        (projectName === null ? "" : `projects/${projectName}/`) +
+        "issues/new";
+      // Check access to the new issue page
+      $.ajax(newIssueUrl).done(() => {
+        $("<a>")
+          .addClass("icon icon-add new-issue")
+          .attr("href", newIssueUrl)
+          .text(resources.labelIssueNew)
+          .prependTo("#content > .contextual");
+      });
+    }
+
+    setUpQueryForm();
+    setUpAnchorTags();
+    setUpGanttTable();
+  });
+</script>
+<style>
+  /* Fix some design */
+  body {
+    #gantt_draw_area {
+      overflow: hidden;
+    }
+
+    table.gantt-table td.gantt_done_ratio_column table.progress {
+      width: calc(100% - 6px);
+    }
+
+    #gantt_area div.task.leaf.label[style*="display: none"] + div.tooltip {
+      display: none;
+    }
+
+    .gantt_subjects > form {
+      .issue-subject img.gravatar.icon-gravatar {
+        vertical-align: top;
+      }
+      :where(.version-name, .project-name, .issue-subject)
+        > span:not(.expander) {
+        display: inline-block;
+        vertical-align: top;
+        padding-top: 0 !important;
+        padding-bottom: 0 !important;
+        height: 16px;
+        &:before {
+          vertical-align: top;
+        }
+      }
+    }
+  }
+  /* Styles for desktop layout */
+  @media screen and (min-width: 900px) {
+    #content > div.contextual {
+      position: absolute;
+      /* Note: Equal to #content padding-right */
+      right: 16px;
+    }
+  }
+  @media screen and (min-height: 400px) {
+    #wrapper {
+      height: 100vh;
+
+      & > div {
+        flex: 0 0 auto;
+      }
+
+      & > div#main {
+        flex: 1 1 auto;
+        overflow: auto;
+      }
+    }
+
+    #content {
+      display: flex;
+      flex-direction: column;
+      position: relative;
+      flex: 1 1 auto;
+
+      & > * {
+        flex: 0 0 auto;
+      }
+
+      & > table.gantt-table {
+        border-right: 1px solid #ccc;
+        border-top: 1px solid #ccc;
+        border-bottom: 1px solid #ccc;
+
+        div.gantt_hdr {
+          border-top: none;
+        }
+
+        & > thead {
+          position: sticky;
+          top: 0;
+          z-index: 20;
+        }
+      }
+    }
+  }
+
+  /* ----- Query form settings start -----*/
+  #query_form_open_button {
+    display: none;
+  }
+
+  /* Styles for mobile layout */
+  @media screen and (max-width: 899px) {
+    #query_form_with_buttons > p.buttons > .query_form_cancel {
+      display: none;
+    }
+  }
+
+  /* Styles for desktop layout */
+  @media screen and (min-width: 900px) {
+    #list-definition td.field {
+      min-width: 80px;
+    }
+    #query_form_open_button {
+      display: inline;
+      font-size: 0.6em;
+      background-position: left;
+      background-repeat: no-repeat;
+      padding-left: 20px;
+      cursor: pointer;
+      margin-left: 10px;
+      font-weight: normal;
+    }
+    #query_form {
+      display: none;
+      position: absolute;
+      background-color: white;
+      z-index: 91;
+      width: max-content;
+      max-width: calc(100% - 50px);
+      box-shadow: 5px 5px 5px rgb(0 0 0 / 20%);
+      border-radius: 5px;
+      padding: 15px;
+      border: 1px #ccc solid;
+      top: 42px;
+      min-width: 900px;
+    }
+    #query_form #filters .add-filter {
+      min-width: 350px;
+    }
+    #query_form_with_buttons {
+      & > p.contextual {
+        display: none;
+      }
+      & > p.buttons {
+        float: right;
+        margin: 0;
+        display: flex;
+        justify-content: space-between;
+        align-items: baseline;
+        width: calc(100% - 10px);
+        border-top: 1px solid #ccc;
+        padding-top: 10px;
+        margin: 15px 0 0;
+
+        & > a.icon-checked {
+          margin-left: auto;
+        }
+      }
+    }
+    #query_form_content fieldset {
+      margin-bottom: 20px;
+    }
+
+    #content > form[data-cm-url$="/issues/context_menu"] {
+      padding-bottom: 25px;
+    }
+  }
+  /* ----- Query form settings end -----*/
+
+  /* Hide gantt items until loading is complete. */
+  table.gantt-table:not(.restored) {
+    :is(
+        div.gantt_subjects_container > div.gantt_subjects,
+        form[data-cm-url$="/issues/context_menu"]
+      ) {
+      opacity: 0.1;
+    }
+
+    td.gantt_selected_column {
+      display: none;
+    }
+  }
+
+  #content > span.pagination {
+    margin-top: 10px;
+    flex: 1 1 auto;
+  }
+
+  @media screen and (min-width: 900px) and (min-height: 400px) {
+    #content > span.pagination ul.pages li {
+      margin-bottom: 0;
+    }
+    #content p.other-formats {
+      position: absolute;
+      bottom: 10px;
+      right: 20px;
+      margin: 0;
+    }
+  }
+
+  #content table.list.issues > thead > tr {
+    box-shadow: 0px 3px 3px rgb(0 0 0 / 10%);
+  }
+  #gantt_area,
+  #gantt_area_cloned {
+    border-left: 1px solid #ccc;
+  }
+  :where(
+      td.gantt_subjects_column,
+      td.gantt_selected_column,
+      td.gantt_selected_column_cloned
+    )
+    > div:first-child {
+    overflow: hidden;
+  }
+  div.gantt_subjects_container > div.gantt_hdr:nth-child(1),
+  div.gantt_selected_column_container > div.gantt_hdr:nth-child(2) {
+    position: sticky;
+    z-index: 2;
+  }
+  div.gantt_subjects_container > div.gantt_subjects {
+    position: absolute;
+    top: 0;
+  }
+  #content table.gantt-table > tbody > tr > td {
+    vertical-align: top;
+  }
+  .gantt_subjects_container_cloned {
+    overflow: hidden;
+  }
+  #gantt_header_cloned {
+    position: sticky;
+    top: 0;
+    left: 0;
+    overflow: hidden;
+    z-index: 30;
+  }
+  #gantt_area_cloned {
+    overflow: hidden;
+  }
+
+  /* Support for Redmine theme "farend bleuclair" */
+  body.theme-Bleuclair {
+    @media screen and (min-width: 900px) {
+      #content > div.contextual {
+        right: 45px;
+      }
+    }
+    @media screen and (min-height: 400px) {
+      #sidebar-switch-panel {
+        position: absolute;
+        top: 5px;
+        left: auto;
+        right: 4px;
+      }
+    }
+  }
+</style>
