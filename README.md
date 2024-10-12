@@ -12,9 +12,9 @@ This is a plugin for Redmine. This plugin is designed to improve the user experi
 - Each enhancement feature can be individually enabled or disabled, allowing administrators to fine-tune the experience via the plugin settings.
 - All enhancements are compatible with ViewCustomize plugin, allowing you to directly use the source code by copying and pasting it.
     - Source code is stored in the following directories
-        - [app/views/enhanced_ux]() (*.html.erb)
-        - [assets/javascripts]() (*.js)
-        - [assets/stylesheets]() (*.css)
+        - [app/views/enhanced_ux](app/views/enhanced_ux) (*.html.erb)
+        - [assets/javascripts](assets/javascripts) (*.js)
+        - [assets/stylesheets](assets/stylesheets) (*.css)
 
 ### Feature Details
 
