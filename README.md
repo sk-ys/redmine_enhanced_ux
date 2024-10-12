@@ -78,8 +78,16 @@ To access the plugin's settings:
 
 ## Compatibility
 
-- Redmine 5.1
-- Note: This plugin has been tested with Redmine version 5.1.
+### Redmine
+
+- Redmine 5.1 (Note: This plugin has been tested with Redmine 5.1 only.)
+
+### Theme
+
+- Default
+- Alternate
+- Classic
+- Bleuclair ( https://github.com/farend/redmine_theme_farend_bleuclair )
 
 ## Support
 
