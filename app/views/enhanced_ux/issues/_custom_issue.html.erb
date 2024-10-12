@@ -9,6 +9,10 @@
 
   window.addEventListener("DOMContentLoaded", function () {
     // ----- settings start -----
+    const dialogBaseConfig = {
+      minWidth: 500,
+      minHeight: 200,
+    };
     const commentDialogConfig = {
       width: 750,
       height: 520,
@@ -679,6 +683,7 @@
     const $commentDialog = $("<div>")
       .attr("id", "comment-dialog-content")
       .dialog({
+        ...dialogBaseConfig,
         ...commentDialogConfig,
         ...{
           width: 750,
@@ -1002,26 +1007,29 @@
       $("<div>")
         .append($iframe)
         .dialog({
-          width: 500,
-          height: 640,
-          modal: true,
-          title: $(this).text(),
-          buttons: [
-            {
-              text: resources.labelCancel,
-              click: function () {
-                $(this).dialog("close");
+          ...dialogBaseConfig,
+          ...{
+            width: 500,
+            height: 640,
+            modal: true,
+            title: $(this).text(),
+            buttons: [
+              {
+                text: resources.labelCancel,
+                click: function () {
+                  $(this).dialog("close");
+                },
               },
+            ],
+            close: function () {
+              $(this).dialog("destroy");
             },
-          ],
-          close: function () {
-            $(this).dialog("destroy");
-          },
-          create: function () {
-            $(this)
-              .parent()
-              .attr("id", "time-entries-dialog")
-              .addClass("issue-view-customize");
+            create: function () {
+              $(this)
+                .parent()
+                .attr("id", "time-entries-dialog")
+                .addClass("issue-view-customize");
+            },
           },
         });
     }
@@ -1120,26 +1128,29 @@
       $("<div>")
         .append($iframe)
         .dialog({
-          width: 980,
-          height: 540,
-          modal: true,
-          title: $(this).text(),
-          buttons: [
-            {
-              text: resources.labelCancel,
-              click: function () {
-                $(this).dialog("close");
+          ...dialogBaseConfig,
+          ...{
+            width: 980,
+            height: 540,
+            modal: true,
+            title: $(this).text(),
+            buttons: [
+              {
+                text: resources.labelCancel,
+                click: function () {
+                  $(this).dialog("close");
+                },
               },
+            ],
+            close: function () {
+              $(this).dialog("destroy");
             },
-          ],
-          close: function () {
-            $(this).dialog("destroy");
-          },
-          create: function () {
-            $(this)
-              .parent()
-              .attr("id", "edit-attachments-dialog")
-              .addClass("issue-view-customize");
+            create: function () {
+              $(this)
+                .parent()
+                .attr("id", "edit-attachments-dialog")
+                .addClass("issue-view-customize");
+            },
           },
         });
     }
@@ -1232,26 +1243,29 @@
       $("<div>")
         .append($iframe)
         .dialog({
-          width: 980,
-          height: 750,
-          modal: true,
-          title: resources.labelAddChildIssue,
-          buttons: [
-            {
-              text: resources.labelCancel,
-              click: function () {
-                $(this).dialog("close");
+          ...dialogBaseConfig,
+          ...{
+            width: 980,
+            height: 750,
+            modal: true,
+            title: resources.labelAddChildIssue,
+            buttons: [
+              {
+                text: resources.labelCancel,
+                click: function () {
+                  $(this).dialog("close");
+                },
               },
+            ],
+            close: function () {
+              $(this).dialog("destroy");
             },
-          ],
-          close: function () {
-            $(this).dialog("destroy");
-          },
-          create: function () {
-            $(this)
-              .parent()
-              .attr("id", "add-child-issue-dialog")
-              .addClass("issue-view-customize");
+            create: function () {
+              $(this)
+                .parent()
+                .attr("id", "add-child-issue-dialog")
+                .addClass("issue-view-customize");
+            },
           },
         });
     }
@@ -2151,11 +2165,7 @@
 
   /* Settings for time-entries-dialog and attachments-dialog and
   add-child-issue dialog */
-  :where(
-      #time-entries-dialog,
-      #edit-attachments-dialog,
-      #add-child-issue-dialog
-    )
+  :is(#time-entries-dialog, #edit-attachments-dialog, #add-child-issue-dialog)
     .ui-dialog-content {
     margin: auto;
     padding: 0;
