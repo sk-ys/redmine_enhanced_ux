@@ -10,7 +10,7 @@ This is a plugin for Redmine. This plugin is designed to improve the user experi
 
 - Additional JavaScript and CSS resources are loaded to enhance the visual aspects of the interface.
 - Each enhancement feature can be individually enabled or disabled, allowing administrators to fine-tune the experience via the plugin settings.
-- All enhancements are compatible with ViewCustomize plugin, allowing you to directly use the source code by copying and pasting it.
+- All enhancements are compatible with [Redmine ViewCustomize](https://github.com/onozaty/redmine-view-customize) plugin, allowing you to directly use the source code by copying and pasting it.
     - Source code is stored in the following directories
         - [app/views/enhanced_ux](app/views/enhanced_ux) (*.html.erb)
         - [assets/javascripts](assets/javascripts) (*.js)
@@ -26,7 +26,7 @@ This is a plugin for Redmine. This plugin is designed to improve the user experi
 
 ##### Issue View Customization
 
-- Custom issue - Customize issue views with additional fields and options, including tab display, Side By Side mode, and Quick note feature (also compatible with RedmineRT).
+- Custom issue - Customize issue views with additional fields and options, including tab display, Side By Side mode, and Quick note feature (also compatible with [RedmineRT](https://github.com/MayamaTakeshi/redmine_rt)).
 - Copy issue form link with state - Copy a link to an issue form while retaining its current state.
 - Fixed submit button - Keep the submit button fixed on the screen for easier access.
 - Issue attributes to link - Convert issue attributes to clickable links.
@@ -89,7 +89,7 @@ To access the plugin's settings:
 - Default
 - Alternate
 - Classic
-- Bleuclair ( https://github.com/farend/redmine_theme_farend_bleuclair )
+- [Bleuclair](https://github.com/farend/redmine_theme_farend_bleuclair)
 
 ## Support
 
