@@ -7,7 +7,6 @@ module EnhancedUx
 
           path = URI.parse(context[:request].instance_variable_get(:@fullpath)).path
           tags = []
-          Rails.logger.debug path
 
           if /\/issues\/calendar$/.match?(path)
             if Setting.plugin_redmine_enhanced_ux[:custom_calendar] == '1'
