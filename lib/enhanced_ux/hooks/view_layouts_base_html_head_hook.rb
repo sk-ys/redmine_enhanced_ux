@@ -91,8 +91,8 @@ module EnhancedUx
           end
 
           if /\/issues(|\/new|\/[0-9]+\/copy)$/.match?(path)
-            if Setting.plugin_redmine_enhanced_ux[:copy_issue_form_link_with_state] == '1'
-              tags << javascript_include_tag("issues/copy_issue_form_link_with_state", :plugin => "redmine_enhanced_ux")
+            if Setting.plugin_redmine_enhanced_ux[:copy_issue_form_link_with_data] == '1'
+              tags << javascript_include_tag("issues/copy_issue_form_link_with_data", :plugin => "redmine_enhanced_ux")
             end
             if Setting.plugin_redmine_enhanced_ux[:fixed_submit_button] == '1'
               tags << stylesheet_link_tag("issues/fixed_submit_button", :plugin => "redmine_enhanced_ux", media: "all")

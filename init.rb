@@ -15,7 +15,7 @@ Redmine::Plugin.register :redmine_enhanced_ux do
         custom_roadmap_and_version: '1',
         custom_calendar: '1',
         custom_issue_note_list: '1',
-        copy_issue_form_link_with_state: '1',
+        copy_issue_form_link_with_data: '1',
         fixed_submit_button: '1',
         issue_attributes_to_link: '1',
         scroll_to_top_or_bottom: '1',
