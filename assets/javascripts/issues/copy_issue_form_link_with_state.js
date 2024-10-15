@@ -17,16 +17,15 @@ $(() => {
   const resourcesAll = {
     en: {
       label: "Copy link to the form",
-      description: "Copy link to the form to the clipboard.",
-      messageCopiedForNewIssue: "Link to the new ticket form has been copied.",
-      messageCopiedForCopiedIssue: `Link to the copy form for the ticket #${copyFromId} has been copied.`,
+      description: "Copy link to the form with current data to the clipboard.",
+      messageCopiedForNewIssue: "Link to the new issue form with data has been copied.",
+      messageCopiedForCopiedIssue: `Link to the copy form for the issue #${copyFromId} with data has been copied.`,
     },
     ja: {
       label: "フォームへのリンクをコピー",
-      description: "フォームへのリンクをクリップボードにコピーします。",
-      messageCopiedForNewIssue:
-        "新規チケットフォームへのリンクがコピーされました。",
-      messageCopiedForCopiedIssue: `チケット#${copyFromId}のコピーフォームへのリンクがコピーされました。`,
+      description: "データが保持されたフォームへのリンクをクリップボードにコピーします。",
+      messageCopiedForNewIssue: "データが保持された新規チケットフォームへのリンクがコピーされました。",
+      messageCopiedForCopiedIssue: `チケット#${copyFromId}のデータが保持されたコピーフォームへのリンクがコピーされました。`,
     },
   };
 
