@@ -827,8 +827,8 @@
           })
           .resizable({
             handles: "w,n",
-            create: function () {
-              $(this)
+            create: (e) => {
+              $(e.target)
                 .children(".ui-resizable-handle")
                 .on("dblclick", () => {
                   if (status.active.direction === "Column") {
