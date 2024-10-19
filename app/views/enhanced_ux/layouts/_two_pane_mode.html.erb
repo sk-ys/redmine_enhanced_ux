@@ -747,11 +747,13 @@
             this.#history.pos >= this.#history.list.length - 1
           );
 
+          // Update pane title
           this.$controlPanel
             .children(".title")
             .text($contents[0].title)
             .attr("title", $contents[0].title);
 
+          // Execute the onload action
           if ($contents.find("#flash_notice.notice").length > 0) {
             // Successful update
             this.updateIssueList().then(() => {
@@ -761,6 +763,8 @@
             this.#handleOnLoad();
           }
 
+          // Clean up the view
+          // (Remove unnecessary contents and format the layout)
           $contents
             .find(
               "#wrapper>div.flyout-menu, #top-menu, #header, #footer, #sidebar"
@@ -783,8 +787,10 @@
             $contents.find("#issue-form input[name=back_url]").remove();
           }
 
+          // Show iframe contents
           this.$iframe.css("visibility", "");
 
+          // Set an event listener to detect changes in the textarea
           $contents.find("textarea").on("change", function () {
             $(this).attr("data-changed", "changed");
           });
