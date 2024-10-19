@@ -110,6 +110,7 @@
 
         // Data acquisition and processing
         const htmlString = await response.text();
+        const data = new DOMParser().parseFromString(htmlString, "text/html");
 
         if (url !== location.href) {
           // Update history
@@ -161,6 +162,11 @@
           .empty()
           .append($("table.list.issues", htmlString).children());
         IssueNoteList.fn.initialize();
+
+        // Update page title
+        // Note: The cause is unknown, Failed to extract title using
+        // `$("title", htmlString)`
+        $("head>title").text($("head>title", data).text());
 
         // Set form state
         IssueNoteList.fn.collapseNoteRow(

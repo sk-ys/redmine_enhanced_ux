@@ -168,6 +168,7 @@
 
         // Data acquisition and processing
         const htmlString = await response.text();
+        const data = new DOMParser().parseFromString(htmlString, "text/html");
 
         if (url !== location.href) {
           // Update history
@@ -203,7 +204,11 @@
               e.nodeValue = $("#content>h2", htmlString).text();
             }
           });
-        $("head>title").text($("title", htmlString).text());
+
+        // Update page title
+        // Note: The cause is unknown, Failed to extract title using
+        // `$("title", htmlString)`
+        $("head>title").text($("head>title", data).text());
 
         // Update sidebar
         $("#sidebar").replaceWith($("#sidebar", htmlString));
