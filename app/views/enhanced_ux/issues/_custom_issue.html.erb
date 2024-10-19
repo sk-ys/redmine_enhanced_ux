@@ -868,7 +868,10 @@
       $("div#attributes").after($descriptionAttribute);
 
       // Add <hr>
-      $("#attributes").before($("<hr>")).after($("<hr>"));
+      $("#attributes")
+        .before($("<hr>"))
+        .children(".splitcontent")
+        .after($("<hr>"));
 
       // Show description edit field
       if (openDescriptionEditFieldAutomatically) {
