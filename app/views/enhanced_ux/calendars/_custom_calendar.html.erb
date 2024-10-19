@@ -99,6 +99,7 @@
       $("#content").on("submit", "#query_form", replaceQueryFormSubmission);
 
       setUpQueryFormButtons();
+      setFilterItemToSortable();
     }
 
     function setUpQueryFormButtons() {
@@ -756,6 +757,14 @@
 
     #query_form_content fieldset {
       margin-bottom: 20px;
+    }
+  }
+
+  /* Sortable filter item cursor setting in query form */
+  #filters-table.ui-sortable {
+    tr,
+    tr label {
+      cursor: n-resize;
     }
   }
 

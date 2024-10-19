@@ -132,6 +132,7 @@
           .empty()
           .append($("#query_form", htmlString).children());
         setUpQueryFormButtons();
+        setFilterItemToSortable();
 
         // Update query-totals
         $("#content>p.query-totals").remove();
@@ -269,6 +270,7 @@
       $("#content").on("submit", "#query_form", replaceQueryFormSubmission);
 
       setUpQueryFormButtons();
+      setFilterItemToSortable();
     }
 
     function setUpQueryFormButtons() {
@@ -322,6 +324,12 @@
         });
 
       $("#query_form").hide();
+    }
+
+    function setFilterItemToSortable() {
+      $("#filters-table").sortable({
+        revert: true,
+      });
     }
 
     function replaceAnchorTagAction(e) {
@@ -503,6 +511,14 @@
 
     &:hover > th.ui-resizable > div.ui-resizable-handle {
       background-color: #0001;
+    }
+  }
+
+  /* Sortable filter item cursor setting in query form */
+  #filters-table.ui-sortable {
+    tr,
+    tr label {
+      cursor: n-resize;
     }
   }
 
