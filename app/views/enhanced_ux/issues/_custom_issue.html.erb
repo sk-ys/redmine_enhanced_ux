@@ -13,7 +13,7 @@
       minWidth: 500,
       minHeight: 200,
     };
-    const commentDialogConfig = {
+    const notesDialogConfig = {
       width: 750,
       height: 520,
     };
@@ -26,7 +26,7 @@
         sideBySideMode: "Side-by-side mode",
         labelView: "View",
         labelEdit: "Edit",
-        labelAddQuickComment: "Add quick comment",
+        labelAddQuickNotes: "Add quick notes",
         labelCancel: "Cancel",
         labelFixed: "Fixed",
         labelUnfixed: "Unfixed",
@@ -36,12 +36,12 @@
         labelMaximize: "Maximize",
         labelClose: "Close",
         messageSubmitAll:
-          "⚠️Sends all changes in edit fields, quick notes fields, " +
-          "and attachments, and reloads the page.",
+          "⚠️Sends all changes in the edit fields, quick notes fields, " +
+          "and attachments, and then reloads the page.",
         labelSubmitAll: "Submit all",
-        labelSubmitQuickCommentWithAttachments:
-          "Submit quick comment with attachments",
-        titleSubmitComment: "Note: Attachments are sent at the same time",
+        labelSubmitQuickNotesWithAttachments:
+          "Submit quick notes with attachments",
+        titleSubmitNotes: "Note: Attachments are sent at the same time",
         confirmResetWidth: "Do you want to reset the width?",
         helpSideBySideMode:
           "Display the history column to the right of the issue description " +
@@ -50,14 +50,14 @@
         closeQuickNotes: "Close Quick notes",
         labelSwitchQuickNotesPosition: "Switch Quick notes position",
         messageFailedToSend: "Failed to send",
-        messageDisplayCommentFieldHere: "Display the comment field here",
+        messageDisplayNotesFieldHere: "Display the notes field here",
         messageQuickNotesWillBeClosed: "⚠️The quick notes will be closed",
       },
       ja: {
         sideBySideMode: "左右に並べて表示",
         labelView: "表示",
         labelEdit: "編集",
-        labelAddQuickComment: "クイックコメントの追加",
+        labelAddQuickNotes: "クイックコメントの追加",
         labelCancel: "キャンセル",
         labelFixed: "固定",
         labelUnfixed: "固定解除",
@@ -70,7 +70,7 @@
           "⚠️編集欄、クイックコメント欄、添付ファイルの変更内容の全てを送信し、" +
           "ページを再読み込みします。",
         labelSubmitAll: "全てを送信",
-        labelSubmitQuickCommentWithAttachments:
+        labelSubmitQuickNotesWithAttachments:
           "クイックコメントと添付ファイルを送信",
         confirmResetWidth: "幅をリセットしますか？",
         helpSideBySideMode: "履歴欄をチケット説明欄の右隣に表示します。",
@@ -78,7 +78,7 @@
         closeQuickNotes: "クイックコメントを閉じる",
         labelSwitchQuickNotesPosition: "クイックコメントの位置を切り替え",
         messageFailedToSend: "送信に失敗しました",
-        messageDisplayCommentFieldHere: "コメント欄をここに表示する",
+        messageDisplayNotesFieldHere: "コメント欄をここに表示する",
         messageQuickNotesWillBeClosed: "⚠️クイックコメント欄は閉じられます",
       },
     };
@@ -306,7 +306,7 @@
           .attr("id", "quick_notes2-open-button")
           .text(resources.labelQuickNotes)
           .appendTo($quickNotes2Buttons)
-          .on("click", enableInlineComment);
+          .on("click", enableInlineNotes);
 
         const $buttonCloseQuickNotes = $("<button>")
           .attr("type", "button")
@@ -318,12 +318,12 @@
             $("#issue_notes")[0].focus();
           });
 
-        const $buttonSubmitComment = $("<button>")
+        const $buttonSubmitNotes = $("<button>")
           .attr("type", "button")
           .attr("id", "quick_notes2-submit-button")
-          .text(resources.labelSubmitQuickCommentWithAttachments)
+          .text(resources.labelSubmitQuickNotesWithAttachments)
           .on("click", () => {
-            asyncAjaxSubmitCommentWithAttachments().then(resetForm);
+            asyncAjaxSubmitNotesWithAttachments().then(resetForm);
           })
           .appendTo($quickNotes2Buttons);
 
@@ -331,10 +331,10 @@
           .attr("id", "issue-form-buttons")
           .appendTo($("#issue-form>.box:first"));
 
-        const $buttonRestoreCommentPane = $("<button>")
+        const $buttonRestoreNotesPane = $("<button>")
           .attr("type", "button")
-          .attr("id", "restore-comment-pane-button")
-          .text(resources.messageDisplayCommentFieldHere)
+          .attr("id", "restore-notes-pane-button")
+          .text(resources.messageDisplayNotesFieldHere)
           .attr("title", resources.messageQuickNotesWillBeClosed)
           .appendTo($issueFormButtons)
           .on("click", () => {
@@ -388,22 +388,22 @@
       updateSubmitButtonPosition();
     };
 
-    function enableDialogComment(state, fromInline = false) {
+    function enableDialogNotes(state, fromInline = false) {
       if ($("#update").length === 0) return;
 
       if (state) {
         resetForm();
-        $commentDialog.dialog("open");
-        $commentDialog.fromInline = fromInline;
+        $notesDialog.dialog("open");
+        $notesDialog.fromInline = fromInline;
       } else {
-        $commentDialog.dialog("close");
+        $notesDialog.dialog("close");
       }
     }
 
-    function enableInlineComment() {
+    function enableInlineNotes() {
       if (!quickNotes2.initialized()) return;
 
-      enableDialogComment(false);
+      enableDialogNotes(false);
       quickNotes2.show();
 
       // Change textarea rows
@@ -415,7 +415,7 @@
       // Add notes pop-out button
       addPopOutButton();
 
-      // Focus to comment field
+      // Focus to notes field
       $("#issue_notes")[0].focus();
     }
 
@@ -446,7 +446,7 @@
       // Add notes pop-out button
       addPopOutButton();
 
-      // Focus to comment field
+      // Focus to notes field
       // const scrollTop = $(".edit_issue > .box.filedroplistner").scrollTop();
       // $("#issue_notes")[0].focus();
       // setTimeout(() => {
@@ -455,7 +455,7 @@
     }
 
     // Issue tab selected event
-    function selectIssueTab(e, isCommentOnlyMode = false) {
+    function selectIssueTab(e, isNotesOnlyMode = false) {
       if (viewOnly) {
         $issueTabView.children("a").addClass("selected");
         return;
@@ -486,20 +486,20 @@
       }
 
       // Redraw dialog if already open
-      if ($commentDialog.dialog("isOpen")) {
-        $commentDialog.dialog("close");
+      if ($notesDialog.dialog("isOpen")) {
+        $notesDialog.dialog("close");
         resetForm();
-        $commentDialog.dialog("open");
+        $notesDialog.dialog("open");
 
         // TODO: Height cannot be adjusted in just one run. Unexplained.
-        $commentDialog.dialog("close");
+        $notesDialog.dialog("close");
         resetForm();
-        $commentDialog.dialog("open");
+        $notesDialog.dialog("open");
       }
 
       updateSubmitButtonPosition();
-      if (!isCommentOnlyMode && $("#update").hasClass("comment-only")) return;
-      if (isCommentOnlyMode) $("#issue_notes")[0].focus();
+      if (!isNotesOnlyMode && $("#update").hasClass("notes-only")) return;
+      if (isNotesOnlyMode) $("#issue_notes")[0].focus();
     }
 
     function resetHeightOfAttachmentTable() {
@@ -527,8 +527,8 @@
 
       const $btnToggleFixed = $("<button>")
         .attr("type", "button")
-        .addClass("comment-dialog-titlebar-button")
-        .addClass("comment-dialog-toggle-fixed-position")
+        .addClass("notes-dialog-titlebar-button")
+        .addClass("notes-dialog-toggle-fixed-position")
         .button({
           // Default position is "fixed"
           icon: "ui-icon-pin-w",
@@ -537,7 +537,7 @@
         })
         .click(function (e) {
           e.preventDefault();
-          const currentContent = $commentDialog.dialog("option", "appendTo");
+          const currentContent = $notesDialog.dialog("option", "appendTo");
           const baseContent = "#content";
           const contentPosition = {
             left:
@@ -631,7 +631,7 @@
         .appendTo($titleBar);
     }
 
-    async function asyncAjaxSubmitCommentWithAttachments() {
+    async function asyncAjaxSubmitNotesWithAttachments() {
       const url = $("#issue-form").attr("action");
 
       // Serialize basic informations
@@ -680,21 +680,21 @@
     }
 
     const documentScrollPosition = { left: undefined, top: undefined };
-    const $commentDialog = $("<div>")
-      .attr("id", "comment-dialog-content")
+    const $notesDialog = $("<div>")
+      .attr("id", "notes-dialog-content")
       .dialog({
         ...dialogBaseConfig,
-        ...commentDialogConfig,
+        ...notesDialogConfig,
         ...{
           width: 750,
           height: 520,
-          title: resources.labelAddQuickComment,
+          title: resources.labelAddQuickNotes,
           autoOpen: false,
           position: { my: "left+100 top+200", at: "left top", of: window },
           buttons: [
             {
-              text: resources.labelSubmitQuickCommentWithAttachments,
-              click: asyncAjaxSubmitCommentWithAttachments,
+              text: resources.labelSubmitQuickNotesWithAttachments,
+              click: asyncAjaxSubmitNotesWithAttachments,
             },
             {
               text: resources.labelSubmitAll,
@@ -708,7 +708,7 @@
             $(this).parent().css({ position: "fixed" });
             $(this)
               .parent()
-              .attr("id", "comment-dialog")
+              .attr("id", "notes-dialog")
               .addClass("issue-view-customize");
             addButtonToDialogTitlebar($(this));
           },
@@ -726,7 +726,7 @@
               .parent()
               .find(".ui-dialog-titlebar-close");
 
-            // Open comment dialog
+            // Open notes dialog
             if ($("#tab-issue-view").hasClass("selected")) {
               $(this).dialog("option", "appendTo", "#content");
               $("#update").appendTo($(this)).show();
@@ -778,7 +778,7 @@
             resetForm();
 
             // Clear dialog contents
-            $("#comment-dialog-content").empty();
+            $("#notes-dialog-content").empty();
 
             // Scroll to backed up scroll position
             $(document).scrollLeft(documentScrollPosition.left);
@@ -786,8 +786,8 @@
 
             updateSubmitButtonPosition();
 
-            if ($commentDialog.fromInline) {
-              enableInlineComment();
+            if ($notesDialog.fromInline) {
+              enableInlineNotes();
             }
           },
           beforeClose: function () {
@@ -801,10 +801,10 @@
     function addPopOutButton() {
       if (viewOnly) return;
       if ($("#add_notes").length === 0) return;
-      if ($("#comment-dialog-pop-out-button").length > 0) return;
+      if ($("#notes-dialog-pop-out-button").length > 0) return;
 
       const $button = $("<span >")
-        .attr("id", "comment-dialog-pop-out-button")
+        .attr("id", "notes-dialog-pop-out-button")
         .attr("title", resources.labelPopOut)
         .addClass("ui-icon")
         .addClass("ui-icon-arrowreturnthick-1-n")
@@ -812,7 +812,7 @@
           e.preventDefault();
           const fromInline = $(e.target).closest("#quick_notes2").length > 0;
           resetForm();
-          enableDialogComment(true, fromInline);
+          enableDialogNotes(true, fromInline);
         })
         .prependTo($("#add_notes>legend"));
     }
@@ -1375,7 +1375,7 @@
           .removeAttr("onclick")
           .on("click", (e) => {
             if (e.ctrlKey) {
-              enableDialogComment(true);
+              enableDialogNotes(true);
             } else {
               selectIssueTab(e, false);
               resetForm();
@@ -1418,11 +1418,11 @@
         });
 
         if (quickNotes2.initialized()) {
-          // Replace edit-comment link in history
+          // Replace edit-notes link in history
           $("#history").on("click", ".journal-actions>a.icon-comment", () => {
             if (!$("#update").is(":visible")) {
-              if (!$("#comment-dialog-content").dialog("isOpen")) {
-                enableInlineComment();
+              if (!$("#notes-dialog-content").dialog("isOpen")) {
+                enableInlineNotes();
               }
             }
           });
@@ -1434,9 +1434,9 @@
             () => {
               if (
                 !$("#update").is(":visible") &&
-                !$("#comment-dialog-content").dialog("isOpen")
+                !$("#notes-dialog-content").dialog("isOpen")
               ) {
-                enableInlineComment();
+                enableInlineNotes();
               }
             }
           );
@@ -1496,7 +1496,7 @@
         const showAndScrollToOrg = showAndScrollTo;
         showAndScrollTo = function (id, focus) {
           if (id === "update" && !$("#tab-issue-edit").hasClass("selected")) {
-            if (!$commentDialog.dialog("isOpen")) {
+            if (!$notesDialog.dialog("isOpen")) {
               $("html, body").animate(
                 { scrollTop: $("#add_notes").offset().top },
                 100
@@ -1643,7 +1643,7 @@
     }
   }
 
-  #comment-dialog-content #update div.box fieldset.tabular {
+  #notes-dialog-content #update div.box fieldset.tabular {
     display: none;
   }
 
@@ -1678,7 +1678,7 @@
     }
 
     #content > .contextual > a.icon-comment,
-    #comment-dialog-pop-out-button {
+    #notes-dialog-pop-out-button {
       display: none;
     }
   }
@@ -1912,7 +1912,7 @@
   #quick_notes2-open-button,
   #quick_notes2-close-button,
   #quick_notes2-submit-button,
-  #restore-comment-pane-button {
+  #restore-notes-pane-button {
     cursor: pointer;
     margin: 0;
     color: #999;
@@ -1947,7 +1947,7 @@
       #quick_notes2-submit-button,
       #switch-quicknotes2-position-button
     ),
-  #issue-form:has(#add_notes) #restore-comment-pane-button {
+  #issue-form:has(#add_notes) #restore-notes-pane-button {
     display: none;
   }
 
@@ -2000,7 +2000,7 @@
     height: auto;
   }
 
-  #comment-dialog {
+  #notes-dialog {
     &:not(.ui-dialog-resizing):not(.ui-dialog-dragging):not(
         .ui-dialog-position-changing
       ) {
@@ -2008,7 +2008,7 @@
     }
 
     & > .ui-dialog-titlebar {
-      & > button.comment-dialog-titlebar-button {
+      & > button.notes-dialog-titlebar-button {
         position: absolute;
         top: 50%;
         width: 20px;
@@ -2017,7 +2017,7 @@
         height: 20px;
       }
 
-      & > button.comment-dialog-toggle-fixed-position {
+      & > button.notes-dialog-toggle-fixed-position {
         right: 25px;
       }
     }
@@ -2079,8 +2079,8 @@
     min-height: 60px;
   }
 
-  /* Comment dialog style settings */
-  #comment-dialog-content {
+  /* Notes dialog style settings */
+  #notes-dialog-content {
     display: flex;
     flex-direction: column;
     width: 100% !important;
@@ -2109,7 +2109,7 @@
       font-size: unset;
     }
 
-    /* Automatically adjust the height of the textarea in the comment dialog */
+    /* Automatically adjust the height of the textarea in the notes dialog */
     #update {
       margin: 0;
       height: 100%;
@@ -2134,12 +2134,12 @@
       flex: 1;
 
       .jstBlock {
-        /* note: 30px is private comment checkbox height + space */
+        /* note: 30px is private notes checkbox height + space */
         height: calc(100% - 30px);
       }
 
       .jstEditor {
-        /* note: 30px is private comment checkbox height + space */
+        /* note: 30px is private notes checkbox height + space */
         height: calc(100% - 30px);
 
         textarea,
@@ -2155,7 +2155,7 @@
     }
   }
 
-  #comment-dialog-pop-out-button {
+  #notes-dialog-pop-out-button {
     cursor: pointer;
     opacity: 0.3;
     float: right;
@@ -2230,7 +2230,7 @@
   }
 
   /* Prevent tooltip flickering on dialog */
-  #comment-dialog > .ui-tooltip {
+  #notes-dialog > .ui-tooltip {
     width: max-content;
   }
 
