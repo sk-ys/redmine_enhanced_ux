@@ -180,10 +180,10 @@
 
       function ajaxPostProcess(htmlString) {
         const data = new DOMParser().parseFromString(htmlString, "text/html");
+        const $headData = $("head", data);
 
         // Execute actual dates plugin startup script
         try {
-          const $headData = $("head", data);
           const scriptActualDates = $headData
             .filter((i, e) => e.nodeName === "SCRIPT")
             .map((i, e) => $(e).text())
@@ -229,7 +229,11 @@
               e.nodeValue = $("#content>h2", htmlString).text();
             }
           });
-        $("head>title").text($("title", htmlString).text());
+
+        // Update page title
+        // Note: The cause is unknown, Failed to extract title using
+        // `$("title", htmlString)`
+        $("head>title").text($headData.find("title").text());
 
         // Update sidebar
         $("#sidebar").replaceWith($("#sidebar", htmlString));
