@@ -794,6 +794,11 @@
           $contents.find("textarea").on("change", function () {
             $(this).attr("data-changed", "changed");
           });
+
+          // Remove the data-changed attribute before form submission
+          $contents.find("form.edit_issue").on("submit", () => {
+            $contents.find("textarea").removeAttr("data-changed");
+          });
         });
 
         this.$emptyPane = $("<div>").attr("id", "issue-pane-empty");
