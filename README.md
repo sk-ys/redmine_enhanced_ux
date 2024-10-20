@@ -27,7 +27,7 @@ This is a plugin for Redmine. This plugin is designed to improve the user experi
 ##### Issue View Customization
 
 - Custom issue - Customize issue views with additional fields and options, including tab display, Side By Side mode, and Quick note feature (also compatible with [RedmineRT](https://github.com/MayamaTakeshi/redmine_rt)).
-- Copy issue form link with state - Copy a link to an issue form while retaining its current state.
+- Copy issue form link with data - Copy a link to an issue form while retaining its current data.
 - Fixed submit button - Keep the submit button fixed on the screen for easier access.
 - Issue attributes to link - Convert issue attributes to clickable links.
 - Scroll to top or bottom - Add quick scroll buttons to navigate to the top or bottom of the page.

@@ -110,6 +110,7 @@
 
         // Data acquisition and processing
         const htmlString = await response.text();
+        const data = new DOMParser().parseFromString(htmlString, "text/html");
 
         if (url !== location.href) {
           // Update history
@@ -131,6 +132,7 @@
           .empty()
           .append($("#query_form", htmlString).children());
         setUpQueryFormButtons();
+        setFilterItemToSortable();
 
         // Update query-totals
         $("#content>p.query-totals").remove();
@@ -161,6 +163,11 @@
           .empty()
           .append($("table.list.issues", htmlString).children());
         IssueNoteList.fn.initialize();
+
+        // Update page title
+        // Note: The cause is unknown, Failed to extract title using
+        // `$("title", htmlString)`
+        $("head>title").text($("head>title", data).text());
 
         // Set form state
         IssueNoteList.fn.collapseNoteRow(
@@ -216,12 +223,21 @@
       }
     };
 
-    function ajaxUpdateIssueListWithQuery() {
+    function ajaxUpdateIssueListWithQuery(target) {
       // Select or deselect all columns before serializing
       $("#selected_c option").prop("selected", true);
       $("#available_c option").prop("selected", false);
 
-      ajaxUpdateIssueList({ search: $("#query_form").serialize() });
+      ajaxUpdateIssueList({
+        search: $("#query_form").serialize(),
+        target: target,
+      });
+    }
+
+    function replaceQueryFormSubmission(e) {
+      e.preventDefault();
+      ajaxUpdateIssueListWithQuery(e.currentTarget);
+      $("#query_form").hide();
     }
 
     function setUpQueryForm() {
@@ -250,7 +266,11 @@
         }
       });
 
+      // Replace query form submission process
+      $("#content").on("submit", "#query_form", replaceQueryFormSubmission);
+
       setUpQueryFormButtons();
+      setFilterItemToSortable();
     }
 
     function setUpQueryFormButtons() {
@@ -280,14 +300,16 @@
         .on("click", (e) => {
           e.preventDefault();
 
+          // Conventional query submission
           if (e.ctrlKey) {
-            $("#query_form").submit();
-            return;
+            $("#content").off(
+              "submit",
+              "#query_form",
+              replaceQueryFormSubmission
+            );
           }
 
-          ajaxUpdateIssueListWithQuery();
-
-          $("#query_form").hide();
+          $("#query_form").submit();
         });
 
       // Replace clear button with ajax update
@@ -302,6 +324,12 @@
         });
 
       $("#query_form").hide();
+    }
+
+    function setFilterItemToSortable() {
+      $("#filters-table").sortable({
+        revert: true,
+      });
     }
 
     function replaceAnchorTagAction(e) {
@@ -483,6 +511,14 @@
 
     &:hover > th.ui-resizable > div.ui-resizable-handle {
       background-color: #0001;
+    }
+  }
+
+  /* Sortable filter item cursor setting in query form */
+  #filters-table.ui-sortable {
+    tr,
+    tr label {
+      cursor: n-resize;
     }
   }
 

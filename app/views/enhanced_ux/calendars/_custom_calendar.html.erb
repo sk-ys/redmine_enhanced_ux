@@ -51,6 +51,23 @@
       return new URL(getAbsUrl(url)).search;
     }
 
+    function ajaxUpdateIssueListWithQuery(target) {
+      // Select or deselect all columns before serializing
+      $("#selected_c option").prop("selected", true);
+      $("#available_c option").prop("selected", false);
+
+      ajaxUpdateIssueList({
+        search: $("#query_form").serialize(),
+        target: target,
+      });
+    }
+
+    function replaceQueryFormSubmission(e) {
+      e.preventDefault();
+      ajaxUpdateIssueListWithQuery(e.currentTarget);
+      $("#query_form").hide();
+    }
+
     function setUpQueryForm() {
       // Create query form open button and append it to h2 tag.
       const $queryFormOpenButton = $("<a/>")
@@ -78,7 +95,11 @@
         }
       });
 
+      // Replace query form submission process
+      $("#content").on("submit", "#query_form", replaceQueryFormSubmission);
+
       setUpQueryFormButtons();
+      setFilterItemToSortable();
     }
 
     function setUpQueryFormButtons() {
@@ -99,20 +120,16 @@
         .on("click", (e) => {
           e.preventDefault();
 
+          // Conventional query submission
           if (e.ctrlKey) {
-            $("#query_form").submit();
-            return;
+            $("#content").off(
+              "submit",
+              "#query_form",
+              replaceQueryFormSubmission
+            );
           }
 
-          // Select or deselect all columns before serializing
-          $("#selected_c option").prop("selected", true);
-          $("#available_c option").prop("selected", false);
-
-          ajaxUpdateIssueList({
-            search: $("#query_form").serialize(),
-          });
-
-          $("#query_form").hide();
+          $("#query_form").submit();
         });
 
       // Replace clear button with Ajax update
@@ -740,6 +757,14 @@
 
     #query_form_content fieldset {
       margin-bottom: 20px;
+    }
+  }
+
+  /* Sortable filter item cursor setting in query form */
+  #filters-table.ui-sortable {
+    tr,
+    tr label {
+      cursor: n-resize;
     }
   }
 
