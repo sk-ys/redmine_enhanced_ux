@@ -921,7 +921,14 @@
 
       switchable() {
         if (!this.checkTextAreaChange()) return true;
-        return confirm(warnLeavingUnsavedMessage);
+        if (confirm(warnLeavingUnsavedMessage)) {
+          // Clear all flags
+          $("textarea", this.$iframe.contents()).each(function () {
+            $(this).removeData("changed").removeAttr("data-changed");
+          });
+          return true;
+        }
+        return false;
       }
 
       checkTextAreaChange() {

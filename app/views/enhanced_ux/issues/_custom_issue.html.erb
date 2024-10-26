@@ -323,7 +323,12 @@
           .attr("id", "quick_notes2-submit-button")
           .text(resources.labelSubmitQuickNotesWithAttachments)
           .on("click", () => {
-            asyncAjaxSubmitNotesWithAttachments().then(resetForm);
+            asyncAjaxSubmitNotesWithAttachments().then(() => {
+              resetForm();
+              $("textarea#issue_notes")
+                .removeData("changed")
+                .removeAttr("data-changed"); // Suppor for 2-pane mode
+            });
           })
           .appendTo($quickNotes2Buttons);
 
