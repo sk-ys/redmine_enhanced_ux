@@ -27,7 +27,7 @@ html:has(head link[rel="stylesheet"][href*="/rtl"]) {
       background-position-x: calc(100% - 4px);
     }
   }
-  table.list.issues > tbody > tr > td {
+  table.list.issues > tbody > tr > td:not(.checkbox) {
     padding-left: 10px;
     padding-right: 0;
   }
