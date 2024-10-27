@@ -183,38 +183,42 @@
 
           // Add marker when pressed Enter if current line is list item
           let head = null;
+          let changed = false;
           const startSpaceCount =
             beforeLastLine.length - beforeLastLine.trimStart().length;
           const ulSign = isUl(beforeLastLine);
           if (ulSign) {
             head = " ".repeat(startSpaceCount) + ulSign + " ";
+            changed = head !== beforeLastLine;
           } else {
             const olIndex = isOl(beforeLastLine);
             if (olIndex) {
               head = " ".repeat(startSpaceCount) + (olIndex + 1) + ". ";
+              changed =
+                " ".repeat(startSpaceCount) + olIndex + ". " !== beforeLastLine;
             }
           }
-          if (head !== null) {
-            if (head === beforeLastLine) {
-              textarea.value =
-                beforeTextSplitted.slice(0, -1).join("\n") +
-                "\n" +
-                textarea.value.substring(start);
+          
+          if (head === null) return;
+          if (!changed) {
+            textarea.value =
+              beforeTextSplitted.slice(0, -1).join("\n") +
+              "\n" +
+              textarea.value.substring(start);
 
-              var newStart = start - head.length;
-              textarea.setSelectionRange(newStart, newStart);
-            } else {
-              textarea.value =
-                textarea.value.substring(0, start) +
-                "\n" +
-                head +
-                textarea.value.substring(start);
+            var newStart = start - head.length;
+            textarea.setSelectionRange(newStart, newStart);
+          } else {
+            textarea.value =
+              textarea.value.substring(0, start) +
+              "\n" +
+              head +
+              textarea.value.substring(start);
 
-              var newStart = start + 1 + head.length;
-              textarea.setSelectionRange(newStart, newStart);
-            }
-            e.preventDefault();
+            var newStart = start + 1 + head.length;
+            textarea.setSelectionRange(newStart, newStart);
           }
+          e.preventDefault();
         }
       });
     };
