@@ -1,0 +1,34 @@
+/*
+// Path pattern:
+// Insertion position: Head of all pages
+// Type:               CSS
+// Comment:            Fixes for RTL design
+*/
+html[dir="rtl"],
+html:has(head link[rel="stylesheet"][href*="/rtl"]) {
+  .icon-only {
+    padding-left: 0;
+    padding-right: 16px;
+  }
+  .pagination {
+    margin-right: 3px;
+    margin-left: 0;
+    ul.pages {
+      margin: 0 0 0 5px;
+    }
+  }
+  .contextual .drdn-content {
+    right: auto;
+    left: 0;
+
+    a.icon {
+      padding-left: 0;
+      padding-right: 24px;
+      background-position-x: calc(100% - 4px);
+    }
+  }
+  table.list.issues > tbody > tr > td {
+    padding-left: 10px;
+    padding-right: 0;
+  }
+}
