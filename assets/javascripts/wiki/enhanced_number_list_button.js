@@ -159,6 +159,7 @@
       jsToolBarInstance.textarea.addEventListener("keydown", (e) => {
         if (e.ctrlKey || e.metaKey) return;
         if (e.key !== "Tab" && e.key !== "Enter") return;
+        if ($(".tribute-container").is(":visible")) return;
 
         const textarea = jsToolBarInstance.textarea;
         const start = textarea.selectionStart;
