@@ -46,7 +46,7 @@ This is a plugin for Redmine. This plugin is designed to improve the user experi
 #### Wiki Customization
 
 - Add copy button to the pre block - Add a button to copy the contents of pre blocks easily.
-- Enhanced number list button - Improve the number list button, including changing hierarchy levels with the Tab key, and automatically adding hierarchy markers when adding lines with the Enter key.
+- Enhanced list button - Improve the ordered / unordered list button, including changing hierarchy levels with the Tab key, and automatically adding hierarchy markers when adding lines with the Enter key.
 - Image insertion modal - Provide a modal for easier image insertion in wiki pages.
 - Insert attachment tag - Quickly insert attachment tag in wiki pages.
 - Responsive table scroll - Make tables in wiki pages scrollable for better viewing on smaller screens.
