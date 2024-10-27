@@ -1,7 +1,7 @@
 // Path pattern:
 // Insertion position: Head of all pages
 // Type:               JavaScript
-// Comment:            Enhanced number list button
+// Comment:            Enhanced list button
 (() => {
   const tabSize = 4;
 
