@@ -32,5 +32,5 @@ Redmine::Plugin.register :redmine_enhanced_ux do
         simple_menu_bar: '1',
         two_pane_mode: '1',
       },
-      partial: 'settings/enhanced_ex_settings'
+      partial: 'settings/enhanced_ux_settings'
 end
