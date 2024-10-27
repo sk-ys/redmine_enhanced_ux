@@ -10,6 +10,9 @@ html:has(head link[rel="stylesheet"][href*="/rtl"]) {
     padding-left: 0;
     padding-right: 16px;
   }
+  a.sort {
+    background-position: left 50%;
+  }
   .pagination {
     margin-right: 3px;
     margin-left: 0;
