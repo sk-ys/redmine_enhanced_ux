@@ -4,26 +4,37 @@
 // Comment:            Enhanced list button
 (() => {
   const tabSize = 4;
+  let isTextile = null;
 
   function checkJsToolBarExist() {
     return window.jsToolBar !== undefined;
   }
 
   function isUl(text) {
-    // Replace `/^\s*[*-]\s/.test(text);` as follow for better performance
-    const trimmed = text.trimStart();
-    return trimmed.startsWith("* ") || trimmed.startsWith("- ")
-      ? trimmed[0]
-      : false;
+    if (isTextile) {
+      const res = /^\*+ /.exec(text);
+      return res ? res[0].length - 1 : 0;
+    } else {
+      // Replace `/^\s*[*-]\s/.test(text);` as follow for better performance
+      const trimmed = text.trimStart();
+      return trimmed.startsWith("* ") || trimmed.startsWith("- ")
+        ? trimmed[0]
+        : false;
+    }
   }
 
   function isOl(text) {
-    // Replace `/^\s*\d+\.\s/.test(text);` as follow for better performance
-    const trimmed = text.trimStart();
-    const posDot = trimmed.indexOf(". ");
-    // Ensure that posDot is not 0 and the substring is a valid number
-    if (posDot < 0) return false;
-    return Number(trimmed.substring(0, posDot));
+    if (isTextile) {
+      const res = /^\#+ /.exec(text);
+      return res ? res[0].length - 1 : 0;
+    } else {
+      // Replace `/^\s*\d+\.\s/.test(text);` as follow for better performance
+      const trimmed = text.trimStart();
+      const posDot = trimmed.indexOf(". ");
+      // Ensure that posDot is not 0 and the substring is a valid number
+      if (posDot < 0) return false;
+      return Number(trimmed.substring(0, posDot));
+    }
   }
 
   function decorateLines(jsToolBarInstance, fnUl, fnOl, fnDefault) {
@@ -46,22 +57,36 @@
       .replace(/\r/g, "")
       .split("\n")
       .map((s) => {
-        const startSpaceCount = s.length - s.trimStart().length;
-        const tabCount = Math.floor(startSpaceCount / tabSize);
-
-        indexList = indexList.slice(0, tabCount + 1);
-        if (indexList[tabCount] == undefined) {
-          indexList[tabCount] = 0;
-        }
-        indexList[tabCount]++;
-        const index = indexList[tabCount];
-
-        if (isUl(s)) {
-          s = fnUl(s, tabCount, index);
-        } else if (isOl(s)) {
-          s = fnOl(s, tabCount, index);
+        if (isTextile) {
+          const ulIndex = isUl(s);
+          if (ulIndex) {
+            s = fnUl(s, ulIndex);
+          } else {
+            const olIndex = isOl(s);
+            if (olIndex) {
+              s = fnOl(s, olIndex);
+            } else {
+              s = fnDefault(s);
+            }
+          }
         } else {
-          s = fnDefault(s, tabCount, index);
+          const startSpaceCount = s.length - s.trimStart().length;
+          const tabCount = Math.floor(startSpaceCount / tabSize);
+
+          indexList = indexList.slice(0, tabCount + 1);
+          if (indexList[tabCount] == undefined) {
+            indexList[tabCount] = 0;
+          }
+          indexList[tabCount]++;
+          const index = indexList[tabCount];
+
+          if (isUl(s)) {
+            s = fnUl(s, tabCount, index);
+          } else if (isOl(s)) {
+            s = fnOl(s, tabCount, index);
+          } else {
+            s = fnDefault(s, tabCount, index);
+          }
         }
         return s;
       })
@@ -93,21 +118,30 @@
       (s, tabCount) => {
         const tabOffset = e.shiftKey ? -1 : 1;
         if (tabCount < -tabOffset) {
-          s = s.replace(/^\s*[*-]\s/, "");
+          s = s.replace(isTextile ? /^\*+\s/ : /^\s*[*-]\s/, "");
         } else {
-          s = s.replace(
-            /^\s*/,
-            " ".repeat(Math.max(0, tabCount + tabOffset) * tabSize)
-          );
+          s = isTextile
+            ? s.replace(
+                /^\*+\s/,
+                "*".repeat(Math.max(0, tabCount + tabOffset)) + " "
+              )
+            : s.replace(
+                /^\s*/,
+                " ".repeat(Math.max(0, tabCount + tabOffset) * tabSize)
+              );
         }
         return s;
       },
       (s, tabCount) => {
-        return s.replace(/^\s*\d+\.\s/, " ".repeat(tabCount * tabSize) + "* ");
+        return isTextile
+          ? s.replace(/^#+\s/, "*".repeat(tabCount) + " ")
+          : s.replace(/^\s*\d+\.\s/, " ".repeat(tabCount * tabSize) + "* ");
       },
       (s, tabCount) => {
         if (e.shiftKey) return s;
-        return s.replace(/^\s*/, " ".repeat(tabCount * tabSize) + "* ");
+        return isTextile
+          ? "* " + s
+          : s.replace(/^\s*/, " ".repeat(tabCount * tabSize) + "* ");
       }
     );
   }
@@ -116,26 +150,35 @@
     decorateLines(
       this,
       (s, tabCount, index) => {
-        return s.replace(
-          /^\s*[*-]?\s/,
-          " ".repeat(tabCount * tabSize) + index + ". "
-        );
+        return isTextile
+          ? s.replace(/^\*+\s/, "#".repeat(tabCount) + " ")
+          : s.replace(
+              /^\s*[*-]?\s/,
+              " ".repeat(tabCount * tabSize) + index + ". "
+            );
       },
       (s, tabCount) => {
         const tabOffset = e.shiftKey ? -1 : 1;
         if (tabCount < -tabOffset) {
-          s = s.replace(/^\s*[*-]\s/, "");
+          s = s.replace(isTextile ? /^#+\s/ : /^\s*[*-]\s/, "");
         } else {
-          s = s.replace(
-            /^\s*/,
-            " ".repeat(Math.max(0, tabCount + tabOffset) * tabSize)
-          );
+          s = isTextile
+            ? s.replace(
+                /^#+\s/,
+                "#".repeat(Math.max(0, tabCount + tabOffset)) + " "
+              )
+            : s.replace(
+                /^\s*/,
+                " ".repeat(Math.max(0, tabCount + tabOffset) * tabSize)
+              );
         }
         return s;
       },
       (s, tabCount, index) => {
         if (e.shiftKey) return s;
-        return s.replace(/^\s*/, " ".repeat(tabCount * tabSize) + index + ". ");
+        return isTextile
+          ? "# " + s
+          : s.replace(/^\s*/, " ".repeat(tabCount * tabSize) + index + ". ");
       }
     );
   }
@@ -156,6 +199,10 @@
       const jsToolBarInstance = this;
       jsToolBarDrawOrg.call(jsToolBarInstance);
 
+      isTextile =
+        isTextile ??
+        /^\/help.*\/wiki_syntax_textile/.test(jsToolBarInstance.help_link);
+
       jsToolBarInstance.textarea.addEventListener("keydown", (e) => {
         if (e.ctrlKey || e.metaKey) return;
         if (e.key !== "Tab" && e.key !== "Enter") return;
@@ -163,7 +210,6 @@
 
         const textarea = jsToolBarInstance.textarea;
         const start = textarea.selectionStart;
-        const end = textarea.selectionEnd;
 
         const beforeText = textarea.value.substring(0, start);
         const beforeTextSplitted = beforeText.split("\n");
@@ -189,17 +235,27 @@
             beforeLastLine.length - beforeLastLine.trimStart().length;
           const ulSign = isUl(beforeLastLine);
           if (ulSign) {
-            head = " ".repeat(startSpaceCount) + ulSign + " ";
+            if (isTextile) {
+              head = "*".repeat(ulSign) + " ";
+            } else {
+              head = " ".repeat(startSpaceCount) + ulSign + " ";
+            }
             changed = head !== beforeLastLine;
           } else {
             const olIndex = isOl(beforeLastLine);
             if (olIndex) {
-              head = " ".repeat(startSpaceCount) + (olIndex + 1) + ". ";
-              changed =
-                " ".repeat(startSpaceCount) + olIndex + ". " !== beforeLastLine;
+              if (isTextile) {
+                head = "#".repeat(olIndex) + " ";
+                changed = head !== beforeLastLine;
+              } else {
+                head = " ".repeat(startSpaceCount) + (olIndex + 1) + ". ";
+                changed =
+                  " ".repeat(startSpaceCount) + olIndex + ". " !==
+                  beforeLastLine;
+              }
             }
           }
-          
+
           if (head === null) return;
           if (!changed) {
             textarea.value =
