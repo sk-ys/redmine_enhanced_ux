@@ -58,8 +58,8 @@
       fnUl: (lineStr, tabCount, _, shift) => {
         const tabOffset = shift ? -1 : 1;
         const newTabCount = Math.max(0, tabCount + tabOffset);
-        if (tabCount < -tabOffset) {
-          lineStr = lineStr.replace(/^\s*[*-]\s/, "");
+        if (tabCount + tabOffset < 0) {
+          lineStr = markdownMethods.ulDecorator.fnClear(lineStr);
         } else {
           lineStr = lineStr.replace(/^\s*/, " ".repeat(newTabCount * tabSize));
         }
@@ -77,6 +77,14 @@
           /^\s*/,
           " ".repeat(tabCount * tabSize) + sign + " "
         );
+      },
+      fnClear: (lineStr) => {
+        const trimmed = lineStr.trimStart();
+        const beforeSpace = lineStr.substring(
+          0,
+          lineStr.length - trimmed.length
+        );
+        return beforeSpace + trimmed.replace(/^[*-]\s/, "");
       },
       createEvalStr: (e) => {
         let indexList = [];
@@ -99,8 +107,8 @@
       fnOl: (lineStr, tabCount, _, shift) => {
         const tabOffset = shift ? -1 : 1;
         const newTabCount = Math.max(0, tabCount + tabOffset);
-        if (tabCount < -tabOffset) {
-          lineStr = lineStr.replace(/^\s*\d+\.\s/, "");
+        if (tabCount + tabOffset < 0) {
+          lineStr = markdownMethods.olDecorator.fnClear(lineStr);
         } else {
           lineStr = lineStr.replace(/^\s*/, " ".repeat(newTabCount * tabSize));
         }
@@ -112,6 +120,14 @@
           /^\s*/,
           " ".repeat(tabCount * tabSize) + index + ". "
         );
+      },
+      fnClear: (lineStr) => {
+        const trimmed = lineStr.trimStart();
+        const beforeSpace = lineStr.substring(
+          0,
+          lineStr.length - trimmed.length
+        );
+        return beforeSpace + trimmed.replace(/^\d+\.\s/, "");
       },
       createEvalStr: (e) => {
         let indexList = [];
@@ -153,8 +169,8 @@
       fnUl: (lineStr, tabCount, shift) => {
         const tabOffset = shift ? -1 : 1;
         const newTabCount = Math.max(0, tabCount + tabOffset);
-        if (tabCount < -tabOffset) {
-          lineStr = lineStr.replace(/^\*+\s/, "");
+        if (tabCount + tabOffset < 1) {
+          lineStr = textileMethods.ulDecorator.fnClear(lineStr);
         } else {
           lineStr = lineStr.replace(/^\*+\s/, "*".repeat(newTabCount) + " ");
         }
@@ -166,6 +182,9 @@
       fnDefault: (lineStr, tabCount, shift) => {
         if (shift) return lineStr;
         return "*".repeat(tabCount) + " " + lineStr;
+      },
+      fnClear: (lineStr) => {
+        return lineStr.replace(/^\*+\s/, "");
       },
       createEvalStr: (e) => {
         return (lineStr) =>
@@ -183,8 +202,8 @@
       fnOl: (lineStr, tabCount, shift) => {
         const tabOffset = shift ? -1 : 1;
         const newTabCount = Math.max(0, tabCount + tabOffset);
-        if (tabCount < -tabOffset) {
-          lineStr = lineStr.replace(/^#+\s/, "");
+        if (tabCount + tabOffset < 1) {
+          lineStr = textileMethods.olDecorator.fnClear(lineStr);
         } else {
           lineStr = lineStr.replace(/^#+\s/, "#".repeat(newTabCount) + " ");
         }
@@ -193,6 +212,9 @@
       fnDefault: (lineStr, tabCount, shift) => {
         if (shift) return lineStr;
         return "#".repeat(tabCount) + " " + lineStr;
+      },
+      fnClear: (lineStr) => {
+        return lineStr.replace(/^#+\s/, "");
       },
       createEvalStr: (e) => {
         return (lineStr) =>
@@ -374,6 +396,36 @@
     insertNewLine(textarea, start, beforeTextSplitted, head, changed, offset);
   }
 
+  function handleSlashKey(e, jsToolBarInstance) {
+    const textarea = jsToolBarInstance.textarea;
+    const start = textarea.selectionStart;
+    const beforeText = textarea.value.substring(0, start);
+    const beforeLastLine = beforeText.split("\n").slice(-1)[0];
+
+    e.preventDefault();
+    if (methods.isOl(beforeLastLine)) {
+      // ulDecorator.call(jsToolBarInstance, e);
+      decorateLines(jsToolBarInstance, methods.olDecorator.fnClear);
+    } else {
+      olDecorator.call(jsToolBarInstance, e);
+    }
+  }
+
+  function handlePeriodKey(e, jsToolBarInstance) {
+    const textarea = jsToolBarInstance.textarea;
+    const start = textarea.selectionStart;
+    const beforeText = textarea.value.substring(0, start);
+    const beforeLastLine = beforeText.split("\n").slice(-1)[0];
+
+    e.preventDefault();
+    if (methods.isUl(beforeLastLine)) {
+      // olDecorator.call(jsToolBarInstance, e);
+      decorateLines(jsToolBarInstance, methods.ulDecorator.fnClear);
+    } else {
+      ulDecorator.call(jsToolBarInstance, e);
+    }
+  }
+
   function setUpJsToolbar() {
     if (!checkJsToolBarExist()) return false;
 
@@ -398,15 +450,24 @@
       }
 
       jsToolBarInstance.textarea.addEventListener("keydown", (e) => {
-        if (e.ctrlKey || e.metaKey) return;
         if ($(".tribute-container").is(":visible")) return;
 
         switch (e.key) {
           case "Tab":
+            if (e.ctrlKey || e.metaKey) return;
             handleTabKey(e, jsToolBarInstance);
             break;
           case "Enter":
+            if (e.ctrlKey || e.metaKey) return;
             handleEnterKey(e, jsToolBarInstance, isTextile);
+            break;
+          case "/":
+            if (!e.ctrlKey && !e.metaKey) return;
+            handleSlashKey(e, jsToolBarInstance);
+            break;
+          case ".":
+            if (!e.ctrlKey && !e.metaKey) return;
+            handlePeriodKey(e, jsToolBarInstance);
             break;
           default:
             break;
