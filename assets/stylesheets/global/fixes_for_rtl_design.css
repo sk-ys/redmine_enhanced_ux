@@ -76,7 +76,6 @@ html:has(head link[rel="stylesheet"][href*="/rtl"]) {
   }
   .ui-dialog .ui-dialog-title {
     float: right;
-    /* padding-right: 20px; */
   }
   .ui-dialog .ui-dialog-titlebar-close {
     right: auto;
@@ -87,5 +86,11 @@ html:has(head link[rel="stylesheet"][href*="/rtl"]) {
   .contextual .journal-actions > *:not(:first-child) {
     margin-left: 0;
     margin-right: 5px;
+  }
+
+  /* Roadmap view */
+  div#roadmap h3.version {
+    padding-left: 0px;
+    padding-right: 20px;
   }
 }
