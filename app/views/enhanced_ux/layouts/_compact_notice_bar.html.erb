@@ -89,6 +89,17 @@
 
         addCloseButton(e);
         setFadeOutEvent(e);
+        $(e).draggable({
+          create: function () {
+            // Remove the position style set by jQuery UI
+            $(e).css("position", "");
+          },
+          start: function (ev) {
+            if (isMobile()) {
+              ev.preventDefault();
+            }
+          },
+        });
       });
     }
 
@@ -156,6 +167,11 @@
       left: 20px;
       box-sizing: border-box;
       z-index: 300;
+      cursor: grab;
+
+      &:active {
+        cursor: grabbing;
+      }
     }
   }
 </style>
