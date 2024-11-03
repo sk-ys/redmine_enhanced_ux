@@ -120,7 +120,9 @@
     float: right;
     cursor: pointer;
     margin-left: 0.5em;
-    width: 2em;
+    margin-right: 0.5em;
+    width: 16px;
+    height: 16px;
   }
   #flash_notice.notice.fadeout_notice {
     animation-name: fade_out_notice;
@@ -156,6 +158,26 @@
       left: 20px;
       box-sizing: border-box;
       z-index: 300;
+    }
+  }
+
+  /* Support RTL */
+  html[dir="rtl"],
+  html:has(head link[rel="stylesheet"][href*="/rtl"]) {
+    div.flash.notice {
+      /* background: url(../images/true.png) 8px 5px no-repeat; */
+      background-color: #dfffdf;
+      /* border-color: #9fcf9f;
+      color: #005f00; */
+    }
+    .flash_notice_close_button {
+      float: left;
+    }
+    @media (min-width: 900px) {
+      #flash_notice {
+        left: auto;
+        right: 20px;
+      }
     }
   }
 </style>
