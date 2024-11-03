@@ -34,4 +34,55 @@ html:has(head link[rel="stylesheet"][href*="/rtl"]) {
     padding-left: 10px;
     padding-right: 0;
   }
+
+  /* Issue view */
+  body.avatars-on div.journal {
+    padding-left: 0;
+    padding-right: 32px;
+  }
+  div.journal h4 img.gravatar {
+    margin-left: 0;
+    margin-right: -32px;
+  }
+  table.list td.buttons a,
+  div.buttons a {
+    margin-right: 0;
+    margin-left: 0.6em;
+  }
+  #issue-form {
+    input[type="submit"] {
+      margin-left: auto;
+      margin-right: 20px;
+    }
+  }
+  #issue_is_private_wrap {
+    float: left;
+  }
+  @media screen and (max-width: 899px) {
+    /* tabular forms resets for mobile */
+    .tabular p,
+    .tabular.settings p {
+      padding-right: 0;
+    }
+    .tabular label,
+    .tabular.settings label {
+      margin-left: 0;
+      margin-right: 0;
+      text-align: right;
+    }
+  }
+  .ui-dialog .ui-dialog-title {
+    float: right;
+    /* padding-right: 20px; */
+  }
+  .ui-dialog .ui-dialog-titlebar-close {
+    right: auto;
+    left: 0.3em;
+  }
+  .contextual > *:not(:first-child),
+  .buttons > .icon:not(:first-child),
+  .contextual .journal-actions > *:not(:first-child) {
+    margin-left: 0;
+    margin-right: 5px;
+  }
 }

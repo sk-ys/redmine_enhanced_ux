@@ -86,7 +86,7 @@
       ...resourcesAll["en"],
       ...(resourcesAll[document.documentElement.lang] || {}),
     };
-
+    const isRtl = $('head link[rel="stylesheet"][href*="/rtl"]').length > 0;
     const isMac = navigator.platform.indexOf("Mac") !== -1;
     const issuePathname = location.pathname;
     const issueUrl = location.origin + location.pathname;
@@ -133,7 +133,7 @@
     const $issueContainer = $("<div>")
       .attr("id", "issue-container")
       .resizable({
-        handles: "e",
+        handles: isRtl ? "w" : "e",
         create: function () {
           $(this)
             .children(".ui-resizable-handle")
@@ -835,14 +835,14 @@
           $("#issue_tracker_id")
             .parent()
             .addClass("header_attribute")
-            .addClass("header_attribute_float-left")
+            .addClass("header_attribute_float-" + (isRtl ? "right" : "left"))
             .css({ clear: "none" })
         )
         .prepend(
           $("#issue_project_id")
             .parent()
             .addClass("header_attribute")
-            .addClass("header_attribute_float-left")
+            .addClass("header_attribute_float-" + (isRtl ? "right" : "left"))
         );
 
       $("#attributes").css("clear: both");
@@ -853,7 +853,7 @@
           $("#issue_subject")
             .parent()
             .addClass("header_attribute")
-            .addClass("header_attribute_float-left")
+            .addClass("header_attribute_float-" + (isRtl ? "right" : "left"))
         )
         .prepend(
           $("#issue_is_private")
@@ -1697,6 +1697,10 @@
       float: left;
     }
 
+    .header_attribute_float-right {
+      float: right;
+    }
+
     #parent_issue {
       clear: right;
       float: right;
@@ -1758,7 +1762,7 @@
           & > .tabs {
             flex: 0 0 auto;
           }
-          & > div.ui-resizable-handle.ui-resizable-e {
+          & > div.ui-resizable-handle {
             display: block;
           }
         }
@@ -1777,6 +1781,7 @@
 
         #history-container {
           margin-left: 10px;
+          margin-right: 10px;
           grid-area: history-container;
           min-width: 350px;
           width: calc(100% - 10px);
@@ -2309,6 +2314,38 @@
     }
     #main {
       margin-top: 0 !important;
+    }
+  }
+
+  /* Support RTL */
+  html[dir="rtl"],
+  html:has(head link[rel="stylesheet"][href*="/rtl"]) {
+    #switch-quicknotes2-position-button {
+      right: auto;
+      left: 0;
+    }
+    #notes-dialog .ui-dialog-titlebar-button-group {
+      right: auto;
+      left: 30px;
+    }
+    #issue-container {
+      left: 0 !important;
+    }
+    #issue_is_private_wrap {
+      margin-right: 0;
+      margin-left: 1em;
+      padding-right: 0;
+    }
+    @media screen and (max-width: 899px) {
+      #parent_issue {
+        float: right;
+      }
+    }
+    @media screen and (min-width: 900px) {
+      #parent_issue {
+        clear: left;
+        float: left;
+      }
     }
   }
 </style>
