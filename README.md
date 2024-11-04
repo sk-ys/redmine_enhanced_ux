@@ -60,6 +60,7 @@ This is a plugin for Redmine. This plugin is designed to improve the user experi
 - Show only opened issues - Filter the issue list to show only open issues using a checkbox.
 - Simple menu bar - Simplify the top menu and application menu for a more compact experience.
 - Two pane mode - Split the screen into two panes for easier multitasking.
+- Fixes for RTL design - RTL design fixes for some pages (excluding Gantt chart).
 
 ## Installation
 ### When using git
