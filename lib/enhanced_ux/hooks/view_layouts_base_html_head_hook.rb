@@ -104,6 +104,10 @@ module EnhancedUx
             end
           end
 
+          if Setting.plugin_redmine_enhanced_ux[:fixes_for_rtl_design] == '1'
+            tags << stylesheet_link_tag("global/fixes_for_rtl_design", :plugin => "redmine_enhanced_ux", media: "all")
+          end
+
           return tags.join('')
         else
           return ''

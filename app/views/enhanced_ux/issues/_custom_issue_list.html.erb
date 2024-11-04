@@ -295,6 +295,7 @@
     function setUpQueryForm() {
       const $queryFormOpenButton = $("<a>")
         .attr("id", "query_form_open_button")
+        .addClass("icon")
         .text(resources.labelCriteria)
         .css({ backgroundImage: `url(${homeUrl}images/magnifier.png)` })
         .on("click", (e) => {
@@ -500,10 +501,8 @@
     #query_form_open_button {
       display: inline;
       font-size: 0.6em;
-      margin-left: 20px;
-      background-position: left;
+      margin: 0 10px;
       background-repeat: no-repeat;
-      padding-left: 20px;
       cursor: pointer;
     }
 
@@ -687,6 +686,45 @@
     table.list.issues > tbody > tr.issue > td.done_ratio > p.percent {
       top: 2px;
       align-items: start;
+    }
+  }
+
+  /* Support RTL */
+  html[dir="rtl"],
+  html:has(head link[rel="stylesheet"][href*="/rtl"]) {
+    @media screen and (min-width: 900px) {
+      #content {
+        & > div.contextual {
+          left: 15px;
+          right: auto;
+        }
+        table.list.issues {
+          & > thead > tr {
+            & > th {
+              & > span.icon-close {
+                right: auto;
+                left: 0;
+                padding-right: 14px;
+                padding-left: 0;
+              }
+            }
+            &:hover th[style*="width"]:not(.buttons)::after {
+              left: auto;
+              right: 5px;
+            }
+          }
+        }
+      }
+    }
+    body.theme-Bleuclair {
+      @media screen and (min-width: 900px) {
+        #content
+          > #sidebar-switch-panel:not([style*="display: none;"])
+          + div.contextual {
+          left: 45px;
+          right: auto;
+        }
+      }
     }
   }
 </style>
