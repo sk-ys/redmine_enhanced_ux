@@ -18,21 +18,24 @@
   window.addEventListener("DOMContentLoaded", () => {
     // ----- i18n -----
     const lang = document.documentElement.lang;
-    const resources = {
-      menu: "Menu",
-      sideMenu: "Side menu",
-      showHeader: "Show Header",
-      hideHeader: "Hide Header",
-      search: "Search",
+    const resourcesAll = {
+      en: {
+        menu: "Menu",
+        sideMenu: "Side menu",
+        showHeader: "Show Header",
+        hideHeader: "Hide Header",
+      },
+      ja: {
+        menu: "メニュー",
+        sideMenu: "サイドメニュー",
+        showHeader: "ヘッダーを表示",
+        hideHeader: "ヘッダーを非表示",
+      },
     };
-
-    if (lang === "ja") {
-      resources.menu = "メニュー";
-      resources.sideMenu = "サイドメニュー";
-      resources.showHeader = "ヘッダーを表示";
-      resources.hideHeader = "ヘッダーを非表示";
-      resources.search = "検索";
-    }
+    const resources = {
+      ...resourcesAll["en"],
+      ...(resourcesAll[document.documentElement.lang] || {}),
+    };
 
     // ----- Define variables -----
     const $header = $("#header");
@@ -53,6 +56,7 @@
       .filter((i) => i.match(/^project-/))[0]
       ?.match(/^project-(.+)/)[1];
     const syncHeaderVisibilityItems = [];
+    const searchLabel = $("#quick-search form label[for=q] > a").text();
 
     if ($adminMenu.length > 0) {
       $topMenu.addClass("has-admin-menu");
@@ -295,7 +299,7 @@
         .attr("id", "simple-search-menu")
         .css("cursor", "pointer")
         .addClass("simple-menu")
-        .text(resources.search);
+        .text(searchLabel);
 
       const $simpleSearchForm = $("#quick-search>form").clone();
       if ($simpleSearchForm.length === 0) return;
@@ -381,8 +385,6 @@
         .css({
           cursor: "pointer",
           backgroundImage: "url(" + homePath + "images/arrow_down.png)",
-          paddingLeft: "16px",
-          height: "16px",
         })
         .addClass("icon icon-only");
       $topMenu.children("ul").append($("<li />").append($btn));
@@ -730,5 +732,23 @@
   body.theme-Bleuclair .icon-group:before {
     content: "\f0c0";
     font-family: Font Awesome\5 Solid;
+  }
+
+  /* Support RTL */
+  html[dir="rtl"],
+  html:has(head link[rel="stylesheet"][href*="/rtl"]) {
+    #top-menu {
+      & .simple-menu {
+        & + .ui-menu {
+          & .ui-menu-item {
+            & > a {
+              padding-left: 0;
+              padding-right: calc(20px + 2px);
+            }
+          }
+        }
+      }
+    }
+    /* TODO: Position the submenu to the left */
   }
 </style>

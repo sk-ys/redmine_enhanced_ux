@@ -1,0 +1,96 @@
+/*
+// Path pattern:
+// Insertion position: Head of all pages
+// Type:               CSS
+// Comment:            Fixes for RTL design
+*/
+html[dir="rtl"],
+html:has(head link[rel="stylesheet"][href*="/rtl"]) {
+  .icon-only {
+    padding-left: 0;
+    padding-right: 16px;
+  }
+  a.sort {
+    background-position: left 50%;
+  }
+  .pagination {
+    margin-right: 3px;
+    margin-left: 0;
+    ul.pages {
+      margin: 0 0 0 5px;
+    }
+  }
+  .contextual .drdn-content {
+    right: auto;
+    left: 0;
+
+    a.icon {
+      padding-left: 0;
+      padding-right: 24px;
+      background-position-x: calc(100% - 4px);
+    }
+  }
+  table.list.issues > tbody > tr > td:not(.checkbox) {
+    padding-left: 10px;
+    padding-right: 0;
+  }
+
+  /* Issue view */
+  body.avatars-on div.journal {
+    padding-left: 0;
+    padding-right: 32px;
+  }
+  div.journal h4 img.gravatar {
+    margin-left: 0;
+    margin-right: -32px;
+  }
+  table.list td.buttons a,
+  div.buttons a {
+    margin-right: 0;
+    margin-left: 0.6em;
+  }
+  #issue-form {
+    input[type="submit"] {
+      margin-left: auto;
+      margin-right: 20px;
+    }
+  }
+  #issue_is_private_wrap {
+    float: left;
+  }
+  @media screen and (max-width: 899px) {
+    /* tabular forms resets for mobile */
+    .tabular p,
+    .tabular.settings p {
+      padding-right: 0;
+    }
+    .tabular label,
+    .tabular.settings label {
+      margin-left: 0;
+      margin-right: 0;
+      text-align: right;
+    }
+    #header {
+      padding: 0;
+    }
+  }
+  .ui-dialog .ui-dialog-title {
+    float: right;
+  }
+  .ui-dialog .ui-dialog-titlebar-close {
+    right: auto;
+    left: 0.3em;
+  }
+  .contextual > *:not(:first-child),
+  .buttons > .icon:not(:first-child),
+  .contextual .journal-actions > *:not(:first-child) {
+    margin-left: 0;
+    margin-right: 5px;
+  }
+
+  /* Roadmap view */
+  div#roadmap h3.version {
+    padding-left: 0px;
+    padding-right: 20px;
+  }
+}

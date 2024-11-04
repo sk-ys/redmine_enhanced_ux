@@ -29,6 +29,8 @@
       ...(resourcesAll[document.documentElement.lang] || {}),
     };
 
+    const isRtl = $('head link[rel="stylesheet"][href*="/rtl"]').length > 0;
+
     const csrfToken = $('meta[name="csrf-token"]').attr("content");
 
     const homeUrl = $("link[href*='favicon.ico']")
@@ -406,7 +408,13 @@
             });
           }
           $("#countdown_timer .countdown_timer_label").text(
-            direction === "next" ? "⇨" : "⇦"
+            isRtl
+              ? direction === "next"
+                ? "⇦"
+                : "⇨"
+              : direction === "next"
+              ? "⇨"
+              : "⇦"
           );
           $("#countdown_timer").show();
           $(document).on("mousemove.countdown_timer", (e) => {
@@ -705,7 +713,7 @@
       background-repeat: no-repeat;
       padding-left: 20px;
       cursor: pointer;
-      margin-left: 10px;
+      margin: 0 10px;
       font-weight: normal;
     }
 
@@ -920,6 +928,27 @@
         right: 4px;
         z-index: 1;
       }
+    }
+  }
+
+  /* Support RTL */
+  html[dir="rtl"],
+  html:has(head link[rel="stylesheet"][href*="/rtl"]) {
+    @media screen and (min-width: 900px) {
+      #content {
+        & > div.contextual {
+          left: 15px;
+          right: auto;
+        }
+      }
+    }
+    #dSwitchNext {
+      left: 0;
+      right: auto;
+    }
+    #dSwitchPrev {
+      left: auto;
+      right: 0;
     }
   }
 </style>

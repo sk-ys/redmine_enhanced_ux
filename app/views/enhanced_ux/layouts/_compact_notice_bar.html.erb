@@ -62,6 +62,9 @@
 
     // Add close button to notice bar
     function addCloseButton(target) {
+      // Support for creating Subtasks and Time Entries in custom issue view.
+      $(target).find(".flash_notice_close_button").remove();
+
       const $closeButton = $("<span>")
         .addClass("icon icon-close flash_notice_close_button")
         .on("click", () => {
@@ -89,6 +92,17 @@
 
         addCloseButton(e);
         setFadeOutEvent(e);
+        $(e).draggable({
+          create: function () {
+            // Remove the position style set by jQuery UI
+            $(e).css("position", "");
+          },
+          start: function (ev) {
+            if (isMobile()) {
+              ev.preventDefault();
+            }
+          },
+        });
       });
     }
 
@@ -120,7 +134,9 @@
     float: right;
     cursor: pointer;
     margin-left: 0.5em;
-    width: 2em;
+    margin-right: 0.5em;
+    width: 16px;
+    height: 16px;
   }
   #flash_notice.notice.fadeout_notice {
     animation-name: fade_out_notice;
@@ -156,6 +172,28 @@
       left: 20px;
       box-sizing: border-box;
       z-index: 300;
+      cursor: grab;
+
+      &:active {
+        cursor: grabbing;
+      }
+    }
+  }
+
+  /* Support RTL */
+  html[dir="rtl"],
+  html:has(head link[rel="stylesheet"][href*="/rtl"]) {
+    div.flash.notice {
+      background-color: #dfffdf;
+    }
+    .flash_notice_close_button {
+      float: left;
+    }
+    @media (min-width: 900px) {
+      #flash_notice {
+        left: auto;
+        right: 20px;
+      }
     }
   }
 </style>

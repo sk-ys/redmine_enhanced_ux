@@ -86,7 +86,7 @@
       ...resourcesAll["en"],
       ...(resourcesAll[document.documentElement.lang] || {}),
     };
-
+    const isRtl = $('head link[rel="stylesheet"][href*="/rtl"]').length > 0;
     const isMac = navigator.platform.indexOf("Mac") !== -1;
     const issuePathname = location.pathname;
     const issueUrl = location.origin + location.pathname;
@@ -133,7 +133,7 @@
     const $issueContainer = $("<div>")
       .attr("id", "issue-container")
       .resizable({
-        handles: "e",
+        handles: isRtl ? "w" : "e",
         create: function () {
           $(this)
             .children(".ui-resizable-handle")
@@ -323,7 +323,12 @@
           .attr("id", "quick_notes2-submit-button")
           .text(resources.labelSubmitQuickNotesWithAttachments)
           .on("click", () => {
-            asyncAjaxSubmitNotesWithAttachments().then(resetForm);
+            asyncAjaxSubmitNotesWithAttachments().then(() => {
+              resetForm();
+              $("textarea#issue_notes")
+                .removeData("changed")
+                .removeAttr("data-changed"); // Suppor for 2-pane mode
+            });
           })
           .appendTo($quickNotes2Buttons);
 
@@ -830,14 +835,14 @@
           $("#issue_tracker_id")
             .parent()
             .addClass("header_attribute")
-            .addClass("header_attribute_float-left")
+            .addClass("header_attribute_float-" + (isRtl ? "right" : "left"))
             .css({ clear: "none" })
         )
         .prepend(
           $("#issue_project_id")
             .parent()
             .addClass("header_attribute")
-            .addClass("header_attribute_float-left")
+            .addClass("header_attribute_float-" + (isRtl ? "right" : "left"))
         );
 
       $("#attributes").css("clear: both");
@@ -848,7 +853,7 @@
           $("#issue_subject")
             .parent()
             .addClass("header_attribute")
-            .addClass("header_attribute_float-left")
+            .addClass("header_attribute_float-" + (isRtl ? "right" : "left"))
         )
         .prepend(
           $("#issue_is_private")
@@ -889,6 +894,41 @@
       $("#issue_assigned_to_id").after($("<br>"));
     }
 
+    function isActionCompleted($contents, type) {
+      const contentsPathName = $contents[0].location.pathname;
+      if (RegExp(issuePathname + "$").test(contentsPathName)) {
+        // Create
+
+        // Copy notice bar
+        $("#flash_notice").remove();
+        $("#content").prepend($contents.find("#flash_notice.notice"));
+        return 2;
+      } else if (
+        (type === "issues"
+          ? /issues\/new$/
+          : type === "time_entries"
+          ? /\/time_entries\/.*[new|edit]$/
+          : false
+        ).test(contentsPathName)
+      ) {
+        if ($contents.find("#flash_notice.notice").length > 0) {
+          // Create and add anothor
+          return 1;
+        } else {
+          // Continue editing
+          return 0;
+        }
+      } else if (RegExp("/" + type + "$").test(contentsPathName)) {
+        if ($contents.find("#errorExplanation").length > 0) {
+          // Continue editing
+          return 0;
+        }
+      }
+
+      // Is another page (Create and follow)
+      return -1;
+    }
+
     function showTimeEntryDialog(e) {
       e.preventDefault();
 
@@ -905,25 +945,6 @@
         }
       }
 
-      function isActionCompleted($contents) {
-        if (RegExp(issuePathname + "$").test($contents[0].location.pathname)) {
-          // Current issue page
-          return 2;
-        } else if (
-          /\/time_entries\/.*[new|edit]$/.test($contents[0].location.pathname)
-        ) {
-          if ($contents.find("#flash_notice.notice").length > 0) {
-            // Continue editing
-            return 1;
-          } else {
-            return 0;
-          }
-        }
-
-        // Another page
-        return -1;
-      }
-
       const url = $(this).attr("href");
       const $iframe = $("<iframe>")
         .hide()
@@ -933,7 +954,7 @@
             .closest(".ui-dialog")
             .find(".ui-dialog-content");
           const $contents = $(this).contents();
-          switch (isActionCompleted($contents)) {
+          switch (isActionCompleted($contents, "time_entries")) {
             case -1:
               // Go to another issue page
               location.href = $contents[0].documentURI;
@@ -1161,30 +1182,13 @@
     function showAddChildIssueDialog(e) {
       e.preventDefault();
 
-      function isActionCompleted($contents) {
-        if (RegExp(issuePathname + "$").test($contents[0].location.pathname)) {
-          // Is current issue page
-          return 2;
-        } else if (/issues\/new$/.test($contents[0].location.pathname)) {
-          if ($contents.find("#flash_notice.notice").length > 0) {
-            // Continue editing
-            return 1;
-          } else {
-            return 0;
-          }
-        }
-
-        // Is another page
-        return -1;
-      }
-
       const url = $(this).attr("href");
       const $iframe = $("<iframe>")
         .hide()
         .attr("src", url)
         .on("load", function () {
           const $contents = $(this).contents();
-          switch (isActionCompleted($contents)) {
+          switch (isActionCompleted($contents, "issues")) {
             case -1:
               // Go to another issue page
               location.href = $contents[0].documentURI;
@@ -1241,6 +1245,13 @@
               submitButtons.concat(cancelButton)
             );
           }
+
+          // Redirect the page if "Create and follow" button is clicked.
+          $contents
+            .find('#issue-form>input[type="submit"][name="follow"]')
+            .on("click", () => {
+              $contents.find("#issue-form").attr("target", "_top");
+            });
         });
 
       $("<div>")
@@ -1692,6 +1703,10 @@
       float: left;
     }
 
+    .header_attribute_float-right {
+      float: right;
+    }
+
     #parent_issue {
       clear: right;
       float: right;
@@ -1753,7 +1768,7 @@
           & > .tabs {
             flex: 0 0 auto;
           }
-          & > div.ui-resizable-handle.ui-resizable-e {
+          & > div.ui-resizable-handle {
             display: block;
           }
         }
@@ -1772,6 +1787,7 @@
 
         #history-container {
           margin-left: 10px;
+          margin-right: 10px;
           grid-area: history-container;
           min-width: 350px;
           width: calc(100% - 10px);
@@ -2304,6 +2320,38 @@
     }
     #main {
       margin-top: 0 !important;
+    }
+  }
+
+  /* Support RTL */
+  html[dir="rtl"],
+  html:has(head link[rel="stylesheet"][href*="/rtl"]) {
+    #switch-quicknotes2-position-button {
+      right: auto;
+      left: 0;
+    }
+    #notes-dialog .ui-dialog-titlebar-button-group {
+      right: auto;
+      left: 30px;
+    }
+    #issue-container {
+      left: 0 !important;
+    }
+    #issue_is_private_wrap {
+      margin-right: 0;
+      margin-left: 1em;
+      padding-right: 0;
+    }
+    @media screen and (max-width: 899px) {
+      #parent_issue {
+        float: right;
+      }
+    }
+    @media screen and (min-width: 900px) {
+      #parent_issue {
+        clear: left;
+        float: left;
+      }
     }
   }
 </style>

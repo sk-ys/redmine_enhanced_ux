@@ -3,6 +3,7 @@
 // Insertion position: Head of all pages
 // Type:               HTML
 // Comment:            Custom gantt chart
+// Note: RTL view is not supported.
   -->
 <script>
   var ajaxUpdateIssueList = false;
@@ -646,6 +647,7 @@
       // Create query form open button and append it to h2 tag.
       const $queryFormOpenButton = $("<a>")
         .attr("id", "query_form_open_button")
+        .addClass("icon")
         .text(resources.labelCriteria)
         .css({ backgroundImage: `url(${homeUrl}images/magnifier.png)` })
         .on("click", (e) => {
@@ -906,19 +908,23 @@
       display: none;
     }
 
-    .gantt_subjects > form {
-      .issue-subject img.gravatar.icon-gravatar {
-        vertical-align: top;
-      }
-      :where(.version-name, .project-name, .issue-subject)
-        > span:not(.expander) {
-        display: inline-block;
-        vertical-align: top;
-        padding-top: 0 !important;
-        padding-bottom: 0 !important;
-        height: 16px;
-        &:before {
+    .gantt_subjects {
+      width: 100%;
+
+      & > form {
+        .issue-subject img.gravatar.icon-gravatar {
           vertical-align: top;
+        }
+        :where(.version-name, .project-name, .issue-subject)
+          > span:not(.expander) {
+          display: inline-block;
+          vertical-align: top;
+          padding-top: 0 !important;
+          padding-bottom: 0 !important;
+          height: 16px;
+          &:before {
+            vertical-align: top;
+          }
         }
       }
     }
@@ -993,12 +999,9 @@
     #query_form_open_button {
       display: inline;
       font-size: 0.6em;
-      background-position: left;
+      margin: 0 10px;
       background-repeat: no-repeat;
-      padding-left: 20px;
       cursor: pointer;
-      margin-left: 10px;
-      font-weight: normal;
     }
     #query_form {
       display: none;
@@ -1140,6 +1143,25 @@
         top: 5px;
         left: auto;
         right: 4px;
+      }
+    }
+  }
+
+  /* Support RTL */
+  html[dir="rtl"],
+  html:has(head link[rel="stylesheet"][href*="/rtl"]) {
+    @media screen and (min-width: 900px) {
+      #content {
+        & > div.contextual {
+          right: auto;
+          left: 16px;
+        }
+      }
+      @media (min-height: 400px) {
+        #content p.other-formats {
+          right: auto;
+          left: 20px;
+        }
       }
     }
   }

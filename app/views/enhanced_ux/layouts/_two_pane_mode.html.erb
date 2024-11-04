@@ -86,6 +86,8 @@
     const resources =
       resourcesAll[document.documentElement.lang] || resourcesAll["en"];
 
+    const isRtl = $('head link[rel="stylesheet"][href*="/rtl"]').length > 0;
+
     // Do not enable 2-pane mode in the new issue form.
     if ($("#issue-form.new_issue").length > 0) return;
 
@@ -547,7 +549,7 @@
         this.$backButton = $("<button>")
           .addClass("back")
           .button({
-            icon: "ui-icon-caret-1-w",
+            icon: isRtl ? "ui-icon-caret-1-e" : "ui-icon-caret-1-w",
             label: resources.labelBack,
             showLabel: false,
           })
@@ -558,7 +560,7 @@
         this.$forwardButton = $("<button>")
           .addClass("forward")
           .button({
-            icon: "ui-icon-caret-1-e",
+            icon: isRtl ? "ui-icon-caret-1-w" : "ui-icon-caret-1-e",
             label: resources.labelForward,
             showLabel: false,
           })
@@ -626,7 +628,9 @@
         const $hideButton = $("<button>")
           .addClass("hide")
           .button({
-            icon: "ui-icon-arrowthickstop-1-e",
+            icon: isRtl
+              ? "ui-icon-arrowthickstop-1-w"
+              : "ui-icon-arrowthickstop-1-e",
             label: resources.labelHide,
             showLabel: false,
           })
@@ -826,7 +830,7 @@
             backgroundColor: $("#content").css("backgroundColor"),
           })
           .resizable({
-            handles: "w,n",
+            handles: isRtl ? "e,n" : "w,n",
             create: (e) => {
               $(e.target)
                 .children(".ui-resizable-handle")
@@ -921,7 +925,14 @@
 
       switchable() {
         if (!this.checkTextAreaChange()) return true;
-        return confirm(warnLeavingUnsavedMessage);
+        if (confirm(warnLeavingUnsavedMessage)) {
+          // Clear all flags
+          $("textarea", this.$iframe.contents()).each(function () {
+            $(this).removeData("changed").removeAttr("data-changed");
+          });
+          return true;
+        }
+        return false;
       }
 
       checkTextAreaChange() {
@@ -1304,6 +1315,7 @@
           return;
         }
         const $checkBox = $("<span>")
+          .addClass("enable_2-pane_mode_box")
           .append(
             $("<input>")
               .attr({ type: "checkbox", id: "enable_2-pane_mode" })
@@ -1585,7 +1597,6 @@
     &.issue-pane-minimize #issue-pane-toggle-minimize span.ui-icon {
       /* ui-icon-triangle-1-w -3px */
       background-position: calc(-96px - 3px) -16px;
-      width: 10px;
     }
   }
 
@@ -1628,16 +1639,16 @@
     }
   }
 
-  #main #issue-pane > :is(.ui-resizable-n, .ui-resizable-w) {
+  #main #issue-pane > :is(.ui-resizable-n, .ui-resizable-w, .ui-resizable-e) {
     display: none;
   }
 
   #main.grid-direction-column:not(.issue-pane-minimize)
     #issue-pane
-    > .ui-resizable-w,
+    > :where(.ui-resizable-w, .ui-resizable-e),
   #main.grid-direction-column.issue-pane-minimize
     #issue-pane.preview
-    > .ui-resizable-w,
+    > :where(.ui-resizable-w, .ui-resizable-e),
   #main.grid-direction-row:not(.issue-pane-minimize)
     #issue-pane
     > .ui-resizable-n,
@@ -1715,15 +1726,23 @@
     }
   }
 
-  #content #enable_2-pane_mode {
-    margin-left: 10px;
-    margin-right: 5px;
-    cursor: pointer;
+  #content {
+    .enable_2-pane_mode_box {
+      display: inline-flex;
+      align-items: center;
 
-    & + label {
-      font-size: 12px;
-      font-weight: normal;
-      cursor: pointer;
+      #enable_2-pane_mode {
+        margin-left: 10px;
+        margin-right: 5px;
+        cursor: pointer;
+        height: 13px;
+
+        & + label {
+          font-size: 12px;
+          font-weight: normal;
+          cursor: pointer;
+        }
+      }
     }
   }
 
@@ -1875,6 +1894,51 @@
   @media screen and (min-width: 2560px) {
     #main.enable-2-pane-mode #sidebar {
       width: 380px;
+    }
+  }
+
+  /* Support RTL */
+  html[dir="rtl"],
+  html:has(head link[rel="stylesheet"][href*="/rtl"]) {
+    #issue-pane {
+      border-left: none;
+      border-right: 1px solid #ccc;
+    }
+    #main.grid-direction-column {
+      & #issue-pane {
+        padding-right: 0;
+        padding-left: 10px;
+      }
+      & #issue-pane-toggle-minimize {
+        right: auto;
+        left: 0;
+
+        span.ui-icon {
+          /* ui-icon-triangle-1-w -3px */
+          background-position: calc(-96px - 3px) -16px;
+        }
+      }
+      &.issue-pane-minimize #issue-pane-toggle-minimize span.ui-icon {
+        /* ui-icon-triangle-1-e -3px */
+        background-position: calc(-32px - 3px) -16px;
+      }
+    }
+    #main.grid-direction-column.issue-pane-minimize #issue-pane {
+      &.preview:not(.maximize) {
+        left: 0 !important;
+        right: auto;
+      }
+      &:not(.preview):not(.maximize) {
+        padding-left: 0;
+      }
+    }
+    #content {
+      .enable_2-pane_mode_box {
+        #enable_2-pane_mode {
+          margin-left: 5px;
+          margin-right: 10px;
+        }
+      }
     }
   }
 </style>

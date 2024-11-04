@@ -77,9 +77,9 @@
     <%= check_box_tag 'settings[add_copy_button_to_the_pre_block]', '1', @settings[:add_copy_button_to_the_pre_block] == '1' %>
   </p>
   <p class="">
-    <label for="enhanced_number_list_button">Enhanced number list button:</label>
-    <input type="hidden" name="settings[enhanced_number_list_button]" value="'0'">
-    <%= check_box_tag 'settings[enhanced_number_list_button]', '1', @settings[:enhanced_number_list_button] == '1' %>
+    <label for="enhanced_list_button">Enhanced list button:</label>
+    <input type="hidden" name="settings[enhanced_list_button]" value="'0'">
+    <%= check_box_tag 'settings[enhanced_list_button]', '1', @settings[:enhanced_list_button] == '1' %>
   </p>
   <p class="">
     <label for="image_insertion_modal">Image insertion modal:</label>
@@ -134,5 +134,10 @@
     <label for="two_pane_mode">Two pane mode:</label>
     <input type="hidden" name="settings[two_pane_mode]" value="'0'">
     <%= check_box_tag 'settings[two_pane_mode]', '1', @settings[:two_pane_mode] == '1' %>
+  </p>
+  <p class="">
+    <label for="fixes_for_rtl_design">Fixes for RTL design:</label>
+    <input type="hidden" name="settings[fixes_for_rtl_design]" value="'0'">
+    <%= check_box_tag 'settings[fixes_for_rtl_design]', '1', @settings[:fixes_for_rtl_design] == '1' %>
   </p>
 </fieldset>

@@ -20,7 +20,7 @@ Redmine::Plugin.register :redmine_enhanced_ux do
         issue_attributes_to_link: '1',
         scroll_to_top_or_bottom: '1',
         add_copy_button_to_the_pre_block: '1',
-        enhanced_number_list_button: '1',
+        enhanced_list_button: '1',
         image_insertion_modal: '1',
         insert_attachment_tag: '1',
         responsive_table_scroll: '1',
@@ -31,6 +31,7 @@ Redmine::Plugin.register :redmine_enhanced_ux do
         show_only_opened_issues: '1',
         simple_menu_bar: '1',
         two_pane_mode: '1',
+        fixes_for_rtl_design: '1',
       },
-      partial: 'settings/enhanced_ex_settings'
+      partial: 'settings/enhanced_ux_settings'
 end

@@ -76,8 +76,8 @@ module EnhancedUx
           if Setting.plugin_redmine_enhanced_ux[:add_copy_button_to_the_pre_block] == '1'
             tags << controller.render_to_string(partial: 'enhanced_ux/wiki/add_copy_button_to_the_pre_block')
           end
-          if Setting.plugin_redmine_enhanced_ux[:enhanced_number_list_button] == '1'
-            tags << javascript_include_tag("wiki/enhanced_number_list_button", :plugin => "redmine_enhanced_ux")
+          if Setting.plugin_redmine_enhanced_ux[:enhanced_list_button] == '1'
+            tags << javascript_include_tag("wiki/enhanced_list_button", :plugin => "redmine_enhanced_ux")
           end
           if Setting.plugin_redmine_enhanced_ux[:image_insertion_modal] == '1'
             tags << controller.render_to_string(partial: 'enhanced_ux/wiki/image_insertion_modal')
@@ -102,6 +102,10 @@ module EnhancedUx
             if Setting.plugin_redmine_enhanced_ux[:two_pane_mode] == '1'
               tags << controller.render_to_string(partial: 'enhanced_ux/layouts/two_pane_mode')
             end
+          end
+
+          if Setting.plugin_redmine_enhanced_ux[:fixes_for_rtl_design] == '1'
+            tags << stylesheet_link_tag("global/fixes_for_rtl_design", :plugin => "redmine_enhanced_ux", media: "all")
           end
 
           return tags.join('')
