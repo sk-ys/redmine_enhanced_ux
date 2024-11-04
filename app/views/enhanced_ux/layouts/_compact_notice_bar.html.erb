@@ -62,6 +62,9 @@
 
     // Add close button to notice bar
     function addCloseButton(target) {
+      // Support for creating Subtasks and Time Entries in custom issue view.
+      $(target).find(".flash_notice_close_button").remove();
+
       const $closeButton = $("<span>")
         .addClass("icon icon-close flash_notice_close_button")
         .on("click", () => {

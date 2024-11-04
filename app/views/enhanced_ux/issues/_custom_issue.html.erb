@@ -898,6 +898,10 @@
       const contentsPathName = $contents[0].location.pathname;
       if (RegExp(issuePathname + "$").test(contentsPathName)) {
         // Create
+
+        // Copy notice bar
+        $("#flash_notice").remove();
+        $("#content").prepend($contents.find("#flash_notice.notice"));
         return 2;
       } else if (
         (type === "issues"
@@ -1241,6 +1245,13 @@
               submitButtons.concat(cancelButton)
             );
           }
+
+          // Redirect the page if "Create and follow" button is clicked.
+          $contents
+            .find('#issue-form>input[type="submit"][name="follow"]')
+            .on("click", () => {
+              $contents.find("#issue-form").attr("target", "_top");
+            });
         });
 
       $("<div>")
