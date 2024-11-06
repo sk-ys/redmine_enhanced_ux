@@ -141,3 +141,8 @@
     <%= check_box_tag 'settings[fixes_for_rtl_design]', '1', @settings[:fixes_for_rtl_design] == '1' %>
   </p>
 </fieldset>
+
+<div class="buttons">
+  <a class="icon icon-ok" href="javascript:void(0)" onclick="$('input[type=checkbox]:not(:checked)').each((i, e) => e.click());">Enable all</a>
+  <a class="icon icon-not-ok" href="javascript:void(0)" onclick="$('input[type=checkbox]:checked').each((i, e) => e.click());">Disable all</a>
+</div>
