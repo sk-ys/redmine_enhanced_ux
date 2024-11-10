@@ -774,6 +774,8 @@
               "#wrapper>div.flyout-menu, #top-menu, #header, #footer, #sidebar"
             )
             .remove();
+          // Support for the Hide sidebar plugin
+          $contents.find("#sidebarHandler").remove();
           $contents.find("#main").css({ padding: 0, margin: 0 });
           $contents.find("#sidebar-switch-button").remove();
           $(e.target)[0].contentWindow.onbeforeunload = (e) => {
@@ -1578,7 +1580,7 @@
       grid-template-areas: "content sidebar issue-pane";
     }
 
-    &:not(.issue-pane-minimize) :is(#sidebar, #sidebar-switch-panel) {
+    &:not(.issue-pane-minimize) #sidebar {
       display: none;
     }
 
@@ -1771,59 +1773,63 @@
   }
 
   /* Support Redmine theme "farend bleuclair" */
-  /* Restore sidebar width to standard */
-  @media screen and(min-width: 900px) and(max-width: 1089px) {
-    #main.grid-direction-row {
-      grid-template-columns: 1fr auto;
-      grid-template-rows: 1fr auto;
-      grid-template-areas: "content sidebar" "issue-pane sidebar";
-
-      &.issue-pane-minimize {
+  body.theme-Bleuclair {
+    /* Restore the sidebar width to the default */
+    @media screen and(min-width: 900px) and(max-width: 1089px) {
+      #main.grid-direction-row {
         grid-template-columns: 1fr auto;
-        grid-template-rows: 1fr 10px;
+        grid-template-rows: 1fr auto;
         grid-template-areas: "content sidebar" "issue-pane sidebar";
+
+        &.issue-pane-minimize {
+          grid-template-columns: 1fr auto;
+          grid-template-rows: 1fr 10px;
+          grid-template-areas: "content sidebar" "issue-pane sidebar";
+        }
+      }
+
+      #main.grid-direction-column.issue-pane-minimize {
+        grid-template-columns: 1fr auto 10px;
+        grid-template-rows: none;
+        grid-template-areas: "content sidebar issue-pane";
       }
     }
 
-    #main.grid-direction-column.issue-pane-minimize {
-      grid-template-columns: 1fr auto 10px;
-      grid-template-rows: none;
-      grid-template-areas: "content sidebar issue-pane";
+    /* TODO: Support for % designation */
+    @media screen and (min-width: 1090px) and (max-width: 1279px) {
+      #main > #sidebar {
+        width: 240px;
+      }
     }
 
-    #main > #sidebar {
-      /* TODO: Support for % designation */
-      width: 180px;
+    @media screen and (min-width: 1280px) and (max-width: 1599px) {
+      #main > #sidebar {
+        width: 280px;
+      }
     }
-  }
 
-  @media screen and(min-width: 1090px) and(max-width: 1279px) {
-    #main > #sidebar {
-      width: 240px;
+    @media screen and (min-width: 1600px) and (max-width: 1919px) {
+      #main > #sidebar {
+        width: 320px;
+      }
     }
-  }
 
-  @media screen and(min-width: 1280px) and(max-width: 1599px) {
-    #main > #sidebar {
-      width: 280px;
+    @media screen and (min-width: 1920px) and (max-width: 2559px) {
+      #main > #sidebar {
+        width: 360px;
+      }
     }
-  }
 
-  @media screen and(min-width: 1600px) and(max-width: 1919px) {
-    #main > #sidebar {
-      width: 320px;
+    @media screen and (min-width: 2560px) {
+      #main > #sidebar {
+        width: 380px;
+      }
     }
-  }
 
-  @media screen and(min-width: 1920px) and(max-width: 2559px) {
-    #main > #sidebar {
-      width: 360px;
-    }
-  }
-
-  @media screen and(min-width: 2560px) {
-    #main > #sidebar {
-      width: 380px;
+    #main.grid-direction-column {
+      &:not(.issue-pane-minimize) #sidebar-switch-panel {
+        display: none;
+      }
     }
   }
 
@@ -1860,40 +1866,10 @@
     display: none;
   }
 
-  /* TODO */
+  /* TODO: Support for % designation */
   @media screen and (min-width: 0px) and (max-width: 1089px) {
-    #main.enable-2-pane-mode #sidebar {
-      width: 120px !important;
-    }
-  }
-
-  @media screen and (min-width: 1090px) and (max-width: 1279px) {
-    #main.enable-2-pane-mode #sidebar {
-      width: 240px !important;
-    }
-  }
-
-  @media screen and (min-width: 1280px) and (max-width: 1599px) {
-    #main.enable-2-pane-mode #sidebar {
-      width: 280px !important;
-    }
-  }
-
-  @media screen and (min-width: 1600px) and (max-width: 1919px) {
-    #main.enable-2-pane-mode #sidebar {
-      width: 320px !important;
-    }
-  }
-
-  @media screen and (min-width: 1920px) and (max-width: 2559px) {
-    #main.enable-2-pane-mode #sidebar {
-      width: 360px !important;
-    }
-  }
-
-  @media screen and (min-width: 2560px) {
-    #main.enable-2-pane-mode #sidebar {
-      width: 380px;
+    #main.enable-2-pane-mode > #sidebar {
+      width: 180px;
     }
   }
 
@@ -1939,6 +1915,13 @@
           margin-right: 10px;
         }
       }
+    }
+  }
+
+  /* Support for the Hide sidebar plugin */
+  #main.grid-direction-column {
+    &:not(.issue-pane-minimize) #sidebarHandler {
+      display: none;
     }
   }
 </style>

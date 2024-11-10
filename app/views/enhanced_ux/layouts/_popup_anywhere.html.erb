@@ -809,6 +809,9 @@
             // Support Theme Farend Bleuclair
             $contents.find("#sidebar-switch-panel").remove();
 
+            // Support for the Hide sidebar plugin
+            $contents.find("#sidebarHandler").remove();
+
             // Hide the window before unload to prevent flickering
             $($(e.target).contents()[0].defaultView).on("beforeunload", () => {
               $(e.target).css("visibility", "hidden");
