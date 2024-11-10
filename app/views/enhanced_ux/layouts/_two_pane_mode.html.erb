@@ -1050,6 +1050,7 @@
 
       setGridDirection(direction, saveStatus = true) {
         const currentStatus = this.status.current;
+        if (!currentStatus.enabled) return;
         if (direction.includes("Column")) {
           this.$base.css({ height: "", width: currentStatus.width });
         } else if (direction.includes("Row")) {
