@@ -774,6 +774,8 @@
               "#wrapper>div.flyout-menu, #top-menu, #header, #footer, #sidebar"
             )
             .remove();
+          // Support for the Hide sidebar plugin
+          $contents.find("#sidebarHandler").remove();
           $contents.find("#main").css({ padding: 0, margin: 0 });
           $contents.find("#sidebar-switch-button").remove();
           $(e.target)[0].contentWindow.onbeforeunload = (e) => {
@@ -1939,6 +1941,13 @@
           margin-right: 10px;
         }
       }
+    }
+  }
+
+  /* Support for the Hide sidebar plugin */
+  #main.grid-direction-column {
+    &:not(.issue-pane-minimize) #sidebarHandler {
+      display: none;
     }
   }
 </style>
