@@ -643,6 +643,10 @@
       $("#query_form").hide();
     }
 
+    function removeReplaceQueryFormSubmission() {
+      $("#content").off("submit", "#query_form", replaceQueryFormSubmission);
+    }
+
     function setUpQueryForm() {
       // Create query form open button and append it to h2 tag.
       const $queryFormOpenButton = $("<a>")
@@ -708,11 +712,7 @@
 
           // Conventional query submission
           if (e.ctrlKey) {
-            $("#content").off(
-              "submit",
-              "#query_form",
-              replaceQueryFormSubmission
-            );
+            removeReplaceQueryFormSubmission();
           }
 
           $("#query_form").submit();
@@ -730,6 +730,14 @@
             target: e.target,
           });
         });
+
+      // Remove the ReplaceQueryFormSubmission function before the click event
+      // in the capturing phase.
+      $(
+        "#query_form_with_buttons p.buttons > a.icon.icon-save"
+      )[0]?.addEventListener("click", removeReplaceQueryFormSubmission, {
+        capture: true,
+      });
 
       $("#query_form").hide();
     }
