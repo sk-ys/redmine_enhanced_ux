@@ -30,7 +30,7 @@
         labelModalTitle: "画像の挿入",
         labelModalFilename: "ファイル名",
         labelModalImageTitle: "タイトル",
-        labelModalThumbnailSize: "サムネイルサイズ:",
+        labelModalThumbnailSize: "サムネイルサイズ",
         labelModalDecode: "デコード",
         labelModalTagPreview: "プレビュー",
         labelModalUploadFile: "ファイルのアップロード",
@@ -91,88 +91,83 @@
       return imageExtensions.includes(extension);
     }
 
-    function findTextileImageTags(text) {
-      const textileImageTagRegex = getTextileImageTagRegex();
+    function findTextileImageTags(text, global, strict) {
+      const textileImageTagRegex = getTextileImageTagRegex(global, strict);
       const matches = [];
       let match;
       while ((match = textileImageTagRegex.exec(text)) !== null) {
         matches.push({
+          type: "Textile",
           text: match[0],
           imageTitle: match[5]?.trim(),
+          fileName: match[3]?.trim(),
           path: (match[1] ?? "") + match[3]?.trim(), // style + path
-          option: match[3],
+          textileStyle: match[2],
+          textileStyleWithBracket: match[1],
         });
+        if (!global) break;
       }
-      return matches;
+      return global ? matches : matches[0];
     }
 
-    function findMarkdownImageTags(text) {
-      const markdownImageTagRegex = getMarkdownImageTagRegex();
+    function hasTextileStyleOption(text) {
+      const match = findTextileImageTags(text, false, true);
+      return !!match?.textileStyleWithBracket;
+    }
+
+    function findMarkdownImageTags(text, global, strict) {
+      const markdownImageTagRegex = getMarkdownImageTagRegex(global, strict);
       const matches = [];
       let match;
       while ((match = markdownImageTagRegex.exec(text)) !== null) {
         matches.push({
+          type: "Markdown",
           text: match[0],
           imageTitle: match[1]?.trim(),
           path: match[2].trim(),
         });
+        if (!global) break;
       }
-      return matches;
+      return global ? matches : matches[0];
     }
 
-    function findThumbnailMacro(text) {
-      const thumbnailMacroRegex = getThumbnailMacroRegex();
+    function findThumbnailMacro(text, global, strict) {
+      const thumbnailMacroRegex = getThumbnailMacroRegex(global, strict);
       const matches = [];
       let match;
       while ((match = thumbnailMacroRegex.exec(text)) !== null) {
         matches.push({
+          type: "ThumbnailMacro",
           text: match[0],
           imageTitle: match[4]?.trim(),
           path: match[1]?.trim(),
-          option: match[3] || match[5],
+          thumbSize: match[3] || match[5],
         });
+        if (!global) break;
       }
-      return matches;
+      return global ? matches : matches[0];
     }
 
     function findImageTags(text) {
       return [
-        ...findTextileImageTags(text),
-        ...findMarkdownImageTags(text),
-        ...findThumbnailMacro(text),
+        ...findTextileImageTags(text, true, false),
+        ...findMarkdownImageTags(text, true, false),
+        ...findThumbnailMacro(text, true, false),
       ];
     }
 
-    function parseText(str) {
-      const thumbnailMacroRegex = getThumbnailMacroRegex(false, true);
-      const markdownImageTagRegex = getMarkdownImageTagRegex(false, true);
-      const textileImageTagRegex = getTextileImageTagRegex(false, true);
-
+    function parseText(text) {
       let match;
-      if ((match = thumbnailMacroRegex.exec(str)) !== null) {
-        return {
-          type: "ThumbnailMacro",
-          fileName: match[1].trim(),
-          imageTitle: match[4]?.trim() ?? "",
-          thumbSize: match[3] || match[5],
-        };
-      } else if ((match = markdownImageTagRegex.exec(str)) !== null) {
-        return {
-          type: "Markdown",
-          fileName: match[2].trim(),
-          imageTitle: match[1]?.trim() ?? "",
-        };
-      } else if ((match = textileImageTagRegex.exec(str)) !== null) {
-        return {
-          type: "Textile",
-          fileName: (match[1] ?? "") + match[3].trim(),
-          imageTitle: match[5]?.trim() ?? "",
-          textileStyle: match[2],
-        };
+      if ((match = findThumbnailMacro(text, false, true))) {
+        return match;
+      } else if ((match = findMarkdownImageTags(text, false, true))) {
+        return match;
+      } else if ((match = findTextileImageTags(text, false, true))) {
+        return match;
       } else {
         return {
-          type: "OtherString",
-          fileName: str.trim(),
+          type: "OtherText",
+          path: text.trim(),
           imageTitle: "",
         };
       }
@@ -589,7 +584,7 @@
             }
 
             const parsedText = parseText(this.selectedText.text);
-            this.fileName = parsedText.fileName;
+            this.fileName = parsedText.path;
             this.imageTitle = parsedText.imageTitle;
             this.thumbSize = parsedText.thumbSize ?? "";
             this.previewFormattedText();
@@ -635,18 +630,17 @@
         this.#clearJsToolbarInstance();
       }
       previewFormattedText() {
-        const tagFormatting =
-          this.thumbSize === "" ? this.#textFormatting : "thumbnail";
-        const [prefix, suffix] = generateDecorator(
-          tagFormatting,
-          this.thumbSize,
-          this.imageTitle
-        );
-        this.#$tagPreview.text(
-          prefix +
-            formatText(this.fileName, tagFormatting, this.decodeEnabled) +
-            suffix
-        );
+        const { prefix, suffix, formattedText } = this.generateFormattedText();
+        this.#$tagPreview.text(formattedText);
+
+        if (this.#textFormatting === "textile") {
+          const textileImageTagRegex = getTextileImageTagRegex(false, true);
+          const match = textileImageTagRegex.exec(`!${this.fileName}!`);
+          $("#image_insertion_modal_size").prop(
+            "disabled",
+            !!(match && match[1])
+          );
+        }
       }
       previewFormattedTextDelay(delay = 100) {
         setTimeout(() => this.previewFormattedText(), delay);
@@ -680,19 +674,29 @@
         });
       }
       generateFormattedText() {
+        const textilePreview =
+          this.#textFormatting === "textile"
+            ? findTextileImageTags(`!${this.fileName}!`, false, true)
+            : undefined;
         const tagFormatting =
-          this.thumbSize === "" ? this.#textFormatting : "thumbnail";
+          textilePreview?.textileStyleWithBracket || this.thumbSize === ""
+            ? this.#textFormatting
+            : "thumbnail";
         const [prefix, suffix] = generateDecorator(
           tagFormatting,
           this.thumbSize,
           this.imageTitle
         );
+
         const formattedText =
-          this.selectedText.prefix +
           prefix +
-          formatText(this.fileName, tagFormatting, this.decodeEnabled) +
-          suffix +
-          this.selectedText.suffix;
+          (textilePreview?.textileStyleWithBracket || "") +
+          formatText(
+            textilePreview?.fileName || this.fileName,
+            tagFormatting,
+            this.decodeEnabled
+          ) +
+          suffix;
 
         return { prefix: prefix, suffix: suffix, formattedText: formattedText };
       }
@@ -720,7 +724,9 @@
             0,
             this.selectedText.start - (hasSpaceBefore ? 1 : 0)
           ) +
+          this.selectedText.prefix +
           formattedText +
+          this.selectedText.suffix +
           textarea.value.substring(this.selectedText.end);
 
         textarea.scrollTop = this.selectedText.scrollTop;
@@ -740,7 +746,11 @@
             selectedTexts.shift();
 
             const shift =
-              formattedText.length -
+              (
+                this.selectedText.prefix +
+                formattedText +
+                this.selectedText.suffix
+              ).length -
               this.selectedText.text.length -
               (hasSpaceBefore ? 1 : 0);
 
