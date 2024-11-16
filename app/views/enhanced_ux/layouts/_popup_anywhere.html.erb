@@ -86,6 +86,8 @@
       ...(resourcesAll[document.documentElement.lang] || {}),
     };
 
+    const isRtl = $('head link[rel="stylesheet"][href*="/rtl"]').length > 0;
+
     const utils = {
       getAbsUrl: (url) => {
         const a = document.createElement("a");
@@ -165,6 +167,7 @@
         src: null,
         positionAt: null,
         offsetLeftAt: 20,
+        offsetRightAt: 20, // Support for RTL
         offsetTopAt: 40,
         fixed: false,
         minWidth: 300,
@@ -549,7 +552,8 @@
 
         return (
           `left+${
-            $activeDialog.parent().offset().left + this.options.offsetLeftAt
+            $activeDialog.parent().offset().left +
+            (isRtl ? -this.options.offsetRightAt : this.options.offsetLeftAt)
           } ` +
           `top+${
             $activeDialog.parent().offset().top + this.options.offsetTopAt
@@ -1302,5 +1306,14 @@
     position: absolute;
     top: 0;
     left: 0;
+  }
+
+  /* Support RTL */
+  html[dir="rtl"],
+  html:has(> head > link[rel="stylesheet"][href*="/rtl"]) {
+    .ui-dialog.popup-anywhere .ui-dialog-titlebar-button-group {
+      right: auto;
+      left: 30px;
+    }
   }
 </style>
