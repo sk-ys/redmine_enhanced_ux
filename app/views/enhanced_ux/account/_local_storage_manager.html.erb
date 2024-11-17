@@ -1,0 +1,210 @@
+<!--
+// Path pattern:       /my/account
+// Insertion position: Head of all pages
+// Type:               HTML
+// Comment:            Local Storage manager
+-->
+<script>
+  window.addEventListener("DOMContentLoaded", () => {
+    const resourcesAll = {
+      en: {
+        labelLocalStorageManager: "Local storage manager",
+        labelKey: "Key",
+        labelValue: "Value",
+        labelRemove: "Remove",
+        labelRemoveAll: "Remove all",
+        messageAreYouSure: "Are you sure?",
+      },
+      ja: {
+        labelLocalStorageManager: "ローカルストレージの管理",
+        labelKey: "キー",
+        labelValue: "値",
+        labelRemove: "削除",
+        labelRemoveAll: "すべて削除",
+        messageAreYouSure: "よろしいですか？",
+      },
+    };
+
+    const resources =
+      resourcesAll[document.documentElement.lang] || resourcesAll["en"];
+
+    function drawLocalStorageItemList() {
+      const $tableOuter = $("<div>").addClass("table-outer");
+      const $table = $("<table>")
+        .append(
+          $("<thead>").append(
+            $("<tr>")
+              .append($("<th>").addClass("key-column").text(resources.labelKey))
+              .append(
+                $("<th>").addClass("value-column").text(resources.labelValue)
+              )
+              .append(
+                $("<th>")
+                  .addClass("remove-action-column")
+                  .text(resources.labelRemove)
+              )
+          )
+        )
+        .append($("<tbody>"))
+        .appendTo($tableOuter);
+
+      Object.entries(localStorage)
+        .sort(([keyA], [keyB]) => keyA.localeCompare(keyB))
+        .forEach(([key, value]) => {
+          $table.find("tbody").append(
+            $("<tr>")
+              .append($("<td>").addClass("key-column").text(key))
+              .append($("<td>").addClass("value-column").text(value))
+              .append(
+                $("<td>")
+                  .addClass("remove-action-column")
+                  .append(
+                    $("<a>")
+                      .addClass("icon icon-del icon-only")
+                      .on("click", (e) => {
+                        if (confirm(resources.messageAreYouSure)) {
+                          removeItem(e.currentTarget);
+                          drawLocalStorageItemList();
+                        }
+                      })
+                  )
+              )
+          );
+        });
+
+      $listBox.empty().append($tableOuter);
+    }
+
+    function removeItem(elem) {
+      try {
+        const key = $(elem).closest("tr").find("td.key-column").text();
+        localStorage.removeItem(key);
+      } catch (e) {
+        console.warn(e);
+      }
+    }
+
+    const $removeAllButton = $("<a>")
+      .addClass("icon icon-del remove-all-button")
+      .text(resources.labelRemoveAll)
+      .on("click", () => {
+        if (confirm(resources.messageAreYouSure)) {
+          localStorage.clear();
+          drawLocalStorageItemList();
+        }
+      });
+    const $contextual = $("<div>")
+      .addClass("contextual")
+      .append($removeAllButton);
+    const $listBox = $("<div>").addClass("box list-box");
+    const $localStorageManager = $("<div>")
+      .append($contextual)
+      .append($listBox);
+
+    function initDialog() {
+      $localStorageManager.dialog({
+        autoOpen: false,
+        modal: true,
+        title: resources.labelLocalStorageManager,
+        draggable: false,
+        resizable: false,
+        open: function () {
+          drawLocalStorageItemList();
+        },
+        create: function () {
+          $(this).parent().attr("id", "localStorageManager");
+        },
+      });
+    }
+
+    const $menu = $("<a>")
+      .text(resources.labelLocalStorageManager)
+      .addClass("icon icon-settings prevent-popup-anywhere")
+      .css("cursor", "pointer")
+      .on("click", () => {
+        console.log("");
+        $localStorageManager.dialog("open");
+      });
+
+    function initialize() {
+      $("#content > div.contextual").prepend($menu);
+      initDialog();
+    }
+
+    initialize();
+  });
+</script>
+<style>
+  #localStorageManager {
+    width: min(1200px, calc(100vw - 40px)) !important;
+    height: calc(100vh - 40px) !important;
+    display: flex;
+    flex-direction: column;
+
+    .ui-dialog-content {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+
+      .contextual {
+        padding-right: 7px;
+      }
+
+      .list-box {
+        overflow: auto;
+        width: 100%;
+        height: 100%;
+        box-sizing: border-box;
+        margin: 0;
+
+        .table-outer {
+          overflow: auto;
+          width: 100%;
+          height: 100%;
+          padding: 0;
+
+          table {
+            word-break: break-all;
+            border-collapse: collapse;
+            width: 100%;
+
+            thead {
+              position: sticky;
+              top: 0;
+              background-color: #ddd;
+
+              th {
+                &.key-column {
+                  width: 200px;
+                }
+                &.remove-action-column {
+                  width: 80px;
+                }
+              }
+            }
+            tbody {
+              tr {
+                &:hover {
+                  background-color: #eee;
+                }
+
+                td {
+                  border: 1px solid #ddd;
+
+                  &.remove-action-column {
+                    text-align: center;
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+
+      .remove-action-column a.icon-del,
+      a.icon-del.remove-all-button {
+        cursor: pointer;
+      }
+    }
+  }
+</style>
