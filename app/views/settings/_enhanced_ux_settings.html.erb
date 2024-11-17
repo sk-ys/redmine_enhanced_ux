@@ -66,6 +66,11 @@
       <input type="hidden" name="settings[custom_issue_note_list]" value="'0'">
       <%= check_box_tag 'settings[custom_issue_note_list]', '1', @settings[:custom_issue_note_list] == '1' %>
     </p>
+    <p class="">
+      <label for="local_storage_manager">Local storage manager:</label>
+      <input type="hidden" name="settings[local_storage_manager]" value="'0'">
+      <%= check_box_tag 'settings[local_storage_manager]', '1', @settings[:local_storage_manager] == '1' %>
+    </p>
   </fieldset>
 </fieldset>
 

@@ -32,6 +32,7 @@ Redmine::Plugin.register :redmine_enhanced_ux do
         simple_menu_bar: '1',
         two_pane_mode: '1',
         fixes_for_rtl_design: '1',
+        local_storage_manager: '1',
       },
       partial: 'settings/enhanced_ux_settings'
 end
