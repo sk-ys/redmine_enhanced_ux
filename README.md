@@ -42,6 +42,7 @@ This is a plugin for Redmine. This plugin is designed to improve the user experi
 - Custom roadmap and version - Adjust the roadmap and version views for seamless updates using AJAX, CSS (position: sticky) for header fixation, and other usability enhancements.
 - Custom calendar - Enhance calendar functionality with drag-and-drop movement of elements, a compact criteria box.
 - Custom issue note list - Enhance the Custom issue note list plugin (currently in development at  [https://github.com/sk-ys/redmine\_issue\_note\_list](https://github.com/sk-ys/redmine_issue_note_list)).
+- Local storage manager - Adds the ability to view and delete values stored in the browser's local storage to the "My account" page.
 
 #### Wiki Customization
 
