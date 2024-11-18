@@ -30,7 +30,7 @@
         labelModalTitle: "画像の挿入",
         labelModalFilename: "ファイル名",
         labelModalImageTitle: "タイトル",
-        labelModalThumbnailSize: "サムネイルサイズ:",
+        labelModalThumbnailSize: "サムネイルサイズ",
         labelModalDecode: "デコード",
         labelModalTagPreview: "プレビュー",
         labelModalUploadFile: "ファイルのアップロード",
@@ -49,14 +49,145 @@
     const selectedTexts = [];
     let imageInsertionModal = null;
 
+    const imageExtensions = ["jpg", "jpeg", "png", "gif", "bmp", "svg"];
+
+    function getTextileImageTagRegex(global = true, strict = false) {
+      return new RegExp(
+        (strict ? "^" : "") +
+          "!(\\{([^}]+)?\\})?" +
+          `([^()!]+\\.(${imageExtensions.join("|")}))` +
+          "(?:\\(([^)]+)\\))?!" +
+          (strict ? "$" : ""),
+        `${global ? "g" : ""}i`
+      );
+    }
+    function getMarkdownImageTagRegex(global = true, strict = false) {
+      return new RegExp(
+        (strict ? "^" : "") +
+          "!\\[(.*?)\\]" +
+          "\\(" +
+          `([^\\s]+\\.(${imageExtensions.join("|")}))` +
+          "\\)" +
+          (strict ? "$" : ""),
+        `${global ? "g" : ""}i`
+      );
+    }
+    function getThumbnailMacroRegex(global = true, strict = false) {
+      return new RegExp(
+        (strict ? "^" : "") +
+          "\\{\\{thumbnail\\(" +
+          `([^,\\)]+\\.(${imageExtensions.join("|")}))` +
+          "(?:,\\s*size=(\\d+))?" +
+          "(?:,\\s*title=([^,]+))?" +
+          "(?:,\\s*size=(\\d+))?" +
+          "\\)\\}\\}" +
+          (strict ? "$" : ""),
+        `${global ? "g" : ""}i`
+      );
+    }
+
     function isImageFile(fileName) {
-      const imageExtensions = ["jpg", "jpeg", "png", "gif", "bmp", "svg"];
       const extension = fileName.split(".").pop().toLowerCase();
       return imageExtensions.includes(extension);
     }
 
+    function findTextileImageTags(text, global, strict) {
+      const textileImageTagRegex = getTextileImageTagRegex(global, strict);
+      const matches = [];
+      let match;
+      while ((match = textileImageTagRegex.exec(text)) !== null) {
+        matches.push({
+          type: "Textile",
+          text: match[0],
+          imageTitle: match[5]?.trim(),
+          fileName: match[3]?.trim(),
+          path: (match[1] ?? "") + match[3]?.trim(), // style + path
+          textileStyle: match[2],
+          textileStyleWithBracket: match[1],
+        });
+        if (!global) break;
+      }
+      return global ? matches : matches[0];
+    }
+
+    function hasTextileStyleOption(text) {
+      const match = findTextileImageTags(text, false, true);
+      return !!match?.textileStyleWithBracket;
+    }
+
+    function findMarkdownImageTags(text, global, strict) {
+      const markdownImageTagRegex = getMarkdownImageTagRegex(global, strict);
+      const matches = [];
+      let match;
+      while ((match = markdownImageTagRegex.exec(text)) !== null) {
+        matches.push({
+          type: "Markdown",
+          text: match[0],
+          imageTitle: match[1]?.trim(),
+          path: match[2].trim(),
+        });
+        if (!global) break;
+      }
+      return global ? matches : matches[0];
+    }
+
+    function findThumbnailMacro(text, global, strict) {
+      const thumbnailMacroRegex = getThumbnailMacroRegex(global, strict);
+      const matches = [];
+      let match;
+      while ((match = thumbnailMacroRegex.exec(text)) !== null) {
+        matches.push({
+          type: "ThumbnailMacro",
+          text: match[0],
+          imageTitle: match[4]?.trim(),
+          path: match[1]?.trim(),
+          thumbSize: match[3] || match[5],
+        });
+        if (!global) break;
+      }
+      return global ? matches : matches[0];
+    }
+
+    function findImageTags(text) {
+      return [
+        ...findTextileImageTags(text, true, false),
+        ...findMarkdownImageTags(text, true, false),
+        ...findThumbnailMacro(text, true, false),
+      ];
+    }
+
+    function parseText(text) {
+      let match;
+      if ((match = findThumbnailMacro(text, false, true))) {
+        return match;
+      } else if ((match = findMarkdownImageTags(text, false, true))) {
+        return match;
+      } else if ((match = findTextileImageTags(text, false, true))) {
+        return match;
+      } else {
+        return {
+          type: "OtherText",
+          path: text.trim(),
+          imageTitle: "",
+        };
+      }
+    }
+
+    function parseTextFromTextarea(textarea) {
+      const start = textarea.selectionStart;
+      const end = textarea.selectionEnd;
+      const text = textarea.value.substring(start, end);
+      const beforeText = textarea.value.substring(0, start);
+      const afterText = textarea.value.substring(end);
+      return {
+        text: text,
+        beforeText: beforeText,
+        afterText: afterText,
+      };
+    }
+
     class SelectedText {
-      constructor(textarea) {
+      constructor(textarea, autoExtend = false) {
         this.textarea = textarea;
         this.prefix = "";
         this.suffix = "";
@@ -71,9 +202,38 @@
           this.start = textarea.selectionStart;
           this.end = textarea.selectionEnd;
           this.scrollTop = textarea.scrollTop;
-          this.text = textarea.value.substring(this.start, this.end);
-          this.beforeText = textarea.value.substring(0, this.start);
-          this.afterText = textarea.value.substring(this.end);
+          const ret = parseTextFromTextarea(textarea);
+          this.text = ret.text;
+          this.beforeText = ret.beforeText;
+          this.afterText = ret.afterText;
+
+          if (autoExtend && this.start === this.end) {
+            // Note: Automatically extend the selection range to cover
+            // the entire image tag if an image tag is detected
+            const linesBefore = this.beforeText.split("\n").slice(-1)[0];
+            const linesAfter = this.afterText.split("\n")[0];
+            const lines = linesBefore + linesAfter;
+            const imageTags = findImageTags(lines);
+            if (imageTags.length === 1) {
+              // TODO: Support for multiple image tags
+              const imageTag = imageTags[0];
+              const imageTagLineStart = lines.indexOf(imageTag.text);
+              if (imageTagLineStart > -1) {
+                const offsetStart = imageTagLineStart - linesBefore.length;
+                // Reselect the text
+                textarea.setSelectionRange(
+                  this.start + offsetStart,
+                  this.start + offsetStart + imageTag.text.length
+                );
+                this.start = textarea.selectionStart;
+                this.end = textarea.selectionEnd;
+                const ret2 = parseTextFromTextarea(textarea);
+                this.text = ret2.text;
+                this.beforeText = ret2.beforeText;
+                this.afterText = ret2.afterText;
+              }
+            }
+          }
 
           const beforeLast = textarea.value.substr(this.start - 1, 1);
           const afterFirst = textarea.value.substr(this.end, 1);
@@ -228,7 +388,7 @@
           (selectedSplittedText) => selectedTexts.push(selectedSplittedText)
         );
       } else {
-        selectedTexts.push(selectedText);
+        selectedTexts.push(new SelectedText(textarea, true));
       }
 
       // Move cursor to end of the text
@@ -423,7 +583,10 @@
               );
             }
 
-            this.fileName = this.selectedText.text;
+            const parsedText = parseText(this.selectedText.text);
+            this.fileName = parsedText.path;
+            this.imageTitle = parsedText.imageTitle;
+            this.thumbSize = parsedText.thumbSize ?? "";
             this.previewFormattedText();
 
             if (this.fileName === "") {
@@ -467,22 +630,17 @@
         this.#clearJsToolbarInstance();
       }
       previewFormattedText() {
-        const tagFormatting =
-          this.thumbSize === "" ? this.#textFormatting : "thumbnail";
-        const [prefix, suffix] = generateDecorator(
-          tagFormatting,
-          this.thumbSize,
-          this.imageTitle
-        );
-        this.#$tagPreview.text(
-          prefix +
-            formatText(
-              this.fileName,
-              tagFormatting,
-              this.decodeEnabled
-            ) +
-            suffix
-        );
+        const { prefix, suffix, formattedText } = this.generateFormattedText();
+        this.#$tagPreview.text(formattedText);
+
+        if (this.#textFormatting === "textile") {
+          const textileImageTagRegex = getTextileImageTagRegex(false, true);
+          const match = textileImageTagRegex.exec(`!${this.fileName}!`);
+          $("#image_insertion_modal_size").prop(
+            "disabled",
+            !!(match && match[1])
+          );
+        }
       }
       previewFormattedTextDelay(delay = 100) {
         setTimeout(() => this.previewFormattedText(), delay);
@@ -516,23 +674,29 @@
         });
       }
       generateFormattedText() {
+        const textilePreview =
+          this.#textFormatting === "textile"
+            ? findTextileImageTags(`!${this.fileName}!`, false, true)
+            : undefined;
         const tagFormatting =
-          this.thumbSize === "" ? this.#textFormatting : "thumbnail";
+          textilePreview?.textileStyleWithBracket || this.thumbSize === ""
+            ? this.#textFormatting
+            : "thumbnail";
         const [prefix, suffix] = generateDecorator(
           tagFormatting,
           this.thumbSize,
           this.imageTitle
         );
+
         const formattedText =
-          this.selectedText.prefix +
           prefix +
+          (textilePreview?.textileStyleWithBracket || "") +
           formatText(
-            this.fileName,
+            textilePreview?.fileName || this.fileName,
             tagFormatting,
             this.decodeEnabled
           ) +
-          suffix +
-          this.selectedText.suffix;
+          suffix;
 
         return { prefix: prefix, suffix: suffix, formattedText: formattedText };
       }
@@ -560,7 +724,9 @@
             0,
             this.selectedText.start - (hasSpaceBefore ? 1 : 0)
           ) +
+          this.selectedText.prefix +
           formattedText +
+          this.selectedText.suffix +
           textarea.value.substring(this.selectedText.end);
 
         textarea.scrollTop = this.selectedText.scrollTop;
@@ -580,7 +746,11 @@
             selectedTexts.shift();
 
             const shift =
-              formattedText.length -
+              (
+                this.selectedText.prefix +
+                formattedText +
+                this.selectedText.suffix
+              ).length -
               this.selectedText.text.length -
               (hasSpaceBefore ? 1 : 0);
 
@@ -605,8 +775,14 @@
       get thumbSize() {
         return this.#$thumbSize.val();
       }
+      set thumbSize(value) {
+        return this.#$thumbSize.val(value);
+      }
       get imageTitle() {
         return this.#$imageTitle.val();
+      }
+      set imageTitle(value) {
+        return this.#$imageTitle.val(value);
       }
       get decodeEnabled() {
         return this.#$decodeEnabled.prop("checked");

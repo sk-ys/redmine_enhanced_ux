@@ -8,6 +8,12 @@ module EnhancedUx
           path = URI.parse(context[:request].instance_variable_get(:@fullpath)).path
           tags = []
 
+          if /\/my\/account$/.match?(path)
+            if Setting.plugin_redmine_enhanced_ux[:local_storage_manager] == '1'
+              tags << controller.render_to_string(partial: 'enhanced_ux/account/local_storage_manager')
+            end
+          end
+
           if /\/issues\/calendar$/.match?(path)
             if Setting.plugin_redmine_enhanced_ux[:custom_calendar] == '1'
               tags << controller.render_to_string(partial: 'enhanced_ux/calendars/custom_calendar')

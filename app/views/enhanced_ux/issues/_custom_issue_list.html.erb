@@ -292,6 +292,10 @@
       $("#query_form").hide();
     }
 
+    function removeReplaceQueryFormSubmission() {
+      $("#content").off("submit", "#query_form", replaceQueryFormSubmission);
+    }
+
     function setUpQueryForm() {
       const $queryFormOpenButton = $("<a>")
         .attr("id", "query_form_open_button")
@@ -355,11 +359,7 @@
 
           // Conventional query submission
           if (e.ctrlKey) {
-            $("#content").off(
-              "submit",
-              "#query_form",
-              replaceQueryFormSubmission
-            );
+            removeReplaceQueryFormSubmission();
           }
 
           $("#query_form").submit();
@@ -375,6 +375,14 @@
             search: extractSearch($(e.target).attr("href")),
           });
         });
+
+      // Remove the ReplaceQueryFormSubmission function before the click event
+      // in the capturing phase.
+      $(
+        "#query_form_with_buttons p.buttons > a.icon.icon-save"
+      )[0]?.addEventListener("click", removeReplaceQueryFormSubmission, {
+        capture: true,
+      });
 
       $("#query_form").hide();
     }

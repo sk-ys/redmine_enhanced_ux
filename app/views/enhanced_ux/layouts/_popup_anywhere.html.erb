@@ -86,6 +86,8 @@
       ...(resourcesAll[document.documentElement.lang] || {}),
     };
 
+    const isRtl = $('head link[rel="stylesheet"][href*="/rtl"]').length > 0;
+
     const utils = {
       getAbsUrl: (url) => {
         const a = document.createElement("a");
@@ -165,6 +167,7 @@
         src: null,
         positionAt: null,
         offsetLeftAt: 20,
+        offsetRightAt: 20, // Support for RTL
         offsetTopAt: 40,
         fixed: false,
         minWidth: 300,
@@ -549,7 +552,8 @@
 
         return (
           `left+${
-            $activeDialog.parent().offset().left + this.options.offsetLeftAt
+            $activeDialog.parent().offset().left +
+            (isRtl ? -this.options.offsetRightAt : this.options.offsetLeftAt)
           } ` +
           `top+${
             $activeDialog.parent().offset().top + this.options.offsetTopAt
@@ -808,6 +812,9 @@
 
             // Support Theme Farend Bleuclair
             $contents.find("#sidebar-switch-panel").remove();
+
+            // Support for the Hide sidebar plugin
+            $contents.find("#sidebarHandler").remove();
 
             // Hide the window before unload to prevent flickering
             $($(e.target).contents()[0].defaultView).on("beforeunload", () => {
@@ -1143,6 +1150,7 @@
   .ui-dialog.popup-anywhere {
     flex-grow: 1;
     box-shadow: 0 0 5px rgb(0 0 0 / 20%);
+    z-index: 100; /* Support for Hide Sidebar Plugin */
   }
 
   .ui-dialog.popup-anywhere .ui-dialog-titlebar-button-group {
@@ -1299,5 +1307,14 @@
     position: absolute;
     top: 0;
     left: 0;
+  }
+
+  /* Support RTL */
+  html[dir="rtl"],
+  html:has(> head > link[rel="stylesheet"][href*="/rtl"]) {
+    .ui-dialog.popup-anywhere .ui-dialog-titlebar-button-group {
+      right: auto;
+      left: 30px;
+    }
   }
 </style>

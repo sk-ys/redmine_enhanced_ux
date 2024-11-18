@@ -339,63 +339,6 @@
           setupVersionLayout();
           break;
       }
-
-      return;
-
-      const d = $("<div>").dialog({
-        title: "test",
-        width: 500,
-        height: 500,
-        modal: true,
-        autoOpen: false,
-      });
-
-      d.append(
-        $("<iframe>")
-          .hide()
-          .attr("src", "http://localhost:8051/versions/8/edit")
-          .on("load", function () {
-            console.log("loaded");
-            const $contents = $(this).contents();
-
-            // Set up view
-            $contents.find("#wrapper>div:not(#main)").remove();
-            $contents.find("#main").css({ padding: 0 });
-            $contents.find("#content>h2").remove();
-            $contents.find("#content").css({ padding: 0 });
-            $contents
-              .find(".tabular")
-              .css({ height: "100%", margin: 0, border: "none" });
-            $contents.find(".tabular p").css({ padding: "5px 10px" });
-
-            $(this).show();
-
-            const dialogCancelButton = {
-              text: resources.labelCancel,
-              click: function () {
-                $(this).dialog("close");
-              },
-            };
-            const submitButtons = $contents
-              .find(
-                "#content " +
-                  ":is(form.edit_version, form.new_version) " +
-                  "input[type=submit]"
-              )
-              .hide()
-              .toArray()
-              .map((element) => {
-                return {
-                  text: $(element).val(),
-                  click: () => {
-                    $(element).click();
-                  },
-                };
-              });
-
-            d.dialog("option", "title", $contents[0].title).dialog("open");
-          })
-      );
     }
 
     Initialize();
