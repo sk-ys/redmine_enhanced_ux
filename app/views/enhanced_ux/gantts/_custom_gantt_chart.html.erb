@@ -11,6 +11,7 @@
   window.addEventListener("DOMContentLoaded", () => {
     // ----- settings start -----
     const MAXIMUM_NUMBER_OF_BACKUP_STATES = 10;
+    const SHOW_DISPLAY_PERIOD_LABEL = false;
     // ----- settings end -----
 
     const resourcesAll = {
@@ -695,10 +696,13 @@
       );
 
       // Add label for display settings
-      $("<label>")
-        .text(resources.labelDisplayPeriod + ":")
-        .insertBefore("input#months")
-        .css({ marginRight: "0.5em" });
+      if (SHOW_DISPLAY_PERIOD_LABEL) {
+        $("<label>")
+          .text(resources.labelDisplayPeriod + ":")
+          .insertBefore("input#months")
+          .css({ marginRight: "0.5em" });
+        $("#query_form").addClass("with-display-period-label");
+      }
       $("<label>")
         .text(resources.labelDisplayStartMonth + ":")
         .insertBefore("select#month")
@@ -1024,6 +1028,10 @@
       border: 1px #ccc solid;
       top: 42px;
       min-width: 900px;
+
+      &.with-display-period-label {
+        min-width: 1000px;
+      }
     }
     #query_form #filters .add-filter {
       min-width: 350px;
