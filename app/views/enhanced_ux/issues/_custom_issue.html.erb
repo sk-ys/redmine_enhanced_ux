@@ -929,6 +929,22 @@
       return -1;
     }
 
+    function cleanUpIframeContents($contents) {
+      // Remove unnecessary elements to simplify the layout
+      $contents
+        .find("#wrapper>div.flyout-menu, #top-menu, #header, #footer, #sidebar")
+        .remove();
+
+      // Remove the sidebar handler (Support for the Hide Sidebar plugin)
+      $contents.find("#sidebarHandler").remove();
+
+      // Remove the header from the content
+      $contents.find("#content>h2:first").remove();
+
+      // Remove padding and margin from the main element
+      $contents.find("#main").css({ padding: 0, margin: 0 });
+    }
+
     function showTimeEntryDialog(e) {
       e.preventDefault();
 
@@ -974,9 +990,7 @@
           }
 
           // Set up time-entries view
-          $contents.find("#wrapper>div:not(#main)").remove();
-          $contents.find("#main").css({ padding: 0 });
-          $contents.find("#content>h2").remove();
+          cleanUpIframeContents($contents);
           $contents
             .find("#time_entry_issue_id, #time_entry_project_id")
             .prop({ disabled: true });
@@ -1084,9 +1098,7 @@
           }
 
           // Set up edit-attachments view
-          $contents.find("#wrapper>div:not(#main)").remove();
-          $contents.find("#main").css({ padding: 0 });
-          $contents.find("#content>h2").remove();
+          cleanUpIframeContents($contents);
           $contents.find('#content input[type="submit"]').parent().hide();
           $(this)[0].contentWindow.onbeforeunload = () => {
             $iframe.hide();
@@ -1202,10 +1214,8 @@
               return;
           }
 
-          // Set up a new child issue page
-          $contents.find("#wrapper>div:not(#main)").remove();
-          $contents.find("#main").css({ padding: 0 });
-          $contents.find("#content>h2:first").remove();
+          // Set up new child issue page
+          cleanUpIframeContents($contents);
           $contents.find("#parent_issue>input").prop({ readonly: true });
           $contents.find('#issue-form>input[type="submit"]').hide();
           $(this)[0].contentWindow.onbeforeunload = () => {
