@@ -6,7 +6,7 @@
 // Note: RTL view is not supported.
   -->
 <script>
-  var ajaxUpdateIssueList = false;
+  var ajaxUpdateIssueList;
 
   window.addEventListener("DOMContentLoaded", () => {
     // ----- settings start -----
@@ -238,7 +238,7 @@
         $("head>title").text($headData.find("title").text());
 
         // Update sidebar
-        $("#sidebar").replaceWith($("#sidebar", htmlString));
+        $("#sidebar").empty().append($("#sidebar", htmlString).children());
 
         // Support for RedmineUp issue_tags plugin
         if (typeof setSelect2Filter) {

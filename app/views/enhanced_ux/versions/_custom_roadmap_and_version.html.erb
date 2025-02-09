@@ -90,6 +90,7 @@
           $flash.prependTo("#content");
         }
 
+        // Backup scroll position
         const scrollTargetSelector = "#roadmap";
         const scrollPositionBeforeUpdate = scrollTargetSelector
           ? {
@@ -125,7 +126,11 @@
           });
         }
 
+        // Update main content
         $(updatingTargetSelector).empty().append(updatedTarget);
+
+        // Update sidebar
+        $("#sidebar").empty().append($("#sidebar", data).children());
 
         if (window["setupShowOnlyOpenedIssues"]) {
           setupShowOnlyOpenedIssues();
