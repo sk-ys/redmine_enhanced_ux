@@ -141,6 +141,11 @@
     <%= check_box_tag 'settings[two_pane_mode]', '1', @settings[:two_pane_mode] == '1' %>
   </p>
   <p>
+    <label for="auto_reload">Auto reload:</label>
+    <input type="hidden" name="settings[auto_reload]" value="'0'">
+    <%= check_box_tag 'settings[auto_reload]', '1', @settings[:auto_reload] == '1' %>
+  </p>
+  <p>
     <label for="fixes_for_rtl_design">Fixes for RTL design:</label>
     <input type="hidden" name="settings[fixes_for_rtl_design]" value="'0'">
     <%= check_box_tag 'settings[fixes_for_rtl_design]', '1', @settings[:fixes_for_rtl_design] == '1' %>
