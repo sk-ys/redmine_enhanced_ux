@@ -889,7 +889,10 @@
           if (utils.isIssueUrl(newUrl)) {
             const issueId = utils.getIssueIdFromIssueUrl(newUrl);
 
-            if (utils.existIssueIdInIssueList(issueId)) {
+            if (
+              utils.existIssueIdInIssueList(issueId) ||
+              utils.isNewIssueUrl(this.$base.data("src"))
+            ) {
               this.$base.data("src", newUrl);
               this.status.set({ src: newUrl });
             }
