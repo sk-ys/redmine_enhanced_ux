@@ -31,6 +31,7 @@ Redmine::Plugin.register :redmine_enhanced_ux do
         show_only_opened_issues: '1',
         simple_menu_bar: '1',
         two_pane_mode: '1',
+        auto_reload: '1',
         fixes_for_rtl_design: '1',
         local_storage_manager: '1',
       },

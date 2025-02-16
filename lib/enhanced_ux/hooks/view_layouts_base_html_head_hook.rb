@@ -109,6 +109,11 @@ module EnhancedUx
               tags << controller.render_to_string(partial: 'enhanced_ux/layouts/two_pane_mode')
             end
           end
+          if /(\/issues($|\/gantt)|\/roadmap|\/issue_note_list|\/calendar|\/versions\/[0-9]+$|\/activity|\/news)/.match?(path)
+            if Setting.plugin_redmine_enhanced_ux[:auto_reload] == '1'
+              tags << controller.render_to_string(partial: 'enhanced_ux/layouts/auto_reload')
+            end
+          end
 
           if Setting.plugin_redmine_enhanced_ux[:fixes_for_rtl_design] == '1'
             tags << stylesheet_link_tag("global/fixes_for_rtl_design", :plugin => "redmine_enhanced_ux", media: "all")

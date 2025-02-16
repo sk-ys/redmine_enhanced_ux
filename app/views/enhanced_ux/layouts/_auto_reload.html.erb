@@ -1,0 +1,221 @@
+<!--
+// Path pattern:       (/issues($|/gantt)|/roadmap|/issue_note_list|/calendar|/versions/[0-9]+$|/activity|/news)
+// Insertion position: Head of all pages
+// Type:               HTML
+// Comment:            Auto reload
+-->
+<script>
+  $(() => {
+    const resourcesAll = {
+      en: {
+        autoReload: "Auto reload",
+        errorLoading: "Failed to reload the content.",
+        seconds: "seconds",
+        description: "Automatically reload the page at the specified interval.",
+      },
+      ja: {
+        autoReload: "自動更新",
+        errorLoading: "コンテンツの読み込みに失敗しました。",
+        seconds: "秒間隔",
+        description: "ページを指定の間隔で自動更新します。",
+      },
+    };
+    const resources =
+      resourcesAll[document.documentElement.lang] || resourcesAll["en"];
+
+    const intervals = [5, 10, 30, 60, 180, 300, 600];
+    const defaultInterval = 60;
+    let timerId = null;
+
+    async function reload() {
+      try {
+        if (window.ajaxUpdateIssueList) {
+          await window.ajaxUpdateIssueList();
+        } else {
+          location.reload();
+          return;
+          // TODO: Fetch the contents.
+          // Note: Conflicts with the other features and plugins.
+        }
+        appendCheckbox(); // Restore the check box
+        console.log(`[${new Date().toLocaleString()}] Reloaded.`);
+      } catch (error) {
+        console.error(error);
+        showError(resources.errorLoading);
+        enableAutoReload(false);
+      }
+    }
+
+    function showError(message) {
+      const $message = $("#auto_reload_message");
+      $message.text(message).show().attr("class", "").addClass("error");
+      $checkboxControl.css("opacity", 1);
+
+      setTimeout(() => {
+        $message.fadeOut(300, () => {
+          $checkboxControl.css("opacity", "");
+        });
+      }, 10000);
+    }
+
+    function selectIntervalItem(interval) {
+      $menu.find("li").each((i, e) => {
+        const $e = $(e);
+        if (parseInt($e.text()) === interval) {
+          $e.addClass("selected");
+        } else {
+          $e.removeClass("selected");
+        }
+      });
+    }
+
+    // Generate a toggle switch to enable/disable
+    const $checkbox = $('<input type="checkbox">').attr({
+      id: "enable_auto_reload",
+    });
+    const $message = $("<span>").attr("id", "auto_reload_message");
+
+    // Interval selection menu
+    const $menu = $("<ul>").attr({ id: "auto_reload_menu", title: "" });
+    intervals.forEach((i) => {
+      const $item = $(`<li><div>${i} ${resources.seconds}</div></li>`);
+      $menu.append($item);
+    });
+
+    const $checkboxControl = $("<div>")
+      .attr({ title: resources.description, id: "auto_reload_controller" })
+      .append($checkbox)
+      .append(
+        $("<label>")
+          .attr({ for: "enable_auto_reload", "data-i18n": "autoReload" })
+          .html(resources.autoReload)
+      )
+      .append($message)
+      .append($menu);
+
+    function enableAutoReload(state = true, interval = null) {
+      clearInterval(timerId);
+      timerId = null;
+
+      if (state) {
+        if (!interval || interval <= 0) interval = defaultInterval;
+        selectIntervalItem(interval);
+        timerId = setInterval(reload, interval * 1000);
+      } else {
+        selectIntervalItem(0);
+      }
+
+      $checkbox.prop("checked", state);
+      localStorage.setItem("autoReload", state ? interval : "0");
+    }
+
+    function appendCheckbox() {
+      if ($("#auto_reload_controller").length > 0) return;
+
+      if ($(".enable_2-pane_mode_box").length > 0) {
+        $(".enable_2-pane_mode_box").after($checkboxControl);
+      } else {
+        if (/\/versions\/[0-9]+$/.test(location.pathname)) {
+          $("#roadmap>h2+span.badge:first").after($checkboxControl);
+        } else {
+          $("#content>h2").append($checkboxControl);
+        }
+      }
+      $checkbox.on("change", function () {
+        enableAutoReload($(this).is(":checked"));
+      });
+      setupMenu();
+    }
+
+    function setupMenu() {
+      $checkboxControl.hover(
+        () => {
+          $menu.show().position({
+            my: "left top",
+            at: "left bottom",
+            of: $checkboxControl.find("label"),
+          });
+        },
+        () => {
+          setTimeout(() => {
+            $menu.hide();
+          });
+        }
+      );
+
+      $menu
+        .menu({
+          select: function (event, ui) {
+            enableAutoReload(true, parseInt(ui.item.text()));
+            setTimeout(() => {
+              $menu.hide();
+            });
+          },
+        })
+        .hide();
+    }
+
+    // Initialize
+    appendCheckbox();
+    const storedInterval = localStorage.getItem("autoReload");
+    if (
+      storedInterval &&
+      parseInt(storedInterval) &&
+      parseInt(storedInterval) !== 0
+    ) {
+      enableAutoReload(true, parseInt(storedInterval));
+    }
+  });
+</script>
+<style>
+  #auto_reload_controller {
+    display: inline-flex;
+    align-items: center;
+    opacity: 0.3;
+    &:hover {
+      opacity: 1;
+    }
+
+    #enable_auto_reload {
+      margin-left: 10px;
+      margin-right: 5px;
+      cursor: pointer;
+      height: 13px;
+      & + label {
+        font-size: 12px;
+        font-weight: normal;
+        cursor: pointer;
+      }
+    }
+    #auto_reload_message {
+      display: none;
+      margin: 1px 5px;
+      padding: 1px 5px;
+      border-radius: 3px;
+      font-size: 11px;
+      &.error {
+        color: red;
+        outline: 1px red solid;
+        background-color: #fdd;
+      }
+    }
+    #auto_reload_menu {
+      display: none;
+      position: absolute;
+      background-color: #fff;
+      border: 1px solid #ccc;
+      border-radius: 3px;
+      padding: 5px;
+      box-shadow: 0 0 5px rgba(0, 0, 0, 0.5);
+      z-index: 1000;
+      font-size: 12px;
+      font-weight: normal;
+      li {
+        cursor: pointer;
+        &.selected {
+          background-color: #ddd;
+        }
+      }
+    }
+  }
+</style>
