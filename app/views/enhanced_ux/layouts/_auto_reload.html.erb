@@ -112,13 +112,18 @@
     function appendCheckbox() {
       if ($("#auto_reload_controller").length > 0) return;
 
-      if ($(".enable_2-pane_mode_box").length > 0) {
-        $(".enable_2-pane_mode_box").after($checkboxControl);
+      // Note: The insertion position is different depending on the page.
+      if ($("#content > .other-formats").length > 0) {
+        $("#content > .other-formats:first").append($checkboxControl);
       } else {
-        if (/\/versions\/[0-9]+$/.test(location.pathname)) {
-          $("#roadmap>h2+span.badge:first").after($checkboxControl);
+        if ($(".enable_2-pane_mode_box").length > 0) {
+          $(".enable_2-pane_mode_box").after($checkboxControl);
         } else {
-          $("#content>h2").append($checkboxControl);
+          if (/\/versions\/[0-9]+$/.test(location.pathname)) {
+            $("#roadmap>h2+span.badge:first").after($checkboxControl);
+          } else {
+            $("#content>h2").append($checkboxControl);
+          }
         }
       }
       $checkbox.on("change", function () {
@@ -130,11 +135,18 @@
     function setupMenu() {
       $checkboxControl.hover(
         () => {
-          $menu.show().position({
+          let positionSettings = {
             my: "left top",
             at: "left bottom",
             of: $checkboxControl.find("label"),
-          });
+          };
+          if (
+            $(auto_reload_controller).closest($(".other-formats")).length > 0
+          ) {
+            positionSettings["my"] = "right bottom";
+            positionSettings["at"] = "right top";
+          }
+          $menu.show().position(positionSettings);
         },
         () => {
           setTimeout(() => {
