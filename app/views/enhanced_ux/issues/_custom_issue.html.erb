@@ -1304,8 +1304,10 @@
             $(window).scrollTop() + $(window).height() - 40;
       if (isOverFlow) {
         $submitButton.addClass("fixed-position");
+        $(".save-draft-button").addClass("fixed-position");
       } else {
         $submitButton.removeClass("fixed-position");
+        $(".save-draft-button").removeClass("fixed-position");
       }
     }
 
@@ -1871,7 +1873,7 @@
 
     #wrapper.side-by-side
       #issue-form
-      input[type="submit"]:not(.fixed-position) {
+      :where(input[type="submit"], .save-draft-button):not(.fixed-position) {
       margin-top: -83px;
     }
   }
@@ -2223,7 +2225,8 @@
     padding-bottom: 120px;
   }
   #issue-form {
-    input[type="submit"] {
+    input[type="submit"],
+    .save-draft-button {
       position: absolute;
       border-radius: 50%;
       width: 70px;
@@ -2246,6 +2249,13 @@
       &:not(.fixed-position) {
         margin-top: -100px;
         box-shadow: none;
+      }
+    }
+
+    .save-draft-button ~ input[type="submit"] {
+      left: 80px;
+      &.fixed-position {
+        left: 95px;
       }
     }
   }
@@ -2276,14 +2286,15 @@
     #update form.edit_issue > div.box {
       padding-bottom: 90px;
     }
-    #issue-form input[type="submit"]:not(.fixed-position) {
+    #issue-form
+      :where(input[type="submit"], .save-draft-button):not(.fixed-position) {
       margin-top: -110px;
     }
 
     @media screen and (width > 1280px) {
       #wrapper.side-by-side
         #issue-form
-        input[type="submit"]:not(.fixed-position) {
+        :where(input[type="submit"], .save-draft-button):not(.fixed-position) {
         margin-top: -80px;
       }
     }
