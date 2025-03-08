@@ -695,7 +695,6 @@
           })
           .on("click", () => {
             this.setMinimize(!status.active.minimize);
-            this.toggleGridDirectionByWindowSize();
             if (status.active.minimize) {
               if (status.active.direction === "Column") {
                 this.$base.css({
@@ -1163,6 +1162,8 @@
         if (saveStatus) {
           this.status.set({ minimize: minimize });
         }
+
+        this.toggleGridDirectionByWindowSize();
       }
 
       setMaximize(maximize = true, saveStatus = true) {
