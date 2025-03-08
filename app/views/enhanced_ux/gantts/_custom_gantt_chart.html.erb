@@ -155,6 +155,21 @@
       });
     }
 
+    function runOriginalGanttSetupScripts(unavailableColumns) {
+      // Adapted from the original code in `redmine/app/views/gantts/show.html.erb`.
+      // Confirmed for Redmine versions 4.1.0 through 6.0.3.
+      // disable_unavailable_columns('<%= Redmine::Helpers::Gantt::UNAVAILABLE_COLUMNS.map(&:to_s).join(',') %>'.split(','));
+      window.disable_unavailable_columns &&
+        disable_unavailable_columns(unavailableColumns);
+      window.drawGanttHandler && drawGanttHandler();
+      window.resizableSubjectColumn && resizableSubjectColumn();
+      window.drawSelectedColumns && drawSelectedColumns();
+      $("#draw_relations, #draw_progress_line, #draw_selected_columns").change(
+        drawGanttHandler
+      );
+      $("div.gantt_subjects .expander").on("click", ganttEntryClick);
+    }
+
     ajaxUpdateIssueList = async function (settings = {}) {
       const settingsDefault = {
         search: location.search,
@@ -186,16 +201,15 @@
 
         // Execute actual dates plugin startup script
         try {
-          const scriptActualDates = $headData
-            .filter((i, e) => e.nodeName === "SCRIPT")
-            .map((i, e) => $(e).text())
-            .toArray()
-            .filter((s) => !s.includes("function ajaxUpdateIssueList"))
-            .filter((s) => s.includes("ActualDates ="))[0];
-          if (scriptActualDates) {
-            eval(
-              scriptActualDates.replace("let ActualDates =", "ActualDates =")
-            );
+          if (
+            typeof RedmineActualDate !== "undefined" &&
+            RedmineActualDate.applyActualDates
+          ) {
+            const newActualDatesData = $("#actual_dates_data", data).text();
+            if (newActualDatesData) {
+              // Update actual dates data
+              $("#actual_dates_data").text(newActualDatesData);
+            }
           }
         } catch (error) {
           console.error(error);
@@ -293,12 +307,17 @@
         $("#gantt_draw_area").empty();
         draw_gantt = null;
 
-        // Execute original gantt setup script
-        eval(
-          $("#content>script:first")
-            .text()
-            .match(/\$\(function\(\) {([\s\S]*?)}\)\;/)[1]
-        );
+        // Run the original gantt setup scripts
+        const scriptTag = $(".gantt-table~script", data)
+          .toArray()
+          .filter((e) =>
+            $(e).text().includes("disable_unavailable_columns")
+          )[0];
+        const regexExtractUnavailableColumns =
+          /disable_unavailable_columns\(\s*'([^']+)'\.split\(\s*','\)/;
+        const match = scriptTag?.text.match(regexExtractUnavailableColumns);
+        const unavailableColumns = match ? match[1].split(",") : [];
+        runOriginalGanttSetupScripts(unavailableColumns);
 
         // Restore scroll position
         setTimeout(() => {
