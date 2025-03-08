@@ -353,13 +353,31 @@
           },
           scrollTargetSelector: "#gantt_area",
           updatingTargetSelector: "table.gantt-table",
-          updateIssueListAfter: (state) => {
-            // Execute original gantt setup script
-            eval(
-              $("#content>script:first")
-                .text()
-                .match(/\$\(function\(\) {([\s\S]*?)}\)\;/)[1]
-            );
+          updateIssueListAfter: (state, data) => {
+            function runOriginalGanttSetupScripts(unavailableColumns) {
+              // Adapted from the original code in `redmine/app/views/gantts/show.html.erb`.
+              // Confirmed for Redmine versions 4.1.0 through 6.0.3.
+              // disable_unavailable_columns('<%= Redmine::Helpers::Gantt::UNAVAILABLE_COLUMNS.map(&:to_s).join(',') %>'.split(','));
+              window.disable_unavailable_columns &&
+                disable_unavailable_columns(unavailableColumns);
+              window.drawGanttHandler && drawGanttHandler();
+              window.resizableSubjectColumn && resizableSubjectColumn();
+              window.drawSelectedColumns && drawSelectedColumns();
+              $(
+                "#draw_relations, #draw_progress_line, #draw_selected_columns"
+              ).change(drawGanttHandler);
+              $("div.gantt_subjects .expander").on("click", ganttEntryClick);
+            }
+            const scriptTag = $(".gantt-table~script", data)
+              .toArray()
+              .filter((e) =>
+                $(e).text().includes("disable_unavailable_columns")
+              )[0];
+            const regexExtractUnavailableColumns =
+              /disable_unavailable_columns\(\s*'([^']+)'\.split\(\s*','\)/;
+            const match = scriptTag?.text.match(regexExtractUnavailableColumns);
+            const unavailableColumns = match ? match[1].split(",") : [];
+            runOriginalGanttSetupScripts(unavailableColumns);
           },
           highlightOpenedItem: (className, targetAnchorSelector, url) => {
             const $issueSubject = $(
@@ -1397,7 +1415,11 @@
         if (this.config.ajaxUpdateIssueList) {
           await this.config.ajaxUpdateIssueList();
         } else {
-          await $.ajax(location.href).done((data) => {
+          await $.ajax(location.href).done((htmlString) => {
+            const data = new DOMParser().parseFromString(
+              htmlString,
+              "text/html"
+            );
             const scrollTargetSelector = this.config.scrollTargetSelector;
             const scrollPositionBeforeUpdate = scrollTargetSelector
               ? {
@@ -1415,7 +1437,7 @@
 
             const updatedTarget = $(
               updatingTargetSelector,
-              $("<div>").html(data)
+              $("<div>").html(htmlString)
             ).children();
 
             if (updatedTarget.length === 0) {
@@ -1426,7 +1448,7 @@
             const state = {};
             this.config.updateIssueListBefore?.(state);
             $(updatingTargetSelector).empty().append(updatedTarget);
-            this.config.updateIssueListAfter?.(state);
+            this.config.updateIssueListAfter?.(state, data);
 
             // Restore scroll position
             if (scrollPositionBeforeUpdate) {
