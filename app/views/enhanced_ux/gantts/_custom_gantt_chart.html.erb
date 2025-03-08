@@ -201,16 +201,15 @@
 
         // Execute actual dates plugin startup script
         try {
-          const scriptActualDates = $headData
-            .filter((i, e) => e.nodeName === "SCRIPT")
-            .map((i, e) => $(e).text())
-            .toArray()
-            .filter((s) => !s.includes("function ajaxUpdateIssueList"))
-            .filter((s) => s.includes("ActualDates ="))[0];
-          if (scriptActualDates) {
-            eval(
-              scriptActualDates.replace("let ActualDates =", "ActualDates =")
-            );
+          if (
+            typeof RedmineActualDate !== "undefined" &&
+            RedmineActualDate.applyActualDates
+          ) {
+            const newActualDatesData = $("#actual_dates_data", data).text();
+            if (newActualDatesData) {
+              // Update actual dates data
+              $("#actual_dates_data").text(newActualDatesData);
+            }
           }
         } catch (error) {
           console.error(error);

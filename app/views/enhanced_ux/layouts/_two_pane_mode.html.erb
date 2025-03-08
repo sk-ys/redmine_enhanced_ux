@@ -378,6 +378,22 @@
             const match = scriptTag?.text.match(regexExtractUnavailableColumns);
             const unavailableColumns = match ? match[1].split(",") : [];
             runOriginalGanttSetupScripts(unavailableColumns);
+
+            // Execute actual dates plugin startup script
+            try {
+              if (
+                typeof RedmineActualDate !== "undefined" &&
+                RedmineActualDate.applyActualDates
+              ) {
+                const newActualDatesData = $("#actual_dates_data", data).text();
+                if (newActualDatesData) {
+                  // Update actual dates data
+                  $("#actual_dates_data").text(newActualDatesData);
+                }
+              }
+            } catch (error) {
+              console.error(error);
+            }
           },
           highlightOpenedItem: (className, targetAnchorSelector, url) => {
             const $issueSubject = $(
@@ -1415,50 +1431,53 @@
         if (this.config.ajaxUpdateIssueList) {
           await this.config.ajaxUpdateIssueList();
         } else {
-          await $.ajax(location.href).done((htmlString) => {
-            const data = new DOMParser().parseFromString(
-              htmlString,
-              "text/html"
-            );
-            const scrollTargetSelector = this.config.scrollTargetSelector;
-            const scrollPositionBeforeUpdate = scrollTargetSelector
-              ? {
-                  top: $(scrollTargetSelector).scrollTop(),
-                  left: $(scrollTargetSelector).scrollLeft(),
-                }
-              : undefined;
+          const response = await fetch(location.href);
+          if (!response.ok) {
+            throw new Error(`Error ${response.status}: ${response.statusText}`);
+          }
+          const htmlString = await response.text();
+          const data = new DOMParser().parseFromString(
+            htmlString,
+            "text/html"
+          );
+          const scrollTargetSelector = this.config.scrollTargetSelector;
+          const scrollPositionBeforeUpdate = scrollTargetSelector
+            ? {
+                top: $(scrollTargetSelector).scrollTop(),
+                left: $(scrollTargetSelector).scrollLeft(),
+              }
+            : undefined;
 
-            const updatingTargetSelector = this.config.updatingTargetSelector;
+          const updatingTargetSelector = this.config.updatingTargetSelector;
 
-            if (updatingTargetSelector === undefined) {
-              alert(resources.messageFailedToUpdate);
-              return;
-            }
+          if (updatingTargetSelector === undefined) {
+            alert(resources.messageFailedToUpdate);
+            return;
+          }
 
-            const updatedTarget = $(
-              updatingTargetSelector,
-              $("<div>").html(htmlString)
-            ).children();
+          const updatedTarget = $(
+            updatingTargetSelector,
+            $("<div>").html(htmlString)
+          ).children();
 
-            if (updatedTarget.length === 0) {
-              alert(resources.messageFailedToUpdate);
-              return;
-            }
+          if (updatedTarget.length === 0) {
+            alert(resources.messageFailedToUpdate);
+            return;
+          }
 
-            const state = {};
-            this.config.updateIssueListBefore?.(state);
-            $(updatingTargetSelector).empty().append(updatedTarget);
-            this.config.updateIssueListAfter?.(state, data);
+          const state = {};
+          this.config.updateIssueListBefore?.(state);
+          $(updatingTargetSelector).empty().append(updatedTarget);
+          this.config.updateIssueListAfter?.(state, data);
 
-            // Restore scroll position
-            if (scrollPositionBeforeUpdate) {
-              setTimeout(() => {
-                $(scrollTargetSelector)
-                  .scrollTop(scrollPositionBeforeUpdate.top)
-                  .scrollLeft(scrollPositionBeforeUpdate.left);
-              });
-            }
-          });
+          // Restore scroll position
+          if (scrollPositionBeforeUpdate) {
+            setTimeout(() => {
+              $(scrollTargetSelector)
+                .scrollTop(scrollPositionBeforeUpdate.top)
+                .scrollLeft(scrollPositionBeforeUpdate.left);
+            });
+          }
           this.#postUpdateIssueList();
         }
       }
