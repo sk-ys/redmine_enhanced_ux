@@ -669,7 +669,7 @@
           "There has been a problem with your fetch operation:",
           error
         );
-        alert(error);
+        throw error;
       } finally {
         $("#ajax-indicator").hide();
       }

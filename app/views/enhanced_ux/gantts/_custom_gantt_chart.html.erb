@@ -212,7 +212,7 @@
             }
           }
         } catch (error) {
-          console.error(error);
+          console.error(`Failed to update actual date data: ${error}`);
         }
 
         if (url !== location.href) {
@@ -339,6 +339,8 @@
       }
 
       try {
+        $("#ajax-indicator").show();
+
         // Add query parameters to url
         const response = await fetch(url);
         if (!response.ok) {
@@ -359,11 +361,11 @@
 
         ajaxPostProcess(htmlString, response.status, response);
 
-        // Hide ajax indicator
-        $("#ajax-indicator").hide();
       } catch (error) {
         console.error("Fetch error:", error);
-        alert("Fetch error:", error);
+        throw error;
+      } finally {
+        $("#ajax-indicator").hide();
       }
     };
 

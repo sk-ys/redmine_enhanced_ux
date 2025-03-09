@@ -73,6 +73,8 @@
 
     ajaxUpdateIssueList = async function () {
       try {
+        $("#ajax-indicator").show();
+
         const response = await fetch(location.href);
 
         if (!response.ok) {
@@ -161,6 +163,9 @@
         }
       } catch (error) {
         console.error("Fetch error:", error);
+        throw error;
+      } finally {
+        $("#ajax-indicator").hide();
       }
     };
 

@@ -102,6 +102,8 @@
       }
 
       try {
+        $("#ajax-indicator").show();
+
         const response = await fetch(url);
 
         if (!response.ok) {
@@ -220,6 +222,9 @@
         }
       } catch (error) {
         console.error("Fetch error:", error);
+        throw error;
+      } finally {
+        $("#ajax-indicator").hide();
       }
     };
 

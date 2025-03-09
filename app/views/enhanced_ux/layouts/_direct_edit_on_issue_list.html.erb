@@ -10,14 +10,16 @@
 
     const resourcesAll = {
       en: {
-        noItemAlertMessage: "No item is selected.",
-        applyLabel: "Apply",
-        cancelLabel: "Cancel",
+        messageNoItemIsSelected: "No item is selected.",
+        labelApply: "Apply",
+        labelCancel: "Cancel",
+        messageFailedToUpdate: "Failed to update.",
       },
       ja: {
-        noItemAlertMessage: "何も選択されていません。",
-        applyLabel: "適用",
-        cancelLabel: "キャンセル",
+        messageNoItemIsSelected: "何も選択されていません。",
+        labelApply: "適用",
+        labelCancel: "キャンセル",
+        messageFailedToUpdate: "更新に失敗しました。",
       },
     };
     const resources = {
@@ -145,7 +147,7 @@
           .attr({
             rel: "nofollow",
             "data-method": "patch",
-            title: resources.applyLabel,
+            title: resources.labelApply,
           })
           .on("click", (e) => {
             try {
@@ -157,9 +159,9 @@
               setTimeout(() => {
                 this.$contextInputForm.hide();
               });
-            } catch (e) {
-              console.error(e);
-              alert(e);
+            } catch (error) {
+              console.error(error);
+              alert(`${resources.messageFailedToUpdate}: ${error}`);
             }
           });
 
@@ -167,7 +169,7 @@
           .button({
             icon: "ui-icon-closethick",
           })
-          .attr({ title: resources.cancelLabel })
+          .attr({ title: resources.labelCancel })
           .addClass("cancel")
           .on("click", () => {
             this.$contextInputForm.hide();
@@ -193,7 +195,7 @@
         const issueIdsParams = $selectedIssueIds.serialize();
 
         if (issueIdsParams === "") {
-          throw new Error(resources.noItemAlertMessage);
+          throw new Error(resources.messageNoItemIsSelected);
         }
 
         const actionOrIssueId =
@@ -407,7 +409,7 @@
     }
 
     // Context menu content is submit from dynamically generated form
-    $(document).on("click", 'input[type="submit"]', (e) => {
+    $(document).on("click", 'input[type="submit"]', async (e) => {
       const flgIsTagsForm = isTagsForm(e.target);
       if (!isContextMenuForm(e.target) && !flgIsTagsForm) return;
       if (!window["ajaxUpdateIssueList"]) return;
@@ -423,48 +425,51 @@
         $(form).remove();
       }
 
-      $("#ajax-indicator").show();
+      try {
+        $("#ajax-indicator").show();
 
-      fetch(
-        form.action +
-          (serializedData
-            ? (form.action.includes("?") ? "&" : "?") + serializedData
-            : ""),
-        {
-          method: flgIsTagsForm ? "POST" : "PATCH",
-          headers: {
-            "X-CSRF-Token": formData.get("authenticity_token"),
-            Accept: "text/html",
-          },
-          // Note: When using the following code, if a key is duplicated, only
-          // the last value will be retained, so it cannot be used if multiple
-          // values for the same key are required.
-          // body: JSON.stringify(Object.fromEntries(formData)),
-          redirect: "manual",
-        }
-      )
-        .then(async (response) => {
-          if (response.type === "opaqueredirect" || response.ok) {
-            // Note: In Redmine 5.1.2, the response is always `ok` even if the
-            //       update fails.
-            try {
-              await ajaxUpdateIssueList({ target: targetElem });
-            } catch (error) {
-              console.error(error);
-              alert(error);
-            }
-          } else {
-            console.error(
-              "Request failed:",
-              response.statusText,
-              response.status
-            );
-            alert(`Request failed: ${response.statusText}[${response.status}]`);
+        const response = await fetch(
+          form.action +
+            (serializedData
+              ? (form.action.includes("?") ? "&" : "?") + serializedData
+              : ""),
+          {
+            method: flgIsTagsForm ? "POST" : "PATCH",
+            headers: {
+              "X-CSRF-Token": formData.get("authenticity_token"),
+              Accept: "text/html",
+            },
+            // Note: When using the following code, if a key is duplicated, only
+            // the last value will be retained, so it cannot be used if multiple
+            // values for the same key are required.
+            // body: JSON.stringify(Object.fromEntries(formData)),
+            redirect: "manual",
           }
-        })
-        .finally(() => {
-          $("#ajax-indicator").hide();
-        });
+        );
+
+        if (response.type === "opaqueredirect" || response.ok) {
+          // Note: In Redmine 5.1.2, the response is always `ok` even if the
+          //       update fails.
+          try {
+            await ajaxUpdateIssueList({ target: targetElem });
+          } catch (error) {
+            console.error(error);
+            alert(`${resources.messageFailedToUpdate}: ${error}`);
+          }
+        } else {
+          console.error(
+            "Request failed:",
+            response.statusText,
+            response.status
+          );
+          alert(`Request failed: ${response.statusText}[${response.status}]`);
+        }
+      } catch (error) {
+        console.error(error);
+        alert(`${resources.messageFailedToUpdate}: ${error}`);
+      } finally {
+        $("#ajax-indicator").hide();
+      }
     });
   });
 </script>
