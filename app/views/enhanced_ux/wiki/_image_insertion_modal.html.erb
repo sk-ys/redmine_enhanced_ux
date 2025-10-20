@@ -449,6 +449,7 @@
           .autocomplete({
             source: this.attachmentNames,
             minLength: 0,
+            appendTo: "#image_insertion_modal",
             select: () => {
               this.previewFormattedTextDelay();
             },
@@ -671,6 +672,7 @@
         this.#$fileName.autocomplete({
           source: this.attachmentNames,
           minLength: 0,
+          appendTo: "#image_insertion_modal",
         });
       }
       generateFormattedText() {
@@ -819,6 +821,9 @@
   })();
 </script>
 <style>
+  #image_insertion_modal {
+    padding: 0.5em 1em;
+  }
   #image_insertion_modal > p {
     position: relative;
   }
