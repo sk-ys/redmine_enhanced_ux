@@ -695,31 +695,6 @@
           })
           .on("click", () => {
             this.setMinimize(!status.active.minimize);
-            this.toggleGridDirectionByWindowSize();
-            if (status.active.minimize) {
-              if (status.active.direction === "Column") {
-                this.$base.css({
-                  maxWidth: 0,
-                  minWidth: 0,
-                  overflow: "hidden",
-                });
-              } else {
-                this.$base.css({
-                  maxHeight: 0,
-                  minHeight: 0,
-                  overflow: "hidden",
-                });
-              }
-              setTimeout(() => {
-                this.$base.css({
-                  maxWidth: "",
-                  maxHeight: "",
-                  minWidth: "",
-                  minHeight: "",
-                  overflow: "",
-                });
-              });
-            }
           });
 
         const $maximizeButton = $("<button>")
@@ -1163,6 +1138,8 @@
         if (saveStatus) {
           this.status.set({ minimize: minimize });
         }
+
+        this.toggleGridDirectionByWindowSize();
       }
 
       setMaximize(maximize = true, saveStatus = true) {
