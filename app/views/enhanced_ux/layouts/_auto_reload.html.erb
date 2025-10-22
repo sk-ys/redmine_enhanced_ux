@@ -25,6 +25,7 @@
 
     const intervals = [5, 10, 30, 60, 180, 300, 600];
     const defaultInterval = 60;
+    const useLocalStorage = false;
     let timerId = null;
 
     async function reload() {
@@ -106,7 +107,9 @@
       }
 
       $checkbox.prop("checked", state);
-      localStorage.setItem("autoReload", state ? interval : "0");
+      if (useLocalStorage) {
+        localStorage.setItem("autoReload", state ? "1" : "0");
+      }
     }
 
     function appendCheckbox() {
@@ -169,13 +172,16 @@
 
     // Initialize
     appendCheckbox();
-    const storedInterval = localStorage.getItem("autoReload");
-    if (
-      storedInterval &&
-      parseInt(storedInterval) &&
-      parseInt(storedInterval) !== 0
-    ) {
-      enableAutoReload(true, parseInt(storedInterval));
+
+    if (useLocalStorage) {
+      const storedInterval = localStorage.getItem("autoReload");
+      if (
+        storedInterval &&
+        parseInt(storedInterval) &&
+        parseInt(storedInterval) !== 0
+      ) {
+        enableAutoReload(true, parseInt(storedInterval));
+      }
     }
   });
 </script>
