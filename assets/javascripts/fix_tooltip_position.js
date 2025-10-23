@@ -23,7 +23,8 @@ $(() => {
 
     // Set tooltip position
     ui.tooltip.css({
-      position: "fixed",
+      // position: "fixed",  // Fixed positioning breaks layout on issue pages (issue found in v1.0.3)
+      position: "absolute",
       top: tooltipTop > 0 ? tooltipTop : tooltipTopFlipped,
       left: Math.min(
         Math.max(tooltipLeft, 0),
