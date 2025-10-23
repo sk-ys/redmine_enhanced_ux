@@ -11,12 +11,14 @@
         autoReload: "Auto reload",
         errorLoading: "Failed to reload the content.",
         seconds: "seconds",
+        minutes: "minutes",
         description: "Automatically reload the page at the specified interval.",
       },
       ja: {
         autoReload: "自動更新",
         errorLoading: "コンテンツの読み込みに失敗しました。",
         seconds: "秒間隔",
+        minutes: "分間隔",
         description: "ページを指定の間隔で自動更新します。",
       },
     };
@@ -62,7 +64,7 @@
     function selectIntervalItem(interval) {
       $menu.find("li").each((i, e) => {
         const $e = $(e);
-        if (parseInt($e.text()) === interval) {
+        if (parseInt($e.data("seconds")) === interval) {
           $e.addClass("selected");
         } else {
           $e.removeClass("selected");
@@ -79,7 +81,10 @@
     // Interval selection menu
     const $menu = $("<ul>").attr({ id: "auto_reload_menu", title: "" });
     intervals.forEach((i) => {
-      const $item = $(`<li><div>${i} ${resources.seconds}</div></li>`);
+      const label = i < 60 ? resources.seconds : resources.minutes;
+      const $item = $(
+        `<li><div>${i < 60 ? i : i / 60} ${label}</div></li>`
+      ).data("seconds", i);
       $menu.append($item);
     });
 
@@ -161,7 +166,7 @@
       $menu
         .menu({
           select: function (event, ui) {
-            enableAutoReload(true, parseInt(ui.item.text()));
+            enableAutoReload(true, parseInt(ui.item.data("seconds")));
             setTimeout(() => {
               $menu.hide();
             });
