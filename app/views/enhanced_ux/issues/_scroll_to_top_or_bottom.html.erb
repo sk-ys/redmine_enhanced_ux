@@ -40,9 +40,10 @@
         .map((iframe) => iframe.contentWindow === window)
         .some((v) => v);
 
-      let height = isIframeContent
-        ? $(document).height() - window.innerHeight
-        : $html.height() - window.innerHeight;
+      let height =
+        (isMobile() || isIframeContent
+          ? $(document).height()
+          : $html.height()) - window.innerHeight;
 
       const $enableSideBySideMode = $("#enable_side_by_side_mode");
       if ($enableSideBySideMode.length > 0) {
