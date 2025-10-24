@@ -17,6 +17,7 @@ Redmine::Plugin.register :redmine_enhanced_ux do
         custom_issue_note_list: '1',
         copy_issue_form_link_with_data: '1',
         fixed_submit_button: '1',
+        fuzzy_timestamps_formatter: '1',
         issue_attributes_to_link: '1',
         scroll_to_top_or_bottom: '1',
         add_copy_button_to_the_pre_block: '1',
