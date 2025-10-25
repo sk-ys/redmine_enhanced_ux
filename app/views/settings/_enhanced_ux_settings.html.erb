@@ -7,6 +7,11 @@
       <input type="hidden" name="settings[custom_issue_list]" value="'0'">
       <%= check_box_tag 'settings[custom_issue_list]', '1', @settings[:custom_issue_list] == '1' %>
     </p>
+    <p>
+      <label for="fuzzy_timestamps_formatter">Fuzzy timestamps formatter:</label>
+      <input type="hidden" name="settings[fuzzy_timestamps_formatter]" value="'0'">
+      <%= check_box_tag 'settings[fuzzy_timestamps_formatter]', '1', @settings[:fuzzy_timestamps_formatter] == '1' %>
+    </p>
   </fieldset>
   <fieldset class="box tabular settings">
     <legend><%= l(:label_issue_view_customization, scope: :enhanced_ux) %></legend>
