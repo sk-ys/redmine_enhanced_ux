@@ -45,6 +45,9 @@ module EnhancedUx
             if Setting.plugin_redmine_enhanced_ux[:custom_issue_list] == '1'
               tags << controller.render_to_string(partial: 'enhanced_ux/issues/custom_issue_list')
             end
+            if Setting.plugin_redmine_enhanced_ux[:fuzzy_timestamps_formatter] == '1'
+              tags << javascript_include_tag("issues/fuzzy_timestamps_formatter", :plugin => "redmine_enhanced_ux")
+            end
           end
 
           if /\/issue_note_list$/.match?(path)
