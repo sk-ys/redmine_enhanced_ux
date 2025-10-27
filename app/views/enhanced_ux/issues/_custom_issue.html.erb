@@ -102,7 +102,7 @@
     const issueUrl = location.origin + location.pathname;
     const issueEditUrl = issueUrl + "/edit";
     const issueId = Number(location.pathname.match(/([0-9]+)\/{0,1}$/)[1]);
-    const viewOnly = $("#update").length === 0;
+    const isEditable = $("#update").length !== 0;
     const issueNotesTextareaRowsDefault = $("#issue_notes").attr("rows");
     const addNotesLegendDefault = $("#add_notes>legend:first").text();
     const $submitButton = $('#issue-form input[type="submit"]');
@@ -133,8 +133,7 @@
 
     // Issue layout manager class
     class IssueLayoutManager {
-      constructor(viewOnly, enableTabView, enableSideBySideMode) {
-        this.viewOnly = viewOnly;
+      constructor(enableTabView, enableSideBySideMode) {
         this.tabViewEnabled = enableTabView ?? true;
         this.sideBySideModeEnabled = enableSideBySideMode ?? true;
         this.hasHistoryData = $("#history>p.nodata").length === 0;
@@ -168,7 +167,7 @@
         }
 
         this.#setupCustomAttachmentTable();
-        if (!this.viewOnly) {
+        if (isEditable) {
           this.#setupCorrectAttributesPositionInEditView();
           this.#setupFloatingSubmitButton();
         }
@@ -221,7 +220,7 @@
             })
             .addClass("selected")
         );
-        this.$issueTabEdit = viewOnly
+        this.$issueTabEdit = !isEditable
           ? null
           : $("<li>").append(
               $("<a>")
@@ -477,7 +476,7 @@
 
       // Issue tab selected event
       selectIssueTab(e, isNotesOnlyMode = false) {
-        if (this.viewOnly) {
+        if (!isEditable) {
           this.$issueTabView.children("a").addClass("selected");
           return;
         }
@@ -564,7 +563,7 @@
 
       // Correcting the placement of attributes in the edit view
       correctAttributesPositionInEditView() {
-        if (viewOnly) return;
+        if (!isEditable) return;
         if (!CORRECT_ATTRIBUTES_POSITION_IN_EDIT_VIEW) return;
 
         // Move hidden attributes to top
@@ -1652,9 +1651,8 @@
 
     // Notes manager class
     class NotesManager {
-      constructor(viewOnly, enableDialogNotes, enableQuickNotes2) {
-        this.viewOnly = viewOnly;
-        if (this.viewOnly) return;
+      constructor(enableDialogNotes, enableQuickNotes2) {
+        if (!isEditable) return;
         this.quickNotes2 = enableQuickNotes2
           ? new QuickNotes2(() => {
               this.enableInlineNotes();
@@ -1735,7 +1733,7 @@
       }
 
       addNotesDialogPopOutButton() {
-        if (this.viewOnly) return;
+        if (!isEditable) return;
         if (!this.dialogNotes) return;
 
         if ($("#add_notes").length === 0) return;
@@ -1831,14 +1829,12 @@
 
     function initialize() {
       issueLayoutManager = new IssueLayoutManager(
-        viewOnly,
         ENABLE_ISSUE_TAB_VIEW,
         ENABLE_SIDE_BY_SIDE_MODE
       );
 
-      if (!viewOnly) {
+      if (isEditable) {
         notesManager = new NotesManager(
-          viewOnly,
           ENABLE_POPUP_NOTES,
           ENABLE_INLINE_NOTES
         );
