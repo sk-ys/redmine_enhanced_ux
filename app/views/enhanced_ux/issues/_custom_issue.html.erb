@@ -22,6 +22,8 @@
     const USE_EDIT_ATTACHMENTS_DIALOG = true;
     const USE_TIME_ENTRY_DIALOG = true;
     const CORRECT_ATTRIBUTES_POSITION_IN_EDIT_VIEW = true;
+    const ENABLE_ISSUE_TAB_VIEW = true;
+    const ENABLE_SIDE_BY_SIDE_MODE = true;
     const ENABLE_POPUP_NOTES = true;
     const ENABLE_INLINE_NOTES = true;
     const ENABLE_FLOATING_SUBMIT_BUTTON = true;
@@ -101,182 +103,13 @@
     const issueEditUrl = issueUrl + "/edit";
     const issueId = Number(location.pathname.match(/([0-9]+)\/{0,1}$/)[1]);
     const viewOnly = $("#update").length === 0;
-    let hasHistoryData = $("#history>p.nodata").length === 0;
     const issueNotesTextareaRowsDefault = $("#issue_notes").attr("rows");
     const addNotesLegendDefault = $("#add_notes>legend:first").text();
     const $submitButton = $('#issue-form input[type="submit"]');
     const $history = $("#history");
     const enableRedmineRT = $("#quick_notes").length > 0;
     let notesManager = null;
-
-    // Properties
-    const sideBySideProperty = {
-      get enabled() {
-        return localStorage.getItem("side-by-side-enabled") === "true";
-      },
-      set enabled(value) {
-        localStorage.setItem("side-by-side-enabled", value);
-      },
-      get issueContainerWidth() {
-        return localStorage.getItem("side-by-side-issue-container-width");
-      },
-      set issueContainerWidth(value) {
-        localStorage.setItem("side-by-side-issue-container-width", value);
-      },
-    };
-
-    // Additional UI elements
-    const $container = $("<div>").attr("id", "container");
-    const $issueContainer = $("<div>")
-      .attr("id", "issue-container")
-      .resizable({
-        handles: isRtl ? "w" : "e",
-        create: function () {
-          $(this)
-            .children(".ui-resizable-handle")
-            .on("dblclick", () => {
-              if (confirm(resources.confirmResetWidth)) {
-                $issueContainer.css("width", "");
-                sideBySideProperty.issueContainerWidth = null;
-              }
-            });
-        },
-      });
-    const $issueTabs = $("<div>").addClass("tabs").append("<ul>");
-    const $issueTabView = $("<li>").append(
-      $("<a>")
-        .html(resources.labelView)
-        .attr({
-          id: "tab-issue-view",
-          href: issueUrl,
-        })
-        .on("click", (e) => {
-          getRemoteTab("view", issueUrl, issueUrl, true);
-          e.preventDefault();
-          e.stopPropagation();
-        })
-        .addClass("selected")
-    );
-    const $issueTabEdit = viewOnly
-      ? null
-      : $("<li>").append(
-          $("<a>")
-            .text(resources.labelEdit)
-            .attr({
-              id: "tab-issue-edit",
-              href: issueEditUrl,
-            })
-            .on("click", (e) => {
-              getRemoteTab(
-                "edit",
-                issueUrl + "/edit",
-                issueUrl + "?tab=edit",
-                true
-              );
-              e.preventDefault();
-              e.stopPropagation();
-
-              resetForm();
-            })
-        );
-    const $notesDialog = $("<div>").attr("id", "notes-dialog-content");
-    const $toggleSwitch = $('<input type="checkbox">')
-      .attr({
-        type: "checkbox",
-        id: "enable_side_by_side_mode",
-      })
-      .on("click", function () {
-        $toggleSwitch.check($(this).is(":checked"));
-      });
-    const $switchBox = $("<div>")
-      .append($toggleSwitch)
-      .append(
-        $("<label>")
-          .attr({ for: "enable_side_by_side_mode" })
-          .html(resources.sideBySideMode)
-      )
-      .attr({ title: resources.helpSideBySideMode });
-    $toggleSwitch.check = function (state = true) {
-      if (state === true) {
-        $("#wrapper").addClass("side-by-side");
-        $issueContainer.css("width", sideBySideProperty.issueContainerWidth);
-      } else {
-        $("#wrapper").removeClass("side-by-side");
-        $issueContainer.css("width", "");
-      }
-      $(this).prop("checked", state);
-      sideBySideProperty.enabled = state;
-      updateSubmitButtonPosition();
-    };
-
-    // Setup functions
-    function setupTabs() {
-      // [Original structure]
-      // #content
-      // ├─ div.issue.details
-      // ├─ #update
-      // └─ #history
-      //
-      // [Structure after tabbed]
-      // #content
-      // └─ #container
-      //       ├─ #issue-container
-      //       │    ├─ .tabs
-      //       │    │    └─ ul
-      //       │    │         ├─ #tab-issue-view
-      //       │    │         └─ #tab-issue-edit
-      //       │    ├─ div.issue.details
-      //       │    └─ #update
-      //       └─ #history-container
-      //             ├─ #history
-      //             ├─ #quick_notes2
-      //             └─ #quick_notes(by Redmine RT, always hidden)
-
-      $container.insertBefore($("div.issue.details"));
-
-      $issueTabs.children("ul").append($issueTabView).append($issueTabEdit);
-      $issueContainer
-        .append($issueTabs)
-        .append($("div.issue.details"))
-        .append($("#update"));
-
-      const $historyContainer = $("<div>")
-        .attr("id", "history-container")
-        .append($history);
-
-      $container.append($issueContainer).append($historyContainer);
-    }
-    function setupCustomAttachmentTable() {
-      if (!ENABLE_RESIZABLE_ATTACHMENT_TABLE) return;
-      $("#content .attachments > table").addClass("resizable");
-
-      $("#content")
-        .on("dblclick", ".attachments > table", resetHeightOfAttachmentTable)
-        .on("mouseover", ".attachments > table", () => {
-          const $attachmentsTable = $(".attachments > table");
-          if ($attachmentsTable.css("max-height") !== "none") {
-            $attachmentsTable.css({
-              height: Math.min($attachmentsTable.outerHeight(), 100),
-              maxHeight: "none",
-            });
-          }
-        });
-    }
-    function setupCustomIssueSubmitButton() {
-      $submitButton
-        .on("click", resetForm)
-        .on("mouseenter", () => {
-          if ($("#quick_notes2 #add_notes").length > 0) {
-            $submitButton.attr("title", resources.messageSubmitAll);
-          }
-        })
-        .tooltip({
-          position: { my: "right center", at: "left center" },
-          close: (e, ui) => {
-            $submitButton.attr("title", "");
-          },
-        });
-    }
+    let issueLayoutManager = null;
 
     // Utils
     function detectHistoryDirection() {
@@ -297,13 +130,553 @@
       // Default direction
       return "asc";
     }
-    function resetHeightOfAttachmentTable() {
-      if (!ENABLE_RESIZABLE_ATTACHMENT_TABLE) return;
 
-      const $attachmentsTable = $(".attachments > table");
-      if ($attachmentsTable.length === 0) return;
+    // Issue layout manager class
+    class IssueLayoutManager {
+      constructor(viewOnly, enableTabView, enableSideBySideMode) {
+        this.viewOnly = viewOnly;
+        this.tabViewEnabled = enableTabView ?? true;
+        this.sideBySideModeEnabled = enableSideBySideMode ?? true;
+        this.hasHistoryData = $("#history>p.nodata").length === 0;
 
-      $attachmentsTable.css({ height: "", maxHeight: "" });
+        $("#update").prev().addClass("update-prev-marker");
+
+        if (this.tabViewEnabled) {
+          $("#content").addClass("issue-tab-view-enabled");
+
+          this.#setupTabs();
+          this.selectIssueTab();
+
+          if (this.sideBySideModeEnabled && this.hasHistoryData) {
+            this.#setupSideBySideMode();
+          }
+        } else {
+          // Add event to cancel link
+          $("form.edit_issue input[type=submit]+a").on("click", (e) => {
+            // Redraw dialog if already open
+            if (notesManager?.dialogNotes?.isOpen()) {
+              notesManager.dialogNotes.close();
+              this.resetForm();
+              notesManager.dialogNotes.open();
+
+              // TODO: Height cannot be adjusted in just one run. Unexplained.
+              notesManager.dialogNotes.close();
+              this.resetForm();
+              notesManager.dialogNotes.open();
+            }
+          });
+        }
+
+        this.#setupCustomAttachmentTable();
+        if (!this.viewOnly) {
+          this.#setupCorrectAttributesPositionInEditView();
+          this.#setupFloatingSubmitButton();
+        }
+      }
+
+      sideBySideProperty = {
+        get enabled() {
+          return localStorage.getItem("side-by-side-enabled") === "true";
+        },
+        set enabled(value) {
+          localStorage.setItem("side-by-side-enabled", value);
+        },
+        get issueContainerWidth() {
+          return localStorage.getItem("side-by-side-issue-container-width");
+        },
+        set issueContainerWidth(value) {
+          localStorage.setItem("side-by-side-issue-container-width", value);
+        },
+      };
+
+      #generateTabViewRelatedElements() {
+        this.$container = $("<div>").attr("id", "container");
+        this.$issueContainer = $("<div>")
+          .attr("id", "issue-container")
+          .resizable({
+            handles: isRtl ? "w" : "e",
+            create: function () {
+              $(this)
+                .children(".ui-resizable-handle")
+                .on("dblclick", () => {
+                  if (confirm(resources.confirmResetWidth)) {
+                    this.$issueContainer.css("width", "");
+                    this.sideBySideProperty.issueContainerWidth = null;
+                  }
+                });
+            },
+          });
+        this.$issueTabs = $("<div>").addClass("tabs").append("<ul>");
+        this.$issueTabView = $("<li>").append(
+          $("<a>")
+            .html(resources.labelView)
+            .attr({
+              id: "tab-issue-view",
+              href: issueUrl,
+            })
+            .on("click", (e) => {
+              getRemoteTab("view", issueUrl, issueUrl, true);
+              e.preventDefault();
+              e.stopPropagation();
+            })
+            .addClass("selected")
+        );
+        this.$issueTabEdit = viewOnly
+          ? null
+          : $("<li>").append(
+              $("<a>")
+                .text(resources.labelEdit)
+                .attr({
+                  id: "tab-issue-edit",
+                  href: issueEditUrl,
+                })
+                .on("click", (e) => {
+                  getRemoteTab(
+                    "edit",
+                    issueUrl + "/edit",
+                    issueUrl + "?tab=edit",
+                    true
+                  );
+                  e.preventDefault();
+                  e.stopPropagation();
+
+                  this.resetForm();
+                })
+            );
+      }
+
+      #generateSideBySideModeRelatedElements() {
+        this.$toggleSwitch = $('<input type="checkbox">')
+          .attr({
+            type: "checkbox",
+            id: "enable_side_by_side_mode",
+          })
+          .on("click", (e) => {
+            this.$toggleSwitch.check($(e.currentTarget).is(":checked"));
+          });
+        this.$switchBox = $("<div>")
+          .append(this.$toggleSwitch)
+          .append(
+            $("<label>")
+              .attr({ for: "enable_side_by_side_mode" })
+              .html(resources.sideBySideMode)
+          )
+          .attr({ title: resources.helpSideBySideMode });
+
+        // Define check method
+        this.$toggleSwitch.check = (state = true) => {
+          if (state === true) {
+            $("#wrapper").addClass("side-by-side");
+            this.$issueContainer.css(
+              "width",
+              this.sideBySideProperty.issueContainerWidth
+            );
+          } else {
+            $("#wrapper").removeClass("side-by-side");
+            this.$issueContainer.css("width", "");
+          }
+          this.$toggleSwitch.prop("checked", state);
+          this.sideBySideProperty.enabled = state;
+          this.updateSubmitButtonPosition();
+        };
+      }
+
+      #setupTabs() {
+        // [Original structure]
+        // #content
+        // ├─ div.issue.details
+        // ├─ #update
+        // └─ #history
+        //
+        // [Structure after tabbed]
+        // #content
+        // └─ #container
+        //       ├─ #issue-container
+        //       │    ├─ .tabs
+        //       │    │    └─ ul
+        //       │    │         ├─ #tab-issue-view
+        //       │    │         └─ #tab-issue-edit
+        //       │    ├─ div.issue.details
+        //       │    └─ #update
+        //       └─ #history-container
+        //             ├─ #history
+        //             ├─ #quick_notes2
+        //             └─ #quick_notes(by Redmine RT, always hidden)
+        this.#generateTabViewRelatedElements();
+
+        this.$container.insertBefore($("div.issue.details"));
+
+        this.$issueTabs
+          .children("ul")
+          .append(this.$issueTabView)
+          .append(this.$issueTabEdit);
+        this.$issueContainer
+          .append(this.$issueTabs)
+          .append($("div.issue.details"))
+          .append($("#update"));
+
+        this.$historyContainer = $("<div>")
+          .attr("id", "history-container")
+          .append($history);
+
+        this.$container
+          .append(this.$issueContainer)
+          .append(this.$historyContainer);
+
+        // Set select event to tabs of issue
+        this.$issueTabs.find("a").on("click", this.selectIssueTab.bind(this));
+
+        // Replace edit link actions
+        $(`#content>.contextual>a[href$="/issues/${issueId}/edit"]`)
+          .removeAttr("onclick")
+          .on("click", (e) => {
+            if (e.ctrlKey) {
+              notesManager?.enableDialogNotes(true);
+            } else {
+              this.resetForm();
+              this.selectIssueTab(e, false);
+              $("html, body").animate({ scrollTop: 0 }, "slow");
+            }
+            e.preventDefault();
+            e.stopPropagation();
+          })
+          .addClass("prevent-popup-anywhere");
+
+        // Add event to cancel link
+        $("form.edit_issue input[type=submit]+a").on("click", (e) => {
+          this.$issueTabView.click();
+          e.preventDefault();
+          e.stopPropagation();
+        });
+
+        // Set up mutation observer for div.issue.details
+        // and hide div.issue.details when edit mode
+        new MutationObserver(function (mutations) {
+          if (!$("#tab-issue-edit").hasClass("selected")) return;
+          mutations.forEach((mutation) => {
+            Array.from(mutation.addedNodes)
+              .filter((addedNode) => $(addedNode).is(".issue.details"))
+              .forEach((addedNode) => $(addedNode).hide());
+          });
+        }).observe($("#issue-container")[0], {
+          attributes: false,
+          childList: true,
+          subtree: false,
+        });
+      }
+
+      #setupSideBySideMode() {
+        // Caution: Need tab view enabled for side-by-side mode
+
+        this.#generateSideBySideModeRelatedElements();
+
+        this.$switchBox
+          .attr("id", "side-by-side-switch-box")
+          .insertBefore($("#container"));
+
+        if (this.sideBySideProperty.enabled) {
+          this.$toggleSwitch.check();
+        }
+
+        // Add ResizeObserver to issue-container and save the width of
+        // issue-container
+        new ResizeObserver((mutations) => {
+          if (
+            this.$switchBox.is(":visible") &&
+            $("#wrapper").hasClass("side-by-side")
+          ) {
+            this.sideBySideProperty.issueContainerWidth =
+              mutations[0].target.clientWidth;
+          }
+        }).observe(this.$issueContainer[0], { attributes: true });
+      }
+
+      #setupCustomAttachmentTable() {
+        if (!ENABLE_RESIZABLE_ATTACHMENT_TABLE) return;
+
+        $("#content .attachments > table").addClass("resizable");
+
+        $("#content")
+          .on(
+            "dblclick",
+            ".attachments > table",
+            this.resetHeightOfAttachmentTable
+          )
+          .on("mouseover", ".attachments > table", () => {
+            const $attachmentsTable = $(".attachments > table");
+            if ($attachmentsTable.css("max-height") !== "none") {
+              $attachmentsTable.css({
+                height: Math.min($attachmentsTable.outerHeight(), 100),
+                maxHeight: "none",
+              });
+            }
+          });
+
+        this.resetHeightOfAttachmentTable();
+      }
+
+      resetHeightOfAttachmentTable() {
+        if (!ENABLE_RESIZABLE_ATTACHMENT_TABLE) return;
+
+        const $attachmentsTable = $(".attachments > table");
+        if ($attachmentsTable.length === 0) return;
+
+        $attachmentsTable.css({ height: "", maxHeight: "" });
+      }
+
+      #setupCorrectAttributesPositionInEditView() {
+        // Replace updateIssueFrom function
+        const updateIssueFromOrg = updateIssueFrom;
+        updateIssueFrom = (url, el) => {
+          return updateIssueFromOrg(url, el).then(() => {
+            this.correctAttributesPositionInEditView();
+          });
+        };
+
+        this.correctAttributesPositionInEditView();
+      }
+
+      resetForm() {
+        // Restore Edit form
+        if ($("#issue-container #update").length === 0) {
+          if (this.tabViewEnabled) {
+            $("#update").appendTo("#issue-container");
+          } else {
+            $("#update").insertAfter(".update-prev-marker:first");
+          }
+        }
+
+        // Restore notes
+        $("#add_notes").appendTo($("#issue-form>.box.filedroplistner:last"));
+
+        // Restore add_attachments
+        $("#add_attachments").appendTo(
+          $("#issue-form>.box.filedroplistner:last")
+        );
+
+        // Restore #issue_notes textarea rows
+        $("#issue_notes").attr("rows", issueNotesTextareaRowsDefault);
+
+        // Restore add_notes legend
+        $("#add_notes>legend:first").text(addNotesLegendDefault);
+
+        // Reset height for history and quick notes2
+        $("#history").css("height", "");
+        $("#quick_notes2").css("height", "");
+
+        // Add notes pop-out button
+        notesManager?.addNotesDialogPopOutButton();
+
+        // Focus to notes field
+        // const scrollTop = $(".edit_issue > .box.filedroplistner").scrollTop();
+        // $("#issue_notes")[0].focus();
+        // setTimeout(() => {
+        //   $(".edit_issue > .box.filedroplistner").scrollTop(scrollTop);
+        // });
+      }
+
+      // Issue tab selected event
+      selectIssueTab(e, isNotesOnlyMode = false) {
+        if (this.viewOnly) {
+          this.$issueTabView.children("a").addClass("selected");
+          return;
+        }
+
+        this.$issueTabs.find("a").removeClass("selected");
+
+        let isEditMode = false;
+        if (e === undefined) {
+          isEditMode = /tab=edit/.test(location.search);
+        } else if ($(e.target).length > 0) {
+          isEditMode =
+            $(e.target).attr("id") === "tab-issue-edit" ||
+            new RegExp(`/issues/${issueId}/edit`).test(
+              $(e.target).attr("href")
+            );
+        }
+
+        (isEditMode ? this.$issueTabEdit : this.$issueTabView)
+          .children("a")
+          .addClass("selected");
+
+        if (isEditMode) {
+          $("div.issue.details").hide();
+          $("#update").show();
+          // $("#issue_notes")[0].focus();
+        } else {
+          $("#update").hide();
+          $("div.issue.details").show();
+        }
+
+        // Redraw dialog if already open
+        if (notesManager?.dialogNotes?.isOpen()) {
+          notesManager.dialogNotes.close();
+          this.resetForm();
+          notesManager.dialogNotes.open();
+
+          // TODO: Height cannot be adjusted in just one run. Unexplained.
+          notesManager.dialogNotes.close();
+          this.resetForm();
+          notesManager.dialogNotes.open();
+        }
+
+        this.updateSubmitButtonPosition();
+        if (!isNotesOnlyMode && $("#update").hasClass("notes-only")) return;
+        if (isNotesOnlyMode) $("#issue_notes")[0].focus();
+      }
+
+      #setupFloatingSubmitButton() {
+        if (ENABLE_FLOATING_SUBMIT_BUTTON) {
+          $("#issue-form").addClass("enable-floating-submit-button");
+          $(window)
+            .on("scroll", () => {
+              this.updateSubmitButtonPosition();
+            })
+            .on("resize", () => {
+              this.updateSubmitButtonPosition();
+            });
+          $("#issue-form>.box").on("scroll", () => {
+            this.updateSubmitButtonPosition();
+          });
+        }
+
+        this.updateSubmitButtonPosition();
+      }
+
+      updateSubmitButtonPosition() {
+        if (!ENABLE_FLOATING_SUBMIT_BUTTON) return;
+
+        const $box = $("#issue-form>div.box").eq(0);
+        if (!$submitButton.is(":visible")) return;
+        const isOverFlow =
+          this.sideBySideProperty.enabled && this.$switchBox?.is(":visible")
+            ? $box[0].scrollHeight > $box.outerHeight() + $box.scrollTop()
+            : $box.outerHeight() + $box.offset().top >
+              $(window).scrollTop() + $(window).height() - 40;
+        if (isOverFlow) {
+          $submitButton.addClass("fixed-position");
+          $(".save-draft-button").addClass("fixed-position");
+        } else {
+          $submitButton.removeClass("fixed-position");
+          $(".save-draft-button").removeClass("fixed-position");
+        }
+      }
+
+      // Correcting the placement of attributes in the edit view
+      correctAttributesPositionInEditView() {
+        if (viewOnly) return;
+        if (!CORRECT_ATTRIBUTES_POSITION_IN_EDIT_VIEW) return;
+
+        // Move hidden attributes to top
+        $("#all_attributes")
+          .prepend(
+            $("#issue_parent_issue_id").parent().addClass("header_attribute")
+          )
+          .prepend(
+            $("#issue_tracker_id")
+              .parent()
+              .addClass("header_attribute")
+              .addClass("header_attribute_float-" + (isRtl ? "right" : "left"))
+              .css({ clear: "none" })
+          )
+          .prepend(
+            $("#issue_project_id")
+              .parent()
+              .addClass("header_attribute")
+              .addClass("header_attribute_float-" + (isRtl ? "right" : "left"))
+          );
+
+        $("#attributes").css("clear: both");
+
+        // Move subject and is_private checkbox
+        $("#all_attributes")
+          .prepend(
+            $("#issue_subject")
+              .parent()
+              .addClass("header_attribute")
+              .addClass("header_attribute_float-" + (isRtl ? "right" : "left"))
+          )
+          .prepend(
+            $("#issue_is_private")
+              .parent()
+              .css({ clear: "both", paddingLeft: 0 })
+              .addClass("header_attribute")
+          );
+
+        // Move estimated_time
+        $("#issue_estimated_hours")
+          .parent()
+          .parent()
+          .append($("#issue_estimated_hours").parent());
+
+        // Move description attribute to after the #attributes
+        const $descriptionAttribute = $(
+          "label[for=issue_description]"
+        ).parent();
+        $("div#attributes").after($descriptionAttribute);
+
+        // Add <hr>
+        $("#attributes")
+          .before($("<hr>"))
+          .children(".splitcontent")
+          .after($("<hr>"));
+
+        // Show description edit field
+        if (IS_DESCRIPTION_EDIT_FIELD_OPEN_BY_DEFAULT) {
+          setTimeout(() => {
+            $("#issue_description_and_toolbar").show();
+            const descriptionDrawLink = $("label[for=issue_description]")
+              .parent()
+              .find("a")
+              .eq(0)
+              .hide();
+          });
+        }
+
+        // Fix placement of "assign to me" button
+        $("#issue_assigned_to_id").after($("<br>"));
+      }
+      updateFormCore(data, updateHistory = true) {
+        // Update csrf-token
+        $("head meta[name='csrf-token']").attr(
+          "content",
+          $("head meta[name='csrf-token']", data).attr("content")
+        );
+
+        // Update issue lock version
+        $("#issue-form>input#issue_lock_version").val(
+          $("#issue-form>input#issue_lock_version", data).val()
+        );
+
+        // Update last journal ID
+        $("#last_journal_id").val($("#last_journal_id", data).val());
+
+        // Update issue edit form authenticity token
+        $("#issue-form input[name=authenticity_token]").val(
+          $("#issue-form input[name=authenticity_token]", data).val()
+        );
+
+        // Update content history tab
+        if (updateHistory) {
+          $("#tab-content-history")
+            .empty()
+            .append($("#tab-content-history", data).children());
+          $("#history>.tabs>ul>li>a.selected").click();
+        }
+
+        // Update subtasks pane
+        $("#issue_tree").empty().append($("#issue_tree", data).children());
+
+        // Update relations pane
+        $("#relations").empty().append($("#relations", data).children());
+
+        // Show flash
+        const $flash = $("#content > div.flash", data);
+        if ($flash.length) {
+          $("#content > div.flash").remove();
+          $flash.prependTo("#content");
+        }
+      }
     }
 
     // Quick Notes 2
@@ -380,7 +753,7 @@
           .text(resources.closeQuickNotes)
           .appendTo($quickNotes2Buttons)
           .on("click", () => {
-            resetForm();
+            issueLayoutManager.resetForm();
             $("#issue_notes")[0].focus();
           });
 
@@ -390,7 +763,7 @@
           .text(resources.labelSubmitQuickNotesWithAttachments)
           .on("click", () => {
             asyncAjaxSubmitNotesWithAttachments().then(() => {
-              resetForm();
+              issueLayoutManager.resetForm();
               $("textarea#issue_notes")
                 .removeData("changed")
                 .removeAttr("data-changed"); // Support for 2-pane mode
@@ -409,7 +782,7 @@
           .attr("title", resources.messageQuickNotesWillBeClosed)
           .appendTo($issueFormButtons)
           .on("click", () => {
-            resetForm();
+            issueLayoutManager.resetForm();
             $("#issue_notes")[0].focus();
           });
 
@@ -424,6 +797,20 @@
             this.switchPosition();
           })
           .appendTo(this.#$elem);
+
+        $submitButton
+          .on("click", issueLayoutManager.resetForm)
+          .on("mouseenter", () => {
+            if ($("#quick_notes2 #add_notes").length > 0) {
+              $submitButton.attr("title", resources.messageSubmitAll);
+            }
+          })
+          .tooltip({
+            position: { my: "right center", at: "left center" },
+            close: (e, ui) => {
+              $submitButton.attr("title", "");
+            },
+          });
       }
     }
 
@@ -590,6 +977,7 @@
           title: resources.labelAddChildIssue,
           width: 980,
           height: 750,
+          modal: true,
           ...config,
         });
         this.dialogContentType = "issues";
@@ -672,7 +1060,7 @@
 
     class EditAttachmentsDialog extends IframeDialog {
       constructor(config = {}) {
-        super({ width: 980, height: 540, ...config });
+        super({ width: 980, height: 540, modal: true, ...config });
         this.dialogContentType = "edit_attachments";
         this.dialogId = "edit-attachments-dialog";
       }
@@ -685,7 +1073,7 @@
               .css({ maxHeight: 100 })
               .addClass(ENABLE_RESIZABLE_ATTACHMENT_TABLE ? "resizable" : "")
           );
-          resetHeightOfAttachmentTable();
+          issueLayoutManager?.resetHeightOfAttachmentTable();
         });
       }
 
@@ -761,7 +1149,7 @@
 
     class TimeEntryDialog extends IframeDialog {
       constructor(config = {}) {
-        super({ width: 500, height: 640, ...config });
+        super({ width: 500, height: 640, modal: true, ...config });
         this.dialogContentType = "time_entries";
         this.dialogId = "time-entries-dialog";
       }
@@ -868,6 +1256,7 @@
       }
     }
 
+    // Dialog manager class
     class DialogManager {
       constructor(
         useAddChildIssueDialog,
@@ -977,9 +1366,13 @@
             },
           ],
           open: () => {
-            if ($issueContainer.find("#update").length === 0) {
-              console.log("Edit form is not found.");
-              return;
+            if (issueLayoutManager.tabViewEnabled) {
+              if (
+                issueLayoutManager.$issueContainer.find("#update").length === 0
+              ) {
+                console.warn("Edit form is not found.");
+                return;
+              }
             }
 
             // Reset history and quickNotes2 height
@@ -991,7 +1384,12 @@
             );
 
             // Open notes dialog
-            if ($("#tab-issue-view").hasClass("selected")) {
+            if (
+              (issueLayoutManager.tabViewEnabled &&
+                $("#tab-issue-view").hasClass("selected")) ||
+              (!issueLayoutManager.tabViewEnabled &&
+                !$("#update").is(":visible"))
+            ) {
               this.$dialog.dialog("option", "appendTo", "#content");
               $("#update").appendTo(this.$dialog).show();
 
@@ -1030,7 +1428,7 @@
               this.$dialog.dialog("option", "position")
             );
 
-            updateSubmitButtonPosition();
+            issueLayoutManager?.updateSubmitButtonPosition();
 
             $("#issue_notes").focus();
           },
@@ -1049,6 +1447,9 @@
         this.dialogId = "notes-dialog";
         this.isOpenedFromInlineNotes = false; // default value
         this.setupDialog();
+
+        this.#replaceUpdateIssueFromFunction();
+        this.#replaceShowAndScrollToFunction();
       }
 
       open(isOpenedFromInlineNotes = false) {
@@ -1058,7 +1459,7 @@
 
       setupDialog() {
         if (this.$dialog !== null) return;
-
+        const $notesDialog = $("<div>").attr("id", "notes-dialog-content");
         this.$dialog = $notesDialog.dialog(this.config);
         this.$dialogRoot = this.$dialog.parent();
       }
@@ -1072,11 +1473,15 @@
       }
 
       closeEvent() {
-        if ($("#tab-issue-view").hasClass("selected")) {
+        if (issueLayoutManager.tabViewEnabled) {
+          if ($("#tab-issue-view").hasClass("selected")) {
+            $("#update").hide();
+          }
+        } else if ($("#update").closest("#notes-dialog").length > 0) {
           $("#update").hide();
         }
 
-        resetForm();
+        issueLayoutManager.resetForm();
 
         // Clear dialog contents
         $("#notes-dialog-content").empty();
@@ -1085,7 +1490,7 @@
         $(document).scrollLeft(this.documentScrollPosition.left);
         $(document).scrollTop(this.documentScrollPosition.top);
 
-        updateSubmitButtonPosition();
+        issueLayoutManager?.updateSubmitButtonPosition();
 
         if (this.isOpenedFromInlineNotes) {
           this.enableInlineNotes();
@@ -1105,7 +1510,7 @@
             label: resources.labelUnfixed,
             showLabel: false,
           })
-          .click(function (e) {
+          .click((e) => {
             e.preventDefault();
             const currentContent = this.$dialog.dialog("option", "appendTo");
             const baseContent = "#content";
@@ -1135,7 +1540,7 @@
                   $(document).scrollTop() +
                   contentPosition.top,
               });
-              $(this)
+              $(e.currentTarget)
                 .button("option", {
                   icon: "ui-icon-pin-w",
                   label: resources.labelUnfixed,
@@ -1154,7 +1559,7 @@
                   $(document).scrollTop() -
                   contentPosition.top,
               });
-              $(this)
+              $(e.currentTarget)
                 .button("option", {
                   icon: "ui-icon-pin-s",
                   label: resources.labelFixed,
@@ -1207,6 +1612,42 @@
           top: $(document).scrollTop(),
         };
       }
+
+      #replaceUpdateIssueFromFunction() {
+        const updateIssueFromOrg = updateIssueFrom;
+        updateIssueFrom = (url, el) => {
+          return updateIssueFromOrg(url, el).then(() => {
+            notesManager?.addNotesDialogPopOutButton();
+          });
+        };
+      }
+
+      #replaceShowAndScrollToFunction() {
+        const showAndScrollToOrg = showAndScrollTo;
+        showAndScrollTo = function (id, focus) {
+          if (id === "update") {
+            if (issueLayoutManager.tabViewEnabled) {
+              if (!$("#tab-issue-edit").hasClass("selected")) {
+                if (!notesManager.dialogNotes.isOpen()) {
+                  $("html, body").animate(
+                    { scrollTop: $("#add_notes").offset().top },
+                    100
+                  );
+                }
+                return;
+              }
+            } else {
+              if (notesManager.dialogNotes.isOpen()) {
+                notesManager.dialogNotes.close();
+                showAndScrollToOrg.call(this, id, focus);
+                notesManager.dialogNotes.open();
+                return;
+              }
+            }
+          }
+          showAndScrollToOrg.call(this, id, focus);
+        };
+      }
     }
 
     // Notes manager class
@@ -1240,7 +1681,7 @@
         if (!this.dialogNotes) return;
 
         if (state) {
-          resetForm();
+          issueLayoutManager.resetForm();
           this.dialogNotes.open(isOpenedFromInlineNotes);
         } else {
           this.dialogNotes.close();
@@ -1309,94 +1750,11 @@
             e.preventDefault();
             const isOpenedFromInlineNotes =
               $(e.target).closest("#quick_notes2").length > 0;
-            resetForm();
+            issueLayoutManager.resetForm();
             this.enableDialogNotes(true, isOpenedFromInlineNotes);
           })
           .prependTo($("#add_notes>legend"));
       }
-    }
-
-    function resetForm() {
-      // Restore Edit form
-      if ($("#issue-container #update").length === 0) {
-        $("#update").appendTo("#issue-container");
-      }
-
-      // Restore notes
-      $("#add_notes").appendTo($("#issue-form>.box.filedroplistner:last"));
-
-      // Restore add_attachments
-      $("#add_attachments").appendTo(
-        $("#issue-form>.box.filedroplistner:last")
-      );
-
-      // Restore #issue_notes textarea rows
-      $("#issue_notes").attr("rows", issueNotesTextareaRowsDefault);
-
-      // Restore add_notes legend
-      $("#add_notes>legend:first").text(addNotesLegendDefault);
-
-      // Reset height for history and quick notes2
-      $("#history").css("height", "");
-      $("#quick_notes2").css("height", "");
-
-      // Add notes pop-out button
-      notesManager?.addNotesDialogPopOutButton();
-
-      // Focus to notes field
-      // const scrollTop = $(".edit_issue > .box.filedroplistner").scrollTop();
-      // $("#issue_notes")[0].focus();
-      // setTimeout(() => {
-      //   $(".edit_issue > .box.filedroplistner").scrollTop(scrollTop);
-      // });
-    }
-
-    // Issue tab selected event
-    function selectIssueTab(e, isNotesOnlyMode = false) {
-      if (viewOnly) {
-        $issueTabView.children("a").addClass("selected");
-        return;
-      }
-
-      $issueTabs.find("a").removeClass("selected");
-
-      let isEditMode = false;
-      if (e === undefined) {
-        isEditMode = /tab=edit/.test(location.search);
-      } else if ($(e.target).length > 0) {
-        isEditMode =
-          $(e.target).attr("id") === "tab-issue-edit" ||
-          new RegExp(`/issues/${issueId}/edit`).test($(e.target).attr("href"));
-      }
-
-      (isEditMode ? $issueTabEdit : $issueTabView)
-        .children("a")
-        .addClass("selected");
-
-      if (isEditMode) {
-        $("div.issue.details").hide();
-        $("#update").show();
-        // $("#issue_notes")[0].focus();
-      } else {
-        $("#update").hide();
-        $("div.issue.details").show();
-      }
-
-      // Redraw dialog if already open
-      if (notesManager?.dialogNotes?.isOpen()) {
-        notesManager.dialogNotes.close();
-        resetForm();
-        notesManager.dialogNotes.open();
-
-        // TODO: Height cannot be adjusted in just one run. Unexplained.
-        notesManager.dialogNotes.close();
-        resetForm();
-        notesManager.dialogNotes.open();
-      }
-
-      updateSubmitButtonPosition();
-      if (!isNotesOnlyMode && $("#update").hasClass("notes-only")) return;
-      if (isNotesOnlyMode) $("#issue_notes")[0].focus();
     }
 
     async function asyncAjaxSubmitNotesWithAttachments() {
@@ -1430,13 +1788,13 @@
             $("#issue_notes").val("").removeData("changed");
             $("#new-attachments .attachments_fields").empty();
 
-            updateFormCore(data, !enableRedmineRT);
+            issueLayoutManager.updateFormCore(data, !enableRedmineRT);
 
             // Change tab to edit
             $("#add_notes .tab-edit")[0].click();
 
             if (!enableRedmineRT) {
-              resetHeightOfAttachmentTable(data);
+              issueLayoutManager?.resetHeightOfAttachmentTable(data);
             }
             resolve(data);
           })
@@ -1445,207 +1803,6 @@
             reject(res);
           });
       });
-    }
-
-    // Correcting the placement of attributes in the edit view
-    function correctAttributesPositionInEditView() {
-      if (viewOnly) return;
-      if (!CORRECT_ATTRIBUTES_POSITION_IN_EDIT_VIEW) return;
-
-      // Move hidden attributes to top
-      $("#all_attributes")
-        .prepend(
-          $("#issue_parent_issue_id").parent().addClass("header_attribute")
-        )
-        .prepend(
-          $("#issue_tracker_id")
-            .parent()
-            .addClass("header_attribute")
-            .addClass("header_attribute_float-" + (isRtl ? "right" : "left"))
-            .css({ clear: "none" })
-        )
-        .prepend(
-          $("#issue_project_id")
-            .parent()
-            .addClass("header_attribute")
-            .addClass("header_attribute_float-" + (isRtl ? "right" : "left"))
-        );
-
-      $("#attributes").css("clear: both");
-
-      // Move subject and is_private checkbox
-      $("#all_attributes")
-        .prepend(
-          $("#issue_subject")
-            .parent()
-            .addClass("header_attribute")
-            .addClass("header_attribute_float-" + (isRtl ? "right" : "left"))
-        )
-        .prepend(
-          $("#issue_is_private")
-            .parent()
-            .css({ clear: "both", paddingLeft: 0 })
-            .addClass("header_attribute")
-        );
-
-      // Move estimated_time
-      $("#issue_estimated_hours")
-        .parent()
-        .parent()
-        .append($("#issue_estimated_hours").parent());
-
-      // Move description attribute to after the #attributes
-      const $descriptionAttribute = $("label[for=issue_description]").parent();
-      $("div#attributes").after($descriptionAttribute);
-
-      // Add <hr>
-      $("#attributes")
-        .before($("<hr>"))
-        .children(".splitcontent")
-        .after($("<hr>"));
-
-      // Show description edit field
-      if (IS_DESCRIPTION_EDIT_FIELD_OPEN_BY_DEFAULT) {
-        setTimeout(() => {
-          $("#issue_description_and_toolbar").show();
-          const descriptionDrawLink = $("label[for=issue_description]")
-            .parent()
-            .find("a")
-            .eq(0)
-            .hide();
-        });
-      }
-
-      // Fix placement of "assign to me" button
-      $("#issue_assigned_to_id").after($("<br>"));
-    }
-
-    function updateSubmitButtonPosition() {
-      if (!ENABLE_FLOATING_SUBMIT_BUTTON) return;
-
-      const $box = $("#issue-form>div.box").eq(0);
-      if (!$submitButton.is(":visible")) return;
-      const isOverFlow =
-        sideBySideProperty.enabled && $switchBox.is(":visible")
-          ? $box[0].scrollHeight > $box.outerHeight() + $box.scrollTop()
-          : $box.outerHeight() + $box.offset().top >
-            $(window).scrollTop() + $(window).height() - 40;
-      if (isOverFlow) {
-        $submitButton.addClass("fixed-position");
-        $(".save-draft-button").addClass("fixed-position");
-      } else {
-        $submitButton.removeClass("fixed-position");
-        $(".save-draft-button").removeClass("fixed-position");
-      }
-    }
-
-    function updateHistoryAndAttachments(data) {
-      // Update history if history is empty
-      if (!hasHistoryData) {
-        $("#history p.nodata").replaceWith($("#history", data).children());
-        hasHistoryData = true;
-        initializeSideBySideMode();
-      } else {
-        // Update tab if tab is not exist
-        if ("#tab-notes".length === 0) {
-          $("#history > .tabs").replaceWith($("#history > .tabs", data));
-        }
-
-        // Update tab content
-        $("#tab-content-history")
-          .empty()
-          .html($("#tab-content-history", data).children());
-        $("#history > .tabs a.selected")[0].click();
-      }
-
-      // Update issue
-      $("#content div.issue").replaceWith($("#content div.issue", data));
-
-      // Update attachments
-      $("#add_attachments").replaceWith($("#add_attachments", data));
-
-      // Update lock version
-      $("#issue_lock_version").replaceWith($("#issue_lock_version", data));
-    }
-
-    function initializeSideBySideMode() {
-      $switchBox
-        .attr("id", "side-by-side-switch-box")
-        .insertBefore($("#container"));
-
-      if (sideBySideProperty.enabled) {
-        $toggleSwitch.check();
-      }
-
-      // Add ResizeObserver to issue-container and save the width of
-      // issue-container
-      new ResizeObserver((mutations) => {
-        if (
-          $switchBox.is(":visible") &&
-          $("#wrapper").hasClass("side-by-side")
-        ) {
-          sideBySideProperty.issueContainerWidth =
-            mutations[0].target.clientWidth;
-        }
-      }).observe($issueContainer[0], { attributes: true });
-    }
-
-    function updateWikiPreview($jstBlock) {
-      var element = encodeURIComponent($jstBlock.find(".wiki-edit").val());
-      var attachments = $("#issue-form")
-        .find(".attachments_fields input")
-        .serialize();
-
-      return $.ajax({
-        url: $jstBlock.find(".tab-preview").data("url"),
-        type: "post",
-        data: "text=" + element + "&" + attachments,
-      }).done((data) => {
-        $jstBlock.find(".wiki-preview").html(data);
-        setupWikiTableSortableHeader();
-      });
-    }
-
-    function updateFormCore(data, updateHistory = true) {
-      // Update csrf-token
-      $("head meta[name='csrf-token']").attr(
-        "content",
-        $("head meta[name='csrf-token']", data).attr("content")
-      );
-
-      // Update issue lock version
-      $("#issue-form>input#issue_lock_version").val(
-        $("#issue-form>input#issue_lock_version", data).val()
-      );
-
-      // Update last journal ID
-      $("#last_journal_id").val($("#last_journal_id", data).val());
-
-      // Update issue edit form authenticity token
-      $("#issue-form input[name=authenticity_token]").val(
-        $("#issue-form input[name=authenticity_token]", data).val()
-      );
-
-      // Update content history tab
-      if (updateHistory) {
-        $("#tab-content-history")
-          .empty()
-          .append($("#tab-content-history", data).children());
-        $("#history>.tabs>ul>li>a.selected").click();
-      }
-
-      // Update subtasks pane
-      $("#issue_tree").empty().append($("#issue_tree", data).children());
-
-      // Update relations pane
-      $("#relations").empty().append($("#relations", data).children());
-
-      // Show flash
-      const $flash = $("#content > div.flash", data);
-      if ($flash.length) {
-        $("#content > div.flash").remove();
-        $flash.prependTo("#content");
-      }
     }
 
     ajaxUpdateIssueList = async function (settings) {
@@ -1668,26 +1825,18 @@
       const url = location.origin + location.pathname + settings.search;
 
       await $.ajax({ url: url, dataType: "html" }).done((data) => {
-        updateFormCore(data);
+        issueLayoutManager.updateFormCore(data);
       });
     };
 
     function initialize() {
-      setupTabs();
-      setupCustomAttachmentTable();
-      setupCustomIssueSubmitButton();
+      issueLayoutManager = new IssueLayoutManager(
+        viewOnly,
+        ENABLE_ISSUE_TAB_VIEW,
+        ENABLE_SIDE_BY_SIDE_MODE
+      );
 
-      // Enable checkbox and side-by-side mode if history exists
-      if (hasHistoryData) {
-        initializeSideBySideMode();
-      }
-
-      // Add or replace the Links for editing
       if (!viewOnly) {
-        if (ENABLE_FLOATING_SUBMIT_BUTTON) {
-          $("#issue-form").addClass("enable-floating-submit-button");
-        }
-
         notesManager = new NotesManager(
           viewOnly,
           ENABLE_POPUP_NOTES,
@@ -1699,49 +1848,6 @@
           USE_EDIT_ATTACHMENTS_DIALOG,
           USE_TIME_ENTRY_DIALOG
         );
-
-        // Set select event to tabs of issue
-        $issueTabs.find("a").on("click", selectIssueTab);
-
-        // Replace edit link actions
-        $(`#content>.contextual>a[href$="/issues/${issueId}/edit"]`)
-          .removeAttr("onclick")
-          .on("click", (e) => {
-            if (e.ctrlKey) {
-              notesManager?.enableDialogNotes(true);
-            } else {
-              resetForm();
-              selectIssueTab(e, false);
-              $("html, body").animate({ scrollTop: 0 }, "slow");
-            }
-            e.preventDefault();
-            e.stopPropagation();
-          })
-          .addClass("prevent-popup-anywhere");
-
-        // Replace cancel link action
-        $("form.edit_issue input[type=submit]+a").on("click", (e) => {
-          $issueTabView.click();
-          e.preventDefault();
-          e.stopPropagation();
-        });
-
-        // Replace updateIssueFrom function
-        const updateIssueFromOrg = updateIssueFrom;
-        updateIssueFrom = function (url, el) {
-          return updateIssueFromOrg(url, el).then(() => {
-            correctAttributesPositionInEditView();
-            notesManager?.addNotesDialogPopOutButton();
-          });
-        };
-
-        // Set up an event to update the position of the submit button
-        if (ENABLE_FLOATING_SUBMIT_BUTTON) {
-          $(window)
-            .on("scroll", updateSubmitButtonPosition)
-            .on("resize", updateSubmitButtonPosition);
-          $("#issue-form>.box").on("scroll", updateSubmitButtonPosition);
-        }
 
         // Fix height of wiki-preview with scrollbar
         // Override jsToolBar.showPreview function
@@ -1763,43 +1869,8 @@
           }
         };
 
-        // Override showAndScrollTo function
-        const showAndScrollToOrg = showAndScrollTo;
-        showAndScrollTo = function (id, focus) {
-          if (id === "update" && !$("#tab-issue-edit").hasClass("selected")) {
-            if (!notesManager?.dialogNotes?.isOpen()) {
-              $("html, body").animate(
-                { scrollTop: $("#add_notes").offset().top },
-                100
-              );
-            }
-            return;
-          }
-          showAndScrollToOrg.call(this, id, focus);
-        };
-
-        selectIssueTab();
-        correctAttributesPositionInEditView();
-        resetHeightOfAttachmentTable();
-        updateSubmitButtonPosition();
-
-        // Show RedmineRT QuickNotes -> stop
+        // Show RedmineRT QuickNotes -> discontinue
         // $("#quick_notes").slideDown();
-
-        // Set up mutation observer for div.issue.details
-        // and hide div.issue.details when edit mode
-        new MutationObserver(function (mutations) {
-          if (!$("#tab-issue-edit").hasClass("selected")) return;
-          mutations.forEach((mutation) => {
-            Array.from(mutation.addedNodes)
-              .filter((addedNode) => $(addedNode).is(".issue.details"))
-              .forEach((addedNode) => $(addedNode).hide());
-          });
-        }).observe($("#issue-container")[0], {
-          attributes: false,
-          childList: true,
-          subtree: false,
-        });
       }
     }
 
@@ -1807,10 +1878,11 @@
   });
 </script>
 <style>
-  /* Hide issue edit cancel button */
-  #issue-form input[type="submit"] + a {
+  /* Hide issue edit cancel button in issue tab view */
+  #content.issue-tab-view-enabled #issue-form input[type="submit"] + a {
     display: none;
   }
+
   #side-by-side-switch-box {
     display: none;
     margin: 0 10px;
@@ -2292,8 +2364,6 @@
   #notes-dialog-content {
     display: flex;
     flex-direction: column;
-    width: 100% !important;
-    box-sizing: border-box;
 
     #add_notes {
       background: none;
@@ -2441,9 +2511,16 @@
     .save-draft-button ~ input[type="submit"] {
       left: 80px;
       &.fixed-position {
-        left: 95px;
+        left: 96px;
       }
     }
+  }
+
+  #content:not(.issue-tab-view-enabled)
+    #issue-form.enable-floating-submit-button
+    .save-draft-button
+    ~ input[type="submit"] {
+    left: 96px;
   }
 
   #content #enable_side_by_side_mode {
