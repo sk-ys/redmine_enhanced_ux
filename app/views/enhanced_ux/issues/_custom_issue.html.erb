@@ -85,6 +85,8 @@
           "Enable resizable attachment table",
         labelSettingEnableCorrectAttributesPositionInEditView:
           "Enable correct attributes position in edit view",
+        messageSettingEnableSideBySideMode:
+          "⚠️To enable side-by-side mode, issue tab view must be enabled",
       },
       ja: {
         sideBySideMode: "左右に並べて表示",
@@ -133,6 +135,8 @@
           "添付ファイル欄をリサイズ可能にする",
         labelSettingEnableCorrectAttributesPositionInEditView:
           "編集画面の項目の位置を修正する",
+        messageSettingEnableSideBySideMode:
+          "⚠️左右に並べて表示を有効にするにはチケットタブ表示を有効にする必要があります",
       },
     };
     const resources = {
@@ -1937,13 +1941,17 @@
             .attr("type", "checkbox")
             .attr("id", `setting-${key}`)
             .prop("checked", settings[key]);
-          const resourceKey = `labelSetting${key
+          const resourceLabelKey = `labelSetting${key
+            .charAt(0)
+            .toUpperCase()}${key.slice(1)}`;
+          const resourceMessageKey = `messageSetting${key
             .charAt(0)
             .toUpperCase()}${key.slice(1)}`;
           const $label = $("<label>")
             .attr("for", `setting-${key}`)
+            .attr("title", resources[resourceMessageKey] ?? "")
             .text(
-              resources[resourceKey] ??
+              resources[resourceLabelKey] ??
                 key.replace(/([A-Z])/g, " $1").trimStart()
             );
           const $settingItem = $("<div>").addClass("setting-item");
