@@ -20,9 +20,9 @@
 
     const defaultSettings = {
       isDescriptionEditFieldOpenByDefault: true,
-      useAddChildIssueDialog: true,
-      useEditAttachmentsDialog: true,
-      useTimeEntryDialog: true,
+      enableAddChildIssueDialog: true,
+      enableEditAttachmentsDialog: true,
+      enableTimeEntryDialog: true,
       enableIssueTabView: true,
       enableSideBySideMode: true,
       enablePopupNotes: true,
@@ -69,6 +69,22 @@
         labelCustomIssueViewSettings: "Custom Issue View Settings",
         labelIssueViewSettings: "Issue View Settings",
         labelSaveAndReload: "Save and Reload",
+        labelSettingIsDescriptionEditFieldOpenByDefault:
+          "Show description edit field open by default",
+        labelSettingEnableAddChildIssueDialog:
+          "Enable 'Add Child Issue' dialog",
+        labelSettingEnableEditAttachmentsDialog:
+          "Enable 'Edit Attachments' dialog",
+        labelSettingEnableTimeEntryDialog: "Enable 'Time Entry' dialog",
+        labelSettingEnableIssueTabView: "Enable issue tab view",
+        labelSettingEnableSideBySideMode: "Enable side-by-side mode",
+        labelSettingEnablePopupNotes: "Enable popup notes",
+        labelSettingEnableInlineNotes: "Enable inline notes",
+        labelSettingEnableFloatingSubmitButton: "Enable floating submit button",
+        labelSettingEnableResizableAttachmentTable:
+          "Enable resizable attachment table",
+        labelSettingEnableCorrectAttributesPositionInEditView:
+          "Enable correct attributes position in edit view",
       },
       ja: {
         sideBySideMode: "左右に並べて表示",
@@ -100,6 +116,23 @@
         labelCustomIssueViewSettings: "カスタムチケット表示設定",
         labelIssueViewSettings: "チケット表示設定",
         labelSaveAndReload: "保存して再読み込み",
+        labelSettingIsDescriptionEditFieldOpenByDefault:
+          "説明編集欄をデフォルトで開いた状態にする",
+        labelSettingEnableAddChildIssueDialog:
+          "「子チケットの追加」ダイアログを有効にする",
+        labelSettingEnableEditAttachmentsDialog:
+          "「添付ファイルの編集」ダイアログを有効にする",
+        labelSettingEnableTimeEntryDialog:
+          "「時間を記録」ダイアログを有効にする",
+        labelSettingEnableIssueTabView: "チケットタブ表示を有効にする",
+        labelSettingEnableSideBySideMode: "左右に並べて表示を有効にする",
+        labelSettingEnablePopupNotes: "ポップアップコメントを有効にする",
+        labelSettingEnableInlineNotes: "インラインコメントを有効にする",
+        labelSettingEnableFloatingSubmitButton: "送信ボタンを固定する",
+        labelSettingEnableResizableAttachmentTable:
+          "添付ファイル欄をリサイズ可能にする",
+        labelSettingEnableCorrectAttributesPositionInEditView:
+          "編集画面の項目の位置を修正する",
       },
     };
     const resources = {
@@ -1299,21 +1332,21 @@
     // Dialog manager class
     class DialogManager {
       constructor(
-        useAddChildIssueDialog,
-        useEditAttachmentsDialog,
-        useTimeEntryDialog
+        enableAddChildIssueDialog,
+        enableEditAttachmentsDialog,
+        enableTimeEntryDialog
       ) {
         this.addChildIssueDialog = null;
         this.editAttachmentsDialog = null;
         this.timeEntryDialog = null;
 
-        if (useAddChildIssueDialog) {
+        if (enableAddChildIssueDialog) {
           this.#setupAddChildIssueDialog();
         }
-        if (useEditAttachmentsDialog) {
+        if (enableEditAttachmentsDialog) {
           this.#setupEditAttachmentsDialog();
         }
-        if (useTimeEntryDialog) {
+        if (enableTimeEntryDialog) {
           this.#setupTimeEntryDialog();
         }
       }
@@ -1904,7 +1937,15 @@
             .attr("type", "checkbox")
             .attr("id", `setting-${key}`)
             .prop("checked", settings[key]);
-          const $label = $("<label>").attr("for", `setting-${key}`).text(key);
+          const resourceKey = `labelSetting${key
+            .charAt(0)
+            .toUpperCase()}${key.slice(1)}`;
+          const $label = $("<label>")
+            .attr("for", `setting-${key}`)
+            .text(
+              resources[resourceKey] ??
+                key.replace(/([A-Z])/g, " $1").trimStart()
+            );
           const $settingItem = $("<div>").addClass("setting-item");
 
           $settingItem.append($input).append($label);
@@ -2021,9 +2062,9 @@
         );
 
         const dialogManager = new DialogManager(
-          settingsManager.settings.useAddChildIssueDialog,
-          settingsManager.settings.useEditAttachmentsDialog,
-          settingsManager.settings.useTimeEntryDialog
+          settingsManager.settings.enableAddChildIssueDialog,
+          settingsManager.settings.enableEditAttachmentsDialog,
+          settingsManager.settings.enableTimeEntryDialog
         );
 
         // Fix height of wiki-preview with scrollbar
