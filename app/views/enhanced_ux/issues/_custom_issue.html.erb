@@ -10,24 +10,28 @@
   window.addEventListener("DOMContentLoaded", function () {
     // ----- settings start -----
     const dialogBaseConfig = {
-      minWidth: 500,
+      minWidth: 400,
       minHeight: 200,
     };
     const notesDialogBaseConfig = {
       width: 750,
       height: 520,
     };
-    const IS_DESCRIPTION_EDIT_FIELD_OPEN_BY_DEFAULT = true;
-    const USE_ADD_CHILD_ISSUE_DIALOG = true;
-    const USE_EDIT_ATTACHMENTS_DIALOG = true;
-    const USE_TIME_ENTRY_DIALOG = true;
-    const CORRECT_ATTRIBUTES_POSITION_IN_EDIT_VIEW = true;
-    const ENABLE_ISSUE_TAB_VIEW = true;
-    const ENABLE_SIDE_BY_SIDE_MODE = true;
-    const ENABLE_POPUP_NOTES = true;
-    const ENABLE_INLINE_NOTES = true;
-    const ENABLE_FLOATING_SUBMIT_BUTTON = true;
-    const ENABLE_RESIZABLE_ATTACHMENT_TABLE = true;
+
+    const defaultSettings = {
+      isDescriptionEditFieldOpenByDefault: true,
+      useAddChildIssueDialog: true,
+      useEditAttachmentsDialog: true,
+      useTimeEntryDialog: true,
+      enableIssueTabView: true,
+      enableSideBySideMode: true,
+      enablePopupNotes: true,
+      enableInlineNotes: true,
+      enableFloatingSubmitButton: true,
+      enableResizableAttachmentTable: true,
+      enableCorrectAttributesPositionInEditView: true,
+    };
+
     // ----- settings end -----
 
     // i18n
@@ -62,6 +66,9 @@
         messageFailedToSend: "Failed to send",
         messageDisplayNotesFieldHere: "Display the notes field here",
         messageQuickNotesWillBeClosed: "⚠️The quick notes will be closed",
+        labelCustomIssueViewSettings: "Custom Issue View Settings",
+        labelIssueViewSettings: "Issue View Settings",
+        labelSaveAndReload: "Save and Reload",
       },
       ja: {
         sideBySideMode: "左右に並べて表示",
@@ -90,6 +97,9 @@
         messageFailedToSend: "送信に失敗しました",
         messageDisplayNotesFieldHere: "コメント欄をここに表示する",
         messageQuickNotesWillBeClosed: "⚠️クイックコメント欄は閉じられます",
+        labelCustomIssueViewSettings: "カスタムチケット表示設定",
+        labelIssueViewSettings: "チケット表示設定",
+        labelSaveAndReload: "保存して再読み込み",
       },
     };
     const resources = {
@@ -133,9 +143,23 @@
 
     // Issue layout manager class
     class IssueLayoutManager {
-      constructor(enableTabView, enableSideBySideMode) {
+      constructor(
+        enableTabView,
+        enableSideBySideMode,
+        enableFloatingSubmitButton,
+        enableResizableAttachmentTable,
+        enableCorrectAttributesPositionInEditView,
+        isDescriptionEditFieldOpenByDefault
+      ) {
         this.tabViewEnabled = enableTabView ?? true;
         this.sideBySideModeEnabled = enableSideBySideMode ?? true;
+        this.floatingSubmitButtonEnabled = enableFloatingSubmitButton ?? true;
+        this.resizableAttachmentTableEnabled =
+          enableResizableAttachmentTable ?? true;
+        this.correctAttributesPositionInEditViewEnabled =
+          enableCorrectAttributesPositionInEditView ?? true;
+        this.isDescriptionEditFieldOpenByDefault =
+          isDescriptionEditFieldOpenByDefault ?? true;
         this.hasHistoryData = $("#history>p.nodata").length === 0;
 
         $("#update").prev().addClass("update-prev-marker");
@@ -170,6 +194,7 @@
         if (isEditable) {
           this.#setupCorrectAttributesPositionInEditView();
           this.#setupFloatingSubmitButton();
+          this.#setupShowDescriptionEditFieldOpenByDefault();
         }
       }
 
@@ -248,7 +273,7 @@
         this.$toggleSwitch = $('<input type="checkbox">')
           .attr({
             type: "checkbox",
-            id: "enable_side_by_side_mode",
+            id: "enableSideBySideMode",
           })
           .on("click", (e) => {
             this.$toggleSwitch.check($(e.currentTarget).is(":checked"));
@@ -257,7 +282,7 @@
           .append(this.$toggleSwitch)
           .append(
             $("<label>")
-              .attr({ for: "enable_side_by_side_mode" })
+              .attr({ for: "enableSideBySideMode" })
               .html(resources.sideBySideMode)
           )
           .attr({ title: resources.helpSideBySideMode });
@@ -391,16 +416,14 @@
       }
 
       #setupCustomAttachmentTable() {
-        if (!ENABLE_RESIZABLE_ATTACHMENT_TABLE) return;
+        if (!this.resizableAttachmentTableEnabled) return;
 
         $("#content .attachments > table").addClass("resizable");
 
         $("#content")
-          .on(
-            "dblclick",
-            ".attachments > table",
-            this.resetHeightOfAttachmentTable
-          )
+          .on("dblclick", ".attachments > table", () => {
+            this.resetHeightOfAttachmentTable();
+          })
           .on("mouseover", ".attachments > table", () => {
             const $attachmentsTable = $(".attachments > table");
             if ($attachmentsTable.css("max-height") !== "none") {
@@ -415,24 +438,12 @@
       }
 
       resetHeightOfAttachmentTable() {
-        if (!ENABLE_RESIZABLE_ATTACHMENT_TABLE) return;
+        if (!this.resizableAttachmentTableEnabled) return;
 
         const $attachmentsTable = $(".attachments > table");
         if ($attachmentsTable.length === 0) return;
 
         $attachmentsTable.css({ height: "", maxHeight: "" });
-      }
-
-      #setupCorrectAttributesPositionInEditView() {
-        // Replace updateIssueFrom function
-        const updateIssueFromOrg = updateIssueFrom;
-        updateIssueFrom = (url, el) => {
-          return updateIssueFromOrg(url, el).then(() => {
-            this.correctAttributesPositionInEditView();
-          });
-        };
-
-        this.correctAttributesPositionInEditView();
       }
 
       resetForm() {
@@ -525,7 +536,7 @@
       }
 
       #setupFloatingSubmitButton() {
-        if (ENABLE_FLOATING_SUBMIT_BUTTON) {
+        if (this.floatingSubmitButtonEnabled) {
           $("#issue-form").addClass("enable-floating-submit-button");
           $(window)
             .on("scroll", () => {
@@ -543,7 +554,7 @@
       }
 
       updateSubmitButtonPosition() {
-        if (!ENABLE_FLOATING_SUBMIT_BUTTON) return;
+        if (!this.floatingSubmitButtonEnabled) return;
 
         const $box = $("#issue-form>div.box").eq(0);
         if (!$submitButton.is(":visible")) return;
@@ -561,10 +572,24 @@
         }
       }
 
+      #setupCorrectAttributesPositionInEditView() {
+        if (!this.correctAttributesPositionInEditViewEnabled) return;
+
+        // Replace updateIssueFrom function
+        const updateIssueFromOrg = updateIssueFrom;
+        updateIssueFrom = (url, el) => {
+          return updateIssueFromOrg(url, el).then(() => {
+            this.correctAttributesPositionInEditView();
+          });
+        };
+
+        this.correctAttributesPositionInEditView();
+      }
+
       // Correcting the placement of attributes in the edit view
       correctAttributesPositionInEditView() {
         if (!isEditable) return;
-        if (!CORRECT_ATTRIBUTES_POSITION_IN_EDIT_VIEW) return;
+        if (!this.correctAttributesPositionInEditViewEnabled) return;
 
         // Move hidden attributes to top
         $("#all_attributes")
@@ -620,21 +645,37 @@
           .children(".splitcontent")
           .after($("<hr>"));
 
-        // Show description edit field
-        if (IS_DESCRIPTION_EDIT_FIELD_OPEN_BY_DEFAULT) {
-          setTimeout(() => {
-            $("#issue_description_and_toolbar").show();
-            const descriptionDrawLink = $("label[for=issue_description]")
-              .parent()
-              .find("a")
-              .eq(0)
-              .hide();
-          });
-        }
-
         // Fix placement of "assign to me" button
         $("#issue_assigned_to_id").after($("<br>"));
       }
+
+      #setupShowDescriptionEditFieldOpenByDefault() {
+        if (!this.isDescriptionEditFieldOpenByDefault) return;
+
+        // Replace updateIssueFrom function
+        const updateIssueFromOrg = updateIssueFrom;
+        updateIssueFrom = (url, el) => {
+          return updateIssueFromOrg(url, el).then(() => {
+            setTimeout(() => {
+              this.showDescriptionEditField();
+            });
+          });
+        };
+
+        this.showDescriptionEditField();
+      }
+
+      showDescriptionEditField() {
+        if (!this.isDescriptionEditFieldOpenByDefault) return;
+
+        $("#issue_description_and_toolbar").show();
+        const descriptionDrawLink = $("label[for=issue_description]")
+          .parent()
+          .find("a")
+          .eq(0)
+          .hide();
+      }
+
       updateFormCore(data, updateHistory = true) {
         // Update csrf-token
         $("head meta[name='csrf-token']").attr(
@@ -1070,7 +1111,7 @@
           $("#content .attachments>.contextual").after(
             $("#content .attachments>table", data)
               .css({ maxHeight: 100 })
-              .addClass(ENABLE_RESIZABLE_ATTACHMENT_TABLE ? "resizable" : "")
+              .addClass(this.resizableAttachmentTableEnabled ? "resizable" : "")
           );
           issueLayoutManager?.resetHeightOfAttachmentTable();
         });
@@ -1110,16 +1151,16 @@
           $("<style>").text(`
               #content > form > .box.attachments {
                 overflow-x: auto;
-  
+
                 &>table {
                   width: max(700px, 100%);
-  
+
                   tr {
                     display: flex;
-  
+
                     td:has(input[id$="description"]) {
                       flex: 1 1 auto;
-  
+
                       input { width: 100%; }
                     }
                   }
@@ -1259,7 +1300,7 @@
     class DialogManager {
       constructor(
         useAddChildIssueDialog,
-        useEditAttachmentDialog,
+        useEditAttachmentsDialog,
         useTimeEntryDialog
       ) {
         this.addChildIssueDialog = null;
@@ -1269,7 +1310,7 @@
         if (useAddChildIssueDialog) {
           this.#setupAddChildIssueDialog();
         }
-        if (useEditAttachmentDialog) {
+        if (useEditAttachmentsDialog) {
           this.#setupEditAttachmentsDialog();
         }
         if (useTimeEntryDialog) {
@@ -1282,7 +1323,7 @@
         this.addChildIssueDialog = new AddChildIssueDialog();
 
         // Replace child-issue-add link action
-        $("#issue-container")
+        $("#content")
           .off("click.addChildIssueDialog", "#issue_tree>.contextual>a")
           .on("click.addChildIssueDialog", "#issue_tree>.contextual>a", (e) => {
             e.preventDefault();
@@ -1296,7 +1337,7 @@
         this.editAttachmentsDialog = new EditAttachmentsDialog();
 
         // Replace attachments-edit link action
-        $("#issue-container")
+        $("#content")
           .off(
             "click.editAttachmentsDialog",
             '.attachments .contextual a[href$="edit"]'
@@ -1755,6 +1796,137 @@
       }
     }
 
+    class SettingsManager {
+      #settings = {};
+
+      constructor(settings) {
+        this.#settings = settings ?? defaultSettings;
+      }
+
+      loadSettings() {
+        // Load settings from localStorage or use default values
+        const storedSettings = JSON.parse(
+          localStorage.getItem("custom_issue_view_settings") ?? "{}"
+        );
+
+        Object.keys(this.#settings).forEach((key) => {
+          this.#settings[key] =
+            storedSettings[key] !== undefined
+              ? storedSettings[key]
+              : this.#settings[key];
+        });
+      }
+
+      saveSettings() {
+        // Save settings to localStorage
+        localStorage.setItem(
+          "custom_issue_view_settings",
+          JSON.stringify(this.#settings)
+        );
+      }
+
+      getSetting(key) {
+        return this.#settings[key];
+      }
+
+      setSetting(key, value) {
+        this.#settings[key] = value;
+      }
+
+      get settings() {
+        return this.#settings;
+      }
+    }
+
+    class SettingsPanel extends BaseDialog {
+      constructor(settingsManager, config = {}) {
+        super({
+          title: resources.labelCustomIssueViewSettings,
+          width: 400,
+          height: 400,
+          modal: true,
+          autoOpen: false,
+          ...config,
+        });
+        this.settingsManager = settingsManager;
+        this.dialogId = "custom-issue-view-settings-panel";
+        this.setupSettingsMenu();
+        this.setupDialog();
+      }
+
+      setupSettingsMenu() {
+        const $settingsMenuItem = $("<a>")
+          .addClass("custom-issue-view-settings-menu-item icon icon-settings")
+          .text(resources.labelIssueViewSettings)
+          .on("click", (e) => {
+            e.preventDefault();
+            this.open();
+          })
+          .css({
+            cursor: "pointer",
+          })
+          .appendTo("#content>.contextual .drdn-items");
+      }
+
+      setupDialog() {
+        if (this.$dialog == null) {
+          this.$settingsPanel = $("<div>").attr(
+            "id",
+            "custom-issue-view-settings-panel-content"
+          );
+          this.$dialog = this.$settingsPanel.dialog(this.config);
+          this.$dialogRoot = this.$dialog.parent();
+
+          this.appendButtons([
+            {
+              text: resources.labelSaveAndReload,
+              click: () => {
+                this.saveAndReload();
+              },
+            },
+            {
+              text: resources.labelCancel,
+              click: () => {
+                this.$dialog.dialog("close");
+              },
+            },
+          ]);
+        }
+
+        this.loadSettingsToPanel(this.settingsManager.settings);
+      }
+
+      loadSettingsToPanel(settings) {
+        this.$settingsPanel.empty();
+
+        Object.keys(settings).forEach((key) => {
+          const $input = $("<input>")
+            .attr("type", "checkbox")
+            .attr("id", `setting-${key}`)
+            .prop("checked", settings[key]);
+          const $label = $("<label>").attr("for", `setting-${key}`).text(key);
+          const $settingItem = $("<div>").addClass("setting-item");
+
+          $settingItem.append($input).append($label);
+          this.$settingsPanel.append($settingItem);
+        });
+      }
+
+      saveAndReload() {
+        // Save settings from panel
+        Object.keys(this.settingsManager.settings).forEach((key) => {
+          const isChecked = $(`#setting-${key}`).is(":checked");
+          this.settingsManager.setSetting(key, isChecked);
+        });
+        this.settingsManager.saveSettings();
+
+        // Reload page to apply settings
+        location.reload();
+      }
+
+      closeEvent() {}
+    }
+
     async function asyncAjaxSubmitNotesWithAttachments() {
       const url = $("#issue-form").attr("action");
 
@@ -1828,21 +2000,30 @@
     };
 
     function initialize() {
+      const settingsManager = new SettingsManager();
+      settingsManager.loadSettings();
+
+      const settingsPanel = new SettingsPanel(settingsManager);
+
       issueLayoutManager = new IssueLayoutManager(
-        ENABLE_ISSUE_TAB_VIEW,
-        ENABLE_SIDE_BY_SIDE_MODE
+        settingsManager.settings.enableIssueTabView,
+        settingsManager.settings.enableSideBySideMode,
+        settingsManager.settings.enableFloatingSubmitButton,
+        settingsManager.settings.enableResizableAttachmentTable,
+        settingsManager.settings.enableCorrectAttributesPositionInEditView,
+        settingsManager.settings.isDescriptionEditFieldOpenByDefault
       );
 
       if (isEditable) {
         notesManager = new NotesManager(
-          ENABLE_POPUP_NOTES,
-          ENABLE_INLINE_NOTES
+          settingsManager.settings.enablePopupNotes,
+          settingsManager.settings.enableInlineNotes
         );
 
         const dialogManager = new DialogManager(
-          USE_ADD_CHILD_ISSUE_DIALOG,
-          USE_EDIT_ATTACHMENTS_DIALOG,
-          USE_TIME_ENTRY_DIALOG
+          settingsManager.settings.useAddChildIssueDialog,
+          settingsManager.settings.useEditAttachmentsDialog,
+          settingsManager.settings.useTimeEntryDialog
         );
 
         // Fix height of wiki-preview with scrollbar
@@ -1897,7 +2078,7 @@
     }
   }
 
-  #update {
+  #content.issue-tab-view-enabled #update {
     margin-bottom: 2em;
 
     /* Hide edit title */
@@ -2519,7 +2700,7 @@
     left: 96px;
   }
 
-  #content #enable_side_by_side_mode {
+  #content #enableSideBySideMode {
     margin-left: 10px;
     margin-right: 5px;
   }
@@ -2542,10 +2723,10 @@
 
   /* Support Redmine theme Bleuclair */
   body.theme-Bleuclair {
-    #update form.edit_issue > div.box {
+    #update #issue-form.enable-floating-submit-button > div.box {
       padding-bottom: 90px;
     }
-    #issue-form
+    #issue-form.enable-floating-submit-button
       :where(input[type="submit"], .save-draft-button):not(.fixed-position) {
       margin-top: -110px;
     }
