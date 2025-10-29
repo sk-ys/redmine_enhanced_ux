@@ -233,6 +233,8 @@
           this.#setupFloatingSubmitButton();
           this.#setupShowDescriptionEditFieldOpenByDefault();
         }
+
+        this.#setupFormChangeDetection();
       }
 
       sideBySideProperty = {
@@ -479,6 +481,10 @@
 
         const $attachmentsTable = $(".attachments > table");
         if ($attachmentsTable.length === 0) return;
+
+        if (!$attachmentsTable.hasClass("resizable")) {
+          $attachmentsTable.addClass("resizable");
+        }
 
         $attachmentsTable.css({ height: "", maxHeight: "" });
       }
@@ -753,6 +759,45 @@
           $("#content > div.flash").remove();
           $flash.prependTo("#content");
         }
+      }
+
+      /**
+       * Set up form change detection.
+       * This method's purpose is to detect when the issue view is replaced by
+       * other plugins like Redmine RT.
+       */
+      #setupFormChangeDetection() {
+        const targetNode = this.tabViewEnabled
+          ? $("#issue-container")[0]
+          : $("#content")[0];
+
+        if (targetNode) {
+          const observer = new MutationObserver((mutations) => {
+            mutations.forEach((mutation) => {
+              if (mutation.type === "childList") {
+                mutation.addedNodes.forEach((node) => {
+                  if (
+                    node.nodeType === Node.ELEMENT_NODE &&
+                    $(node).is("div.issue.details")
+                  ) {
+                    this.handleFormReplacement();
+                  }
+                });
+              }
+            });
+          });
+
+          observer.observe(targetNode, {
+            childList: true,
+            subtree: true,
+            attributes: false,
+          });
+        }
+      }
+
+      handleFormReplacement() {
+        console.log("Issue view replacement detected.");
+        this.resetHeightOfAttachmentTable();
       }
     }
 
@@ -2013,7 +2058,7 @@
             $("#add_notes .tab-edit")[0].click();
 
             if (!enableRedmineRT) {
-              issueLayoutManager?.resetHeightOfAttachmentTable(data);
+              issueLayoutManager?.resetHeightOfAttachmentTable();
             }
             resolve(data);
           })
