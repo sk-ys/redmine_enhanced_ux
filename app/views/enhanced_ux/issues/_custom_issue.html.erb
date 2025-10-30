@@ -2149,6 +2149,15 @@
   });
 </script>
 <style>
+  /* CSS variables for consistent values */
+  :root {
+    /* --side-by-side-breakpoint-width: 1280px; */
+    /* Note: CSS variables are not supported in media queries */
+    --border-standard: 1px solid #dfe8f1;
+    --attachment-table-max-height: 100px;
+    --resizable-handle-color: #759fcf99;
+  }
+
   /* Hide issue edit cancel button in issue tab view */
   #content.issue-tab-view-enabled #issue-form input[type="submit"] + a {
     display: none;
@@ -2166,7 +2175,7 @@
     }
 
     & > div.issue {
-      border: 1px solid #dfe8f1;
+      border: var(--border-standard);
       border-top: 0;
       margin: 0;
     }
@@ -2180,8 +2189,8 @@
       display: none;
       margin: 0;
       padding: 10px;
-      border-left: 1px solid #dfe8f1;
-      border-right: 1px solid #dfe8f1;
+      border-left: var(--border-standard);
+      border-right: var(--border-standard);
       background: #fff;
     }
 
@@ -2249,6 +2258,7 @@
     }
   }
 
+  /* @media screen and (width <= var(--side-by-side-breakpoint-width)) { */
   @media screen and (width <= 1280px) {
     /* Disable side-by-side mode */
     #issue-container {
@@ -2265,7 +2275,8 @@
     }
   }
 
-  @media screen and (width > 1280px) {
+  /* @media screen and (width > var(--side-by-side-breakpoint-width)) { */ 
+  @media screen and (width > 1280px) { 
     #side-by-side-switch-box {
       display: inline;
       & > * {
@@ -2536,7 +2547,7 @@
   :where(#issue-container, #quick_notes2) > .ui-resizable-handle {
     border-radius: 3px;
     &:hover {
-      background-color: #759fcf99;
+      background-color: var(--resizable-handle-color);
     }
   }
 
@@ -2743,7 +2754,7 @@
     display: block;
     overflow: auto;
     resize: vertical;
-    max-height: 100px;
+    max-height: var(--attachment-table-max-height);
   }
 
   #issue-form.enable-floating-submit-button {
@@ -2825,6 +2836,7 @@
       margin-top: -110px;
     }
 
+    /* @media screen and (width > var(--side-by-side-breakpoint-width)) { */
     @media screen and (width > 1280px) {
       #wrapper.side-by-side
         #issue-form
@@ -2866,7 +2878,7 @@
 
       & > div.issue {
         display: block !important;
-        border-top: 1px solid #dfe8f1;
+        border-top: var(--border-standard);
       }
       & > div#update,
       & > .tabs {
