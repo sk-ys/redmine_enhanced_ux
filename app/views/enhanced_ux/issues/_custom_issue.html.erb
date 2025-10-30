@@ -30,6 +30,7 @@
       enableFloatingSubmitButton: true,
       enableResizableAttachmentTable: true,
       enableCorrectAttributesPositionInEditView: true,
+      sideBySideModeBreakpointWidth: 1280,
     };
 
     // ----- settings end -----
@@ -85,6 +86,8 @@
           "Enable resizable attachment table",
         labelSettingEnableCorrectAttributesPositionInEditView:
           "Enable correct attributes position in edit view",
+        labelSettingSideBySideModeBreakpointWidth:
+          "Minimum screen width for side-by-side mode",
         messageSettingEnableSideBySideMode:
           "⚠️To enable side-by-side mode, issue tab view must be enabled",
       },
@@ -135,6 +138,8 @@
           "添付ファイル欄をリサイズ可能にする",
         labelSettingEnableCorrectAttributesPositionInEditView:
           "編集画面の項目の位置を修正する",
+        labelSettingSideBySideModeBreakpointWidth:
+          "左右に並べて表示する最小の画面幅",
         messageSettingEnableSideBySideMode:
           "⚠️左右に並べて表示を有効にするにはチケットタブ表示を有効にする必要があります",
       },
@@ -186,7 +191,8 @@
         enableFloatingSubmitButton,
         enableResizableAttachmentTable,
         enableCorrectAttributesPositionInEditView,
-        isDescriptionEditFieldOpenByDefault
+        isDescriptionEditFieldOpenByDefault,
+        sideBySideModeBreakpointWidth
       ) {
         this.tabViewEnabled = enableTabView ?? true;
         this.sideBySideModeEnabled = enableSideBySideMode ?? true;
@@ -197,6 +203,8 @@
           enableCorrectAttributesPositionInEditView ?? true;
         this.isDescriptionEditFieldOpenByDefault =
           isDescriptionEditFieldOpenByDefault ?? true;
+        this.sideBySideModeBreakpointWidth =
+          sideBySideModeBreakpointWidth ?? 1280;
         this.hasHistoryData = $("#history>p.nodata").length === 0;
 
         $("#update").prev().addClass("update-prev-marker");
@@ -437,6 +445,8 @@
           .attr("id", "side-by-side-switch-box")
           .insertBefore($("#container"));
 
+        this.applySideBySideModeBreakpointWidth();
+
         if (this.sideBySideProperty.enabled) {
           this.$toggleSwitch.check();
         }
@@ -444,6 +454,7 @@
         // Add ResizeObserver to issue-container and save the width of
         // issue-container
         new ResizeObserver((mutations) => {
+          this.applySideBySideModeBreakpointWidth();
           if (
             this.$switchBox.is(":visible") &&
             $("#wrapper").hasClass("side-by-side")
@@ -452,6 +463,21 @@
               mutations[0].target.clientWidth;
           }
         }).observe(this.$issueContainer[0], { attributes: true });
+      }
+
+      applySideBySideModeBreakpointWidth() {
+        if (
+          $(window).width() < this.sideBySideModeBreakpointWidth ||
+          !this.sideBySideModeEnabled
+        ) {
+          $("#wrapper.side-by-side-mode-enabled").removeClass(
+            "side-by-side-mode-enabled"
+          );
+        } else {
+          $("#wrapper:not(.side-by-side-mode-enabled)").addClass(
+            "side-by-side-mode-enabled"
+          );
+        }
       }
 
       #setupCustomAttachmentTable() {
@@ -1882,7 +1908,7 @@
       #settings = {};
 
       constructor(settings) {
-        this.#settings = settings ?? defaultSettings;
+        this.#settings = { ...defaultSettings, ...settings };
       }
 
       loadSettings() {
@@ -1925,7 +1951,7 @@
         super({
           title: resources.labelCustomIssueViewSettings,
           width: 400,
-          height: 400,
+          height: 450,
           modal: true,
           autoOpen: false,
           ...config,
@@ -1951,30 +1977,33 @@
       }
 
       setupDialog() {
-        if (this.$dialog == null) {
-          this.$settingsPanel = $("<div>").attr(
-            "id",
-            "custom-issue-view-settings-panel-content"
-          );
-          this.$dialog = this.$settingsPanel.dialog(this.config);
-          this.$dialogRoot = this.$dialog.parent();
+        if (this.$dialog !== null) return;
 
-          this.appendButtons([
-            {
-              text: resources.labelSaveAndReload,
-              click: () => {
-                this.saveAndReload();
-              },
-            },
-            {
-              text: resources.labelCancel,
-              click: () => {
-                this.$dialog.dialog("close");
-              },
-            },
-          ]);
-        }
+        this.$settingsPanel = $("<div>").attr(
+          "id",
+          "custom-issue-view-settings-panel-content"
+        );
+        this.$dialog = this.$settingsPanel.dialog(this.config);
+        this.$dialogRoot = this.$dialog.parent();
 
+        this.appendButtons([
+          {
+            text: resources.labelSaveAndReload,
+            click: () => {
+              this.saveAndReload();
+            },
+          },
+          {
+            text: resources.labelCancel,
+            click: () => {
+              this.$dialog.dialog("close");
+            },
+          },
+        ]);
+      }
+
+      open() {
+        super.open();
         this.loadSettingsToPanel(this.settingsManager.settings);
       }
 
@@ -1982,10 +2011,20 @@
         this.$settingsPanel.empty();
 
         Object.keys(settings).forEach((key) => {
-          const $input = $("<input>")
-            .attr("type", "checkbox")
-            .attr("id", `setting-${key}`)
-            .prop("checked", settings[key]);
+          const value = settings[key];
+          const defaultValue = defaultSettings[key];
+          const $input = $("<input>").attr("id", `setting-${key}`);
+
+          if (typeof defaultValue === "boolean") {
+            $input.attr("type", "checkbox").prop("checked", value);
+          } else if (key === "sideBySideModeBreakpointWidth") {
+            $input.attr({ type: "number", min: 0, step: 1 }).val(value);
+          } else if (typeof defaultValue === "number") {
+            $input.attr("type", "number").val(value);
+          } else {
+            $input.attr("type", "text").val(value);
+          }
+
           const resourceLabelKey = `labelSetting${key
             .charAt(0)
             .toUpperCase()}${key.slice(1)}`;
@@ -2001,7 +2040,11 @@
             );
           const $settingItem = $("<div>").addClass("setting-item");
 
-          $settingItem.append($input).append($label);
+          if (typeof defaultValue === "boolean") {
+            $settingItem.append($input).append($label);
+          } else {
+            $settingItem.append($label).append($input);
+          }
           this.$settingsPanel.append($settingItem);
         });
       }
@@ -2009,8 +2052,22 @@
       saveAndReload() {
         // Save settings from panel
         Object.keys(this.settingsManager.settings).forEach((key) => {
-          const isChecked = $(`#setting-${key}`).is(":checked");
-          this.settingsManager.setSetting(key, isChecked);
+          const defaultValue = defaultSettings[key];
+
+          const $input = $(`#setting-${key}`);
+          if (typeof defaultValue === "boolean") {
+            const isChecked = $input.is(":checked");
+            this.settingsManager.setSetting(key, isChecked);
+          } else if (typeof defaultValue === "number") {
+            const inputValue = $input.val();
+            const numberValue = Number(inputValue);
+            this.settingsManager.setSetting(
+              key,
+              isNaN(numberValue) ? 0 : numberValue
+            );
+          } else {
+            this.settingsManager.setSetting(key, $input.val());
+          }
         });
         this.settingsManager.saveSettings();
 
@@ -2105,7 +2162,8 @@
         settingsManager.settings.enableFloatingSubmitButton,
         settingsManager.settings.enableResizableAttachmentTable,
         settingsManager.settings.enableCorrectAttributesPositionInEditView,
-        settingsManager.settings.isDescriptionEditFieldOpenByDefault
+        settingsManager.settings.isDescriptionEditFieldOpenByDefault,
+        settingsManager.settings.sideBySideModeBreakpointWidth
       );
 
       if (isEditable) {
@@ -2151,8 +2209,6 @@
 <style>
   /* CSS variables for consistent values */
   :root {
-    /* --side-by-side-breakpoint-width: 1280px; */
-    /* Note: CSS variables are not supported in media queries */
     --border-standard: 1px solid #dfe8f1;
     --attachment-table-max-height: 100px;
     --resizable-handle-color: #759fcf99;
@@ -2258,8 +2314,7 @@
     }
   }
 
-  /* @media screen and (width <= var(--side-by-side-breakpoint-width)) { */
-  @media screen and (width <= 1280px) {
+  #wrapper:not(.side-by-side-mode-enabled) #main {
     /* Disable side-by-side mode */
     #issue-container {
       width: 100% !important;
@@ -2275,8 +2330,7 @@
     }
   }
 
-  /* @media screen and (width > var(--side-by-side-breakpoint-width)) { */ 
-  @media screen and (width > 1280px) { 
+  #wrapper.side-by-side-mode-enabled {
     #side-by-side-switch-box {
       display: inline;
       & > * {
@@ -2284,7 +2338,7 @@
       }
     }
 
-    #wrapper.side-by-side {
+    &.side-by-side {
       height: 100vh;
 
       #top-menu,
@@ -2394,9 +2448,14 @@
           }
         }
       }
+
+      #issue-form
+        :where(input[type="submit"], .save-draft-button):not(.fixed-position) {
+        margin-top: -83px;
+      }
     }
 
-    #wrapper:not(.side-by-side) {
+    &:not(.side-by-side) {
       #quick_notes2 {
         height: auto !important;
 
@@ -2404,12 +2463,6 @@
           display: none !important;
         }
       }
-    }
-
-    #wrapper.side-by-side
-      #issue-form
-      :where(input[type="submit"], .save-draft-button):not(.fixed-position) {
-      margin-top: -83px;
     }
   }
 
@@ -2836,13 +2889,10 @@
       margin-top: -110px;
     }
 
-    /* @media screen and (width > var(--side-by-side-breakpoint-width)) { */
-    @media screen and (width > 1280px) {
-      #wrapper.side-by-side
-        #issue-form
-        :where(input[type="submit"], .save-draft-button):not(.fixed-position) {
-        margin-top: -80px;
-      }
+    #wrapper.side-by-side-mode-enabled.side-by-side
+      #issue-form
+      :where(input[type="submit"], .save-draft-button):not(.fixed-position) {
+      margin-top: -80px;
     }
   }
 
@@ -2887,6 +2937,15 @@
     }
     #main {
       margin-top: 0 !important;
+    }
+  }
+
+  #custom-issue-view-settings-panel-content {
+    label {
+      margin-right: 0.5em;
+    }
+    #setting-sideBySideModeBreakpointWidth {
+      width: 6em;
     }
   }
 
