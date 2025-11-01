@@ -998,9 +998,10 @@
       constructor(config = {}) {
         this.config = {
           fitWindowWhenOpen: true,
+          destroyDialogWhenClose: true,
           ...dialogBaseConfig,
           create: () => this.createEvent(),
-          close: () => this.closeEvent(),
+          close: () => this._closeEvent(),
           ...config,
         };
         this.$dialog = null;
@@ -1043,11 +1044,19 @@
           this.$dialogRoot
             .attr("id", this.dialogId || this.$dialogRoot.attr("id"))
             .addClass("issue-view-customize");
+          this.$dialogRoot.css({ position: "fixed" });
+          this.#appendButtonToDialogTitlebar();
         });
       }
-      closeEvent() {
-        this.$dialog.dialog("destroy");
-        this.$dialog = null;
+      closeEvent() {}
+      _closeEvent() {
+        this.restore();
+        this.closeEvent();
+
+        if (this.config.destroyDialogWhenClose) {
+          this.$dialog.dialog("destroy");
+          this.$dialog = null;
+        }
       }
       resetButtons() {
         this.$dialog.dialog("option", "buttons", []);
@@ -1059,6 +1068,127 @@
           "buttons",
           buttons.concat($dialogButtons)
         );
+      }
+
+      maximize() {
+        this.$dialogRoot.addClass("issue-view-customize-maximize");
+        $("html").css({ overflow: "hidden" });
+        this.$dialogRoot.resizable("disable");
+      }
+      restore() {
+        this.$dialogRoot.removeClass("issue-view-customize-maximize");
+
+        // Restore size
+        this.$dialogRoot.resizable("enable");
+        $("html").css({ overflow: "" });
+      }
+
+      #appendButtonToDialogTitlebar() {
+        const $titleBar = this.$dialogRoot.find(".ui-dialog-titlebar");
+
+        const $btnToggleFixed = this.config.modal
+          ? null
+          : $("<button>")
+              .attr("type", "button")
+              .addClass("notes-dialog-titlebar-button")
+              .addClass("notes-dialog-toggle-fixed-position")
+              .button({
+                // Default position is "fixed"
+                icon: "ui-icon-pin-w",
+                label: resources.labelUnfixed,
+                showLabel: false,
+              })
+              .click((e) => {
+                e.preventDefault();
+                const currentContent = this.$dialog.dialog(
+                  "option",
+                  "appendTo"
+                );
+                const baseContent = "#content";
+                const contentPosition = {
+                  left:
+                    $(currentContent).offset().left -
+                    $(baseContent).offset().left -
+                    ($(currentContent).position().left -
+                      $(baseContent).position().left),
+                  top:
+                    $(currentContent).offset().top -
+                    $(baseContent).offset().top -
+                    ($(currentContent).position().top -
+                      $(baseContent).position().top),
+                };
+
+                if (this.$dialogRoot.css("position") !== "fixed") {
+                  // Set position to fixed
+                  this.$dialogRoot.css({
+                    position: "fixed",
+                    left:
+                      this.$dialogRoot.position().left -
+                      $(document).scrollLeft() +
+                      contentPosition.left,
+                    top:
+                      this.$dialogRoot.position().top -
+                      $(document).scrollTop() +
+                      contentPosition.top,
+                  });
+                  $(e.currentTarget)
+                    .button("option", {
+                      icon: "ui-icon-pin-w",
+                      label: resources.labelUnfixed,
+                    })
+                    .attr("title", resources.labelUnfixed);
+                } else {
+                  // Set position to absolute
+                  this.$dialogRoot.css({
+                    position: "absolute",
+                    left:
+                      this.$dialogRoot.position().left +
+                      $(document).scrollLeft() -
+                      contentPosition.left,
+                    top:
+                      this.$dialogRoot.position().top +
+                      $(document).scrollTop() -
+                      contentPosition.top,
+                  });
+                  $(e.currentTarget)
+                    .button("option", {
+                      icon: "ui-icon-pin-s",
+                      label: resources.labelFixed,
+                    })
+                    .attr("title", resources.labelFixed);
+                }
+              });
+
+        const $btnRestore = $("<button>")
+          .addClass("ui-button-issue-view-customize-restore")
+          .button({
+            icon: "ui-icon-newwin",
+            label: resources.labelRestore,
+            showLabel: false,
+          })
+          .click((e) => {
+            e.preventDefault();
+            this.restore();
+          });
+
+        const $btnMaximize = $("<button>")
+          .addClass("ui-button-issue-view-customize-maximum")
+          .button({
+            icon: "ui-icon-stop",
+            label: resources.labelMaximize,
+            showLabel: false,
+          })
+          .click((e) => {
+            e.preventDefault();
+            this.maximize();
+          });
+
+        const $btnGroup = $("<div>")
+          .addClass("ui-dialog-titlebar-button-group")
+          .append($btnToggleFixed)
+          .append($btnRestore)
+          .append($btnMaximize)
+          .appendTo($titleBar);
       }
     }
 
@@ -1551,6 +1681,7 @@
         const notesDialogConfig = {
           title: resources.labelAddQuickNotes,
           autoOpen: false,
+          destroyDialogWhenClose: false,
           position: { my: "left+100 top+200", at: "left top", of: window },
           buttons: [
             {
@@ -1664,14 +1795,6 @@
         this.$dialogRoot = this.$dialog.parent();
       }
 
-      createEvent() {
-        super.createEvent();
-        setTimeout(() => {
-          this.$dialogRoot.css({ position: "fixed" });
-          this.appendButtonToDialogTitlebar();
-        });
-      }
-
       closeEvent() {
         if (issueLayoutManager.tabViewEnabled) {
           if ($("#tab-issue-view").hasClass("selected")) {
@@ -1695,115 +1818,6 @@
         if (this.isOpenedFromInlineNotes) {
           this.enableInlineNotes();
         }
-      }
-
-      appendButtonToDialogTitlebar() {
-        const $titleBar = this.$dialogRoot.find(".ui-dialog-titlebar");
-
-        const $btnToggleFixed = $("<button>")
-          .attr("type", "button")
-          .addClass("notes-dialog-titlebar-button")
-          .addClass("notes-dialog-toggle-fixed-position")
-          .button({
-            // Default position is "fixed"
-            icon: "ui-icon-pin-w",
-            label: resources.labelUnfixed,
-            showLabel: false,
-          })
-          .click((e) => {
-            e.preventDefault();
-            const currentContent = this.$dialog.dialog("option", "appendTo");
-            const baseContent = "#content";
-            const contentPosition = {
-              left:
-                $(currentContent).offset().left -
-                $(baseContent).offset().left -
-                ($(currentContent).position().left -
-                  $(baseContent).position().left),
-              top:
-                $(currentContent).offset().top -
-                $(baseContent).offset().top -
-                ($(currentContent).position().top -
-                  $(baseContent).position().top),
-            };
-
-            if (this.$dialogRoot.css("position") !== "fixed") {
-              // Set position to fixed
-              this.$dialogRoot.css({
-                position: "fixed",
-                left:
-                  this.$dialogRoot.position().left -
-                  $(document).scrollLeft() +
-                  contentPosition.left,
-                top:
-                  this.$dialogRoot.position().top -
-                  $(document).scrollTop() +
-                  contentPosition.top,
-              });
-              $(e.currentTarget)
-                .button("option", {
-                  icon: "ui-icon-pin-w",
-                  label: resources.labelUnfixed,
-                })
-                .attr("title", resources.labelUnfixed);
-            } else {
-              // Set position to absolute
-              this.$dialogRoot.css({
-                position: "absolute",
-                left:
-                  this.$dialogRoot.position().left +
-                  $(document).scrollLeft() -
-                  contentPosition.left,
-                top:
-                  this.$dialogRoot.position().top +
-                  $(document).scrollTop() -
-                  contentPosition.top,
-              });
-              $(e.currentTarget)
-                .button("option", {
-                  icon: "ui-icon-pin-s",
-                  label: resources.labelFixed,
-                })
-                .attr("title", resources.labelFixed);
-            }
-          });
-
-        const $btnRestore = $("<button>")
-          .addClass("ui-button-issue-view-customize-restore")
-          .button({
-            icon: "ui-icon-newwin",
-            label: resources.labelRestore,
-            showLabel: false,
-          })
-          .click((e) => {
-            e.preventDefault();
-            this.$dialogRoot.removeClass("issue-view-customize-maximize");
-
-            // Restore size
-            this.$dialogRoot.resizable("enable");
-            $("html").css({ overflow: "" });
-          });
-
-        const $btnMaximize = $("<button>")
-          .addClass("ui-button-issue-view-customize-maximum")
-          .button({
-            icon: "ui-icon-stop",
-            label: resources.labelMaximize,
-            showLabel: false,
-          })
-          .click((e) => {
-            e.preventDefault();
-            this.$dialogRoot.addClass("issue-view-customize-maximize");
-            $("html").css({ overflow: "hidden" });
-            this.$dialogRoot.resizable("disable");
-          });
-
-        const $btnGroup = $("<div>")
-          .addClass("ui-dialog-titlebar-button-group")
-          .append($btnToggleFixed)
-          .append($btnRestore)
-          .append($btnMaximize)
-          .appendTo($titleBar);
       }
 
       backupDocumentScrollPosition() {
@@ -2679,7 +2693,7 @@
     height: auto;
   }
 
-  #notes-dialog {
+  .ui-dialog.issue-view-customize {
     &:not(.ui-dialog-resizing):not(.ui-dialog-dragging):not(
         .ui-dialog-position-changing
       ) {
@@ -3113,7 +3127,7 @@
       right: auto;
       left: 0;
     }
-    #notes-dialog .ui-dialog-titlebar-button-group {
+    .ui-dialog.issue-view-customize .ui-dialog-titlebar-button-group {
       right: auto;
       left: 30px;
     }
