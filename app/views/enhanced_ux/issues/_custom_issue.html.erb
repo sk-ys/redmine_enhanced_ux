@@ -1,5 +1,5 @@
 <!-- 
-// Path pattern:       /issues/[0-9]+$
+// Path pattern:       (/issues/[0-9]+$|/issues/new|/issues/[0-9]+/copy)
 // Insertion position: Head of all pages
 // Type:               HTML
 // Comment:            Custom issue
@@ -151,10 +151,14 @@
     const isRtl = $('head link[rel="stylesheet"][href*="/rtl"]').length > 0;
     const isMac = navigator.platform.indexOf("Mac") !== -1;
     const issuePathname = location.pathname;
-    const issueUrl = location.origin + location.pathname;
+    const issueUrl = location.origin + issuePathname;
     const issueEditUrl = issueUrl + "/edit";
-    const issueId = Number(location.pathname.match(/([0-9]+)\/{0,1}$/)[1]);
+    const issueIdMatch = issuePathname.match(/\/issues\/([0-9]+)\/{0,1}$/);
+    const issueId = issueIdMatch ? Number(issueIdMatch[1]) : null;
     const isEditable = $("#update").length !== 0;
+    const isNewForm = /\/issues\/new$|\/issues\/[0-9]+\/copy$/.test(
+      issuePathname
+    );
     const issueNotesTextareaRowsDefault = $("#issue_notes").attr("rows");
     const addNotesLegendDefault = $("#add_notes>legend:first").text();
     const $submitButton = $('#issue-form input[type="submit"]');
@@ -194,15 +198,19 @@
         isDescriptionEditFieldOpenByDefault,
         sideBySideModeBreakpointWidth
       ) {
-        this.tabViewEnabled = enableTabView ?? true;
-        this.sideBySideModeEnabled = enableSideBySideMode ?? true;
+        this.tabViewEnabled = isNewForm ? false : enableTabView ?? true;
+        this.sideBySideModeEnabled = isNewForm
+          ? false
+          : enableSideBySideMode ?? true;
         this.floatingSubmitButtonEnabled = enableFloatingSubmitButton ?? true;
-        this.resizableAttachmentTableEnabled =
-          enableResizableAttachmentTable ?? true;
+        this.resizableAttachmentTableEnabled = isNewForm
+          ? false
+          : enableResizableAttachmentTable ?? true;
         this.correctAttributesPositionInEditViewEnabled =
           enableCorrectAttributesPositionInEditView ?? true;
-        this.isDescriptionEditFieldOpenByDefault =
-          isDescriptionEditFieldOpenByDefault ?? true;
+        this.isDescriptionEditFieldOpenByDefault = isNewForm
+          ? false
+          : isDescriptionEditFieldOpenByDefault ?? true;
         this.sideBySideModeBreakpointWidth =
           sideBySideModeBreakpointWidth ?? 1280;
         this.hasHistoryData = $("#history>p.nodata").length === 0;
@@ -236,7 +244,7 @@
         }
 
         this.#setupCustomAttachmentTable();
-        if (isEditable) {
+        if (isEditable || isNewForm) {
           this.#setupCorrectAttributesPositionInEditView();
           this.#setupFloatingSubmitButton();
           this.#setupShowDescriptionEditFieldOpenByDefault();
@@ -657,7 +665,7 @@
 
       // Correcting the placement of attributes in the edit view
       correctAttributesPositionInEditView() {
-        if (!isEditable) return;
+        if (!(isEditable || isNewForm)) return;
         if (!this.correctAttributesPositionInEditViewEnabled) return;
 
         // Move hidden attributes to top
@@ -1179,6 +1187,11 @@
             e.preventDefault();
             e.stopPropagation();
           });
+
+        // Force disable floating submit button in AddChildIssueDialog
+        $contents
+          .find("#issue-form.floating-submit-button-enabled")
+          .removeClass("floating-submit-button-enabled");
       }
 
       createSubmitButtons($contents) {
@@ -2820,21 +2833,29 @@
     max-height: var(--attachment-table-max-height);
   }
 
+  :root {
+    --floating-button-area-height: 120px;
+    --floating-button-size: 70px;
+    --floating-button-spacing: 80px;
+    --floating-button-offset-with-draft-unfixed: 80px;
+    --floating-button-offset-with-draft-fixed: 96px;
+  }
+
   #issue-form.floating-submit-button-enabled {
-    /* Submit button space */
     & > div.box {
-      padding-bottom: 120px;
+      padding-bottom: var(--floating-button-area-height);
     }
 
     input[type="submit"],
     .save-draft-button {
       position: absolute;
       border-radius: 50%;
-      width: 70px;
-      height: 70px;
+      width: var(--floating-button-size);
+      height: var(--floating-button-size);
       box-shadow: 0 0 10px 0px rgb(0 0 0 / 50%);
       z-index: 6;
       margin-left: 20px;
+      text-wrap: balance;
 
       &.fixed-position {
         position: fixed;
@@ -2845,6 +2866,22 @@
         &:hover {
           opacity: 1;
         }
+
+        &:nth-child(1 of input[type="submit"]) {
+          left: 0;
+        }
+
+        &:nth-child(2 of input[type="submit"]) {
+          left: var(--floating-button-spacing);
+        }
+
+        &:nth-child(3 of input[type="submit"]) {
+          left: calc(var(--floating-button-spacing) * 2);
+        }
+
+        &:nth-child(4 of input[type="submit"]) {
+          left: calc(var(--floating-button-spacing) * 3);
+        }
       }
 
       &:not(.fixed-position) {
@@ -2854,9 +2891,56 @@
     }
 
     .save-draft-button ~ input[type="submit"] {
-      left: 80px;
+      &:nth-child(1 of input[type="submit"]) {
+        left: var(--floating-button-offset-with-draft-unfixed);
+      }
+
+      &:nth-child(2 of input[type="submit"]) {
+        left: calc(
+          var(--floating-button-offset-with-draft-unfixed) +
+            var(--floating-button-spacing)
+        );
+      }
+
+      &:nth-child(3 of input[type="submit"]) {
+        left: calc(
+          var(--floating-button-offset-with-draft-unfixed) +
+            var(--floating-button-spacing) * 2
+        );
+      }
+
+      &:nth-child(4 of input[type="submit"]) {
+        left: calc(
+          var(--floating-button-offset-with-draft-unfixed) +
+            var(--floating-button-spacing) * 3
+        );
+      }
+
       &.fixed-position {
-        left: 96px;
+        &:nth-child(1 of input[type="submit"]) {
+          left: var(--floating-button-offset-with-draft-fixed);
+        }
+
+        &:nth-child(2 of input[type="submit"]) {
+          left: calc(
+            var(--floating-button-offset-with-draft-fixed) +
+              var(--floating-button-spacing)
+          );
+        }
+
+        &:nth-child(3 of input[type="submit"]) {
+          left: calc(
+            var(--floating-button-offset-with-draft-fixed) +
+              var(--floating-button-spacing) * 2
+          );
+        }
+
+        &:nth-child(4 of input[type="submit"]) {
+          left: calc(
+            var(--floating-button-offset-with-draft-fixed) +
+              var(--floating-button-spacing) * 3
+          );
+        }
       }
     }
   }
@@ -2865,7 +2949,30 @@
     #issue-form.floating-submit-button-enabled
     .save-draft-button
     ~ input[type="submit"] {
-    left: 96px;
+    &:nth-child(1 of input[type="submit"]) {
+      left: var(--floating-button-offset-with-draft-fixed);
+    }
+
+    &:nth-child(2 of input[type="submit"]) {
+      left: calc(
+        var(--floating-button-offset-with-draft-fixed) +
+          var(--floating-button-spacing)
+      );
+    }
+
+    &:nth-child(3 of input[type="submit"]) {
+      left: calc(
+        var(--floating-button-offset-with-draft-fixed) +
+          var(--floating-button-spacing) * 2
+      );
+    }
+
+    &:nth-child(4 of input[type="submit"]) {
+      left: calc(
+        var(--floating-button-offset-with-draft-fixed) +
+          var(--floating-button-spacing) * 3
+      );
+    }
   }
 
   #content #enableSideBySideMode {
@@ -2987,6 +3094,141 @@
       #parent_issue {
         clear: left;
         float: left;
+      }
+    }
+
+    #issue-form.floating-submit-button-enabled {
+      & > div.box {
+        padding-bottom: var(--floating-button-area-height);
+      }
+
+      input[type="submit"],
+      .save-draft-button {
+        position: absolute;
+        border-radius: 50%;
+        width: var(--floating-button-size);
+        height: var(--floating-button-size);
+        box-shadow: 0 0 10px 0px rgb(0 0 0 / 50%);
+        z-index: 6;
+        margin-right: 20px;
+        text-wrap: balance;
+        left: auto !important;
+
+        &.fixed-position {
+          position: fixed;
+          margin-top: 0;
+          bottom: 60px;
+          opacity: 0.5;
+
+          &:hover {
+            opacity: 1;
+          }
+
+          &:nth-child(1 of input[type="submit"]) {
+            right: 0;
+          }
+
+          &:nth-child(2 of input[type="submit"]) {
+            right: var(--floating-button-spacing);
+          }
+
+          &:nth-child(3 of input[type="submit"]) {
+            right: calc(var(--floating-button-spacing) * 2);
+          }
+
+          &:nth-child(4 of input[type="submit"]) {
+            right: calc(var(--floating-button-spacing) * 3);
+          }
+        }
+
+        &:not(.fixed-position) {
+          margin-top: -100px;
+          box-shadow: none;
+        }
+      }
+
+      .save-draft-button ~ input[type="submit"] {
+        &:nth-child(1 of input[type="submit"]) {
+          right: var(--floating-button-offset-with-draft-unfixed);
+        }
+
+        &:nth-child(2 of input[type="submit"]) {
+          right: calc(
+            var(--floating-button-offset-with-draft-unfixed) +
+              var(--floating-button-spacing)
+          );
+        }
+
+        &:nth-child(3 of input[type="submit"]) {
+          right: calc(
+            var(--floating-button-offset-with-draft-unfixed) +
+              var(--floating-button-spacing) * 2
+          );
+        }
+
+        &:nth-child(4 of input[type="submit"]) {
+          right: calc(
+            var(--floating-button-offset-with-draft-unfixed) +
+              var(--floating-button-spacing) * 3
+          );
+        }
+
+        &.fixed-position {
+          &:nth-child(1 of input[type="submit"]) {
+            right: var(--floating-button-offset-with-draft-fixed);
+          }
+
+          &:nth-child(2 of input[type="submit"]) {
+            right: calc(
+              var(--floating-button-offset-with-draft-fixed) +
+                var(--floating-button-spacing)
+            );
+          }
+
+          &:nth-child(3 of input[type="submit"]) {
+            right: calc(
+              var(--floating-button-offset-with-draft-fixed) +
+                var(--floating-button-spacing) * 2
+            );
+          }
+
+          &:nth-child(4 of input[type="submit"]) {
+            right: calc(
+              var(--floating-button-offset-with-draft-fixed) +
+                var(--floating-button-spacing) * 3
+            );
+          }
+        }
+      }
+    }
+
+    #content:not(.issue-tab-view-enabled)
+      #issue-form.floating-submit-button-enabled
+      .save-draft-button
+      ~ input[type="submit"] {
+      &:nth-child(1 of input[type="submit"]) {
+        right: var(--floating-button-offset-with-draft-fixed);
+      }
+
+      &:nth-child(2 of input[type="submit"]) {
+        right: calc(
+          var(--floating-button-offset-with-draft-fixed) +
+            var(--floating-button-spacing)
+        );
+      }
+
+      &:nth-child(3 of input[type="submit"]) {
+        right: calc(
+          var(--floating-button-offset-with-draft-fixed) +
+            var(--floating-button-spacing) * 2
+        );
+      }
+
+      &:nth-child(4 of input[type="submit"]) {
+        right: calc(
+          var(--floating-button-offset-with-draft-fixed) +
+            var(--floating-button-spacing) * 3
+        );
       }
     }
   }
