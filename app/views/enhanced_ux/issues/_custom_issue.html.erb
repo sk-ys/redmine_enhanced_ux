@@ -2854,7 +2854,7 @@
       height: var(--floating-button-size);
       box-shadow: 0 0 10px 0px rgb(0 0 0 / 50%);
       z-index: 6;
-      margin-left: 20px;
+      margin-inline-start: 20px;
       text-wrap: balance;
 
       &.fixed-position {
@@ -2868,19 +2868,19 @@
         }
 
         &:nth-child(1 of input[type="submit"]) {
-          left: 0;
+          inset-inline-start: 0;
         }
 
         &:nth-child(2 of input[type="submit"]) {
-          left: var(--floating-button-spacing);
+          inset-inline-start: var(--floating-button-spacing);
         }
 
         &:nth-child(3 of input[type="submit"]) {
-          left: calc(var(--floating-button-spacing) * 2);
+          inset-inline-start: calc(var(--floating-button-spacing) * 2);
         }
 
         &:nth-child(4 of input[type="submit"]) {
-          left: calc(var(--floating-button-spacing) * 3);
+          inset-inline-start: calc(var(--floating-button-spacing) * 3);
         }
       }
 
@@ -2892,25 +2892,25 @@
 
     .save-draft-button ~ input[type="submit"] {
       &:nth-child(1 of input[type="submit"]) {
-        left: var(--floating-button-offset-with-draft-unfixed);
+        inset-inline-start: var(--floating-button-offset-with-draft-unfixed);
       }
 
       &:nth-child(2 of input[type="submit"]) {
-        left: calc(
+        inset-inline-start: calc(
           var(--floating-button-offset-with-draft-unfixed) +
             var(--floating-button-spacing)
         );
       }
 
       &:nth-child(3 of input[type="submit"]) {
-        left: calc(
+        inset-inline-start: calc(
           var(--floating-button-offset-with-draft-unfixed) +
             var(--floating-button-spacing) * 2
         );
       }
 
       &:nth-child(4 of input[type="submit"]) {
-        left: calc(
+        inset-inline-start: calc(
           var(--floating-button-offset-with-draft-unfixed) +
             var(--floating-button-spacing) * 3
         );
@@ -2918,25 +2918,25 @@
 
       &.fixed-position {
         &:nth-child(1 of input[type="submit"]) {
-          left: var(--floating-button-offset-with-draft-fixed);
+          inset-inline-start: var(--floating-button-offset-with-draft-fixed);
         }
 
         &:nth-child(2 of input[type="submit"]) {
-          left: calc(
+          inset-inline-start: calc(
             var(--floating-button-offset-with-draft-fixed) +
               var(--floating-button-spacing)
           );
         }
 
         &:nth-child(3 of input[type="submit"]) {
-          left: calc(
+          inset-inline-start: calc(
             var(--floating-button-offset-with-draft-fixed) +
               var(--floating-button-spacing) * 2
           );
         }
 
         &:nth-child(4 of input[type="submit"]) {
-          left: calc(
+          inset-inline-start: calc(
             var(--floating-button-offset-with-draft-fixed) +
               var(--floating-button-spacing) * 3
           );
@@ -2950,25 +2950,25 @@
     .save-draft-button
     ~ input[type="submit"] {
     &:nth-child(1 of input[type="submit"]) {
-      left: var(--floating-button-offset-with-draft-fixed);
+      inset-inline-start: var(--floating-button-offset-with-draft-fixed);
     }
 
     &:nth-child(2 of input[type="submit"]) {
-      left: calc(
+      inset-inline-start: calc(
         var(--floating-button-offset-with-draft-fixed) +
           var(--floating-button-spacing)
       );
     }
 
     &:nth-child(3 of input[type="submit"]) {
-      left: calc(
+      inset-inline-start: calc(
         var(--floating-button-offset-with-draft-fixed) +
           var(--floating-button-spacing) * 2
       );
     }
 
     &:nth-child(4 of input[type="submit"]) {
-      left: calc(
+      inset-inline-start: calc(
         var(--floating-button-offset-with-draft-fixed) +
           var(--floating-button-spacing) * 3
       );
@@ -3094,141 +3094,6 @@
       #parent_issue {
         clear: left;
         float: left;
-      }
-    }
-
-    #issue-form.floating-submit-button-enabled {
-      & > div.box {
-        padding-bottom: var(--floating-button-area-height);
-      }
-
-      input[type="submit"],
-      .save-draft-button {
-        position: absolute;
-        border-radius: 50%;
-        width: var(--floating-button-size);
-        height: var(--floating-button-size);
-        box-shadow: 0 0 10px 0px rgb(0 0 0 / 50%);
-        z-index: 6;
-        margin-right: 20px;
-        text-wrap: balance;
-        left: auto !important;
-
-        &.fixed-position {
-          position: fixed;
-          margin-top: 0;
-          bottom: 60px;
-          opacity: 0.5;
-
-          &:hover {
-            opacity: 1;
-          }
-
-          &:nth-child(1 of input[type="submit"]) {
-            right: 0;
-          }
-
-          &:nth-child(2 of input[type="submit"]) {
-            right: var(--floating-button-spacing);
-          }
-
-          &:nth-child(3 of input[type="submit"]) {
-            right: calc(var(--floating-button-spacing) * 2);
-          }
-
-          &:nth-child(4 of input[type="submit"]) {
-            right: calc(var(--floating-button-spacing) * 3);
-          }
-        }
-
-        &:not(.fixed-position) {
-          margin-top: -100px;
-          box-shadow: none;
-        }
-      }
-
-      .save-draft-button ~ input[type="submit"] {
-        &:nth-child(1 of input[type="submit"]) {
-          right: var(--floating-button-offset-with-draft-unfixed);
-        }
-
-        &:nth-child(2 of input[type="submit"]) {
-          right: calc(
-            var(--floating-button-offset-with-draft-unfixed) +
-              var(--floating-button-spacing)
-          );
-        }
-
-        &:nth-child(3 of input[type="submit"]) {
-          right: calc(
-            var(--floating-button-offset-with-draft-unfixed) +
-              var(--floating-button-spacing) * 2
-          );
-        }
-
-        &:nth-child(4 of input[type="submit"]) {
-          right: calc(
-            var(--floating-button-offset-with-draft-unfixed) +
-              var(--floating-button-spacing) * 3
-          );
-        }
-
-        &.fixed-position {
-          &:nth-child(1 of input[type="submit"]) {
-            right: var(--floating-button-offset-with-draft-fixed);
-          }
-
-          &:nth-child(2 of input[type="submit"]) {
-            right: calc(
-              var(--floating-button-offset-with-draft-fixed) +
-                var(--floating-button-spacing)
-            );
-          }
-
-          &:nth-child(3 of input[type="submit"]) {
-            right: calc(
-              var(--floating-button-offset-with-draft-fixed) +
-                var(--floating-button-spacing) * 2
-            );
-          }
-
-          &:nth-child(4 of input[type="submit"]) {
-            right: calc(
-              var(--floating-button-offset-with-draft-fixed) +
-                var(--floating-button-spacing) * 3
-            );
-          }
-        }
-      }
-    }
-
-    #content:not(.issue-tab-view-enabled)
-      #issue-form.floating-submit-button-enabled
-      .save-draft-button
-      ~ input[type="submit"] {
-      &:nth-child(1 of input[type="submit"]) {
-        right: var(--floating-button-offset-with-draft-fixed);
-      }
-
-      &:nth-child(2 of input[type="submit"]) {
-        right: calc(
-          var(--floating-button-offset-with-draft-fixed) +
-            var(--floating-button-spacing)
-        );
-      }
-
-      &:nth-child(3 of input[type="submit"]) {
-        right: calc(
-          var(--floating-button-offset-with-draft-fixed) +
-            var(--floating-button-spacing) * 2
-        );
-      }
-
-      &:nth-child(4 of input[type="submit"]) {
-        right: calc(
-          var(--floating-button-offset-with-draft-fixed) +
-            var(--floating-button-spacing) * 3
-        );
       }
     }
   }
