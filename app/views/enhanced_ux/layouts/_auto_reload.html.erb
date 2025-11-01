@@ -27,7 +27,15 @@
 
     const intervals = [5, 10, 30, 60, 180, 300, 600];
     const defaultInterval = 60;
-    const useLocalStorage = false;
+    const minimalInterval = 5;
+    const maximalInterval = 60 * 10 * 24;
+
+    const useLocalStorage = false; // Default to not use localStorage.
+
+    // Determine whether to enable auto-reload based on URL parameters
+    const urlParams = new URLSearchParams(window.location.search);
+    const hasAutoReloadParam = urlParams.has("auto_reload");
+
     let timerId = null;
 
     async function reload() {
@@ -178,15 +186,30 @@
     // Initialize
     appendCheckbox();
 
-    if (useLocalStorage) {
-      const storedInterval = localStorage.getItem("autoReload");
+    validateInterval = (interval) => {
+      parsedInterval = parseInt(interval);
       if (
-        storedInterval &&
-        parseInt(storedInterval) &&
-        parseInt(storedInterval) !== 0
+        !parsedInterval ||
+        parsedInterval < minimalInterval ||
+        parsedInterval > maximalInterval
       ) {
-        enableAutoReload(true, parseInt(storedInterval));
+        console.warn(
+          `Invalid auto-reload interval: ${interval}. ` +
+            `Must be between ${minimalInterval} and ${maximalInterval}.`
+        );
+        return null;
       }
+      return parsedInterval;
+    };
+
+    if (useLocalStorage || hasAutoReloadParam) {
+      const interval = validateInterval(
+        hasAutoReloadParam
+          ? urlParams.get("auto_reload")
+          : localStorage.getItem("autoReload")
+      );
+
+      if (interval) enableAutoReload(true, parseInt(interval));
     }
   });
 </script>
