@@ -26,11 +26,6 @@
       <%= check_box_tag 'settings[copy_issue_form_link_with_data]', '1', @settings[:copy_issue_form_link_with_data] == '1' %>
     </p>
     <p>
-      <label for="fixed_submit_button">Fixed submit button:</label>
-      <input type="hidden" name="settings[fixed_submit_button]" value="'0'">
-      <%= check_box_tag 'settings[fixed_submit_button]', '1', @settings[:fixed_submit_button] == '1' %>
-    </p>
-    <p>
       <label for="issue_attributes_to_link">Issue attributes to link:</label>
       <input type="hidden" name="settings[issue_attributes_to_link]" value="'0'">
       <%= check_box_tag 'settings[issue_attributes_to_link]', '1', @settings[:issue_attributes_to_link] == '1' %>
