@@ -32,24 +32,64 @@ window.addEventListener("DOMContentLoaded", () => {
     .filter((i) => i.match(/^project-/))[0]
     ?.match(/^project-(.+)/)[1];
 
-  configs.forEach((config) => {
-    const targets = $("#content .issue .attributes " + config.selector);
-    if (targets.length == 0) return;
+  function generateIssueLink(url, text) {
+    configs.forEach((config) => {
+      const targets = $("#content .issue .attributes " + config.selector);
+      if (targets.length == 0) return;
 
-    const idValue = $(config.idSelector).val();
-    if (idValue == undefined) return;
+      const idValue = $(config.idSelector).val();
+      if (idValue == undefined) return;
 
-    const search =
-      `?set_filter=1` +
-      `&f[]=${config.param}` +
-      `&op[${config.param}]==` +
-      `&v[${config.param}][]=${idValue}`;
+      const search =
+        `?set_filter=1` +
+        `&f[]=${config.param}` +
+        `&op[${config.param}]==` +
+        `&v[${config.param}][]=${idValue}`;
 
-    const issueListUrl =
-      homeUrl + "projects/" + projectIdentifier + "/issues" + search;
+      const issueListUrl =
+        homeUrl + "projects/" + projectIdentifier + "/issues" + search;
 
-    targets.each(function () {
-      $(this).html($("<a>").attr("href", issueListUrl).text(this.innerHTML));
+      targets.each(function () {
+        $(this).html($("<a>").attr("href", issueListUrl).text(this.innerHTML));
+      });
     });
-  });
+  }
+
+  // Initial generation
+  generateIssueLink();
+
+  /**
+   * Set up form change detection.
+   * This method's purpose is to detect when the issue view is replaced by
+   * other plugins like Redmine RT.
+   */
+  function setupFormChangeDetection() {
+    const targetNode = $("div.issue.details").parent()[0];
+
+    if (targetNode) {
+      const observer = new MutationObserver((mutations) => {
+        mutations.forEach((mutation) => {
+          if (mutation.type === "childList") {
+            mutation.addedNodes.forEach((node) => {
+              if (
+                node.nodeType === Node.ELEMENT_NODE &&
+                $(node).is("div.issue.details")
+              ) {
+                generateIssueLink();
+              }
+            });
+          }
+        });
+      });
+
+      observer.observe(targetNode, {
+        childList: true,
+        subtree: true,
+        attributes: false,
+      });
+    }
+  }
+
+  // Set up form change detection
+  setupFormChangeDetection();
 });
