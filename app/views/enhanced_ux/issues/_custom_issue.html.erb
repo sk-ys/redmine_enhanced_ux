@@ -27,7 +27,8 @@
       enableSideBySideMode: true,
       enablePopupNotes: true,
       enableInlineNotes: true,
-      enableFloatingSubmitButton: true,
+      enableFloatingSubmitButtonInEditForm: true,
+      enableFloatingSubmitButtonInNewForm: true,
       enableResizableAttachmentTable: true,
       enableCorrectAttributesPositionInEditView: true,
       sideBySideModeBreakpointWidth: 1280,
@@ -81,7 +82,10 @@
         labelSettingEnableSideBySideMode: "Enable side-by-side mode",
         labelSettingEnablePopupNotes: "Enable popup notes",
         labelSettingEnableInlineNotes: "Enable inline notes",
-        labelSettingEnableFloatingSubmitButton: "Enable floating submit button",
+        labelSettingEnableFloatingSubmitButtonInEditForm:
+          "Enable floating submit button in edit form",
+        labelSettingEnableFloatingSubmitButtonInNewForm:
+          "Enable floating submit button in new issue form",
         labelSettingEnableResizableAttachmentTable:
           "Enable resizable attachment table",
         labelSettingEnableCorrectAttributesPositionInEditView:
@@ -133,7 +137,10 @@
         labelSettingEnableSideBySideMode: "左右に並べて表示を有効にする",
         labelSettingEnablePopupNotes: "ポップアップコメントを有効にする",
         labelSettingEnableInlineNotes: "インラインコメントを有効にする",
-        labelSettingEnableFloatingSubmitButton: "送信ボタンを浮遊表示する",
+        labelSettingEnableFloatingSubmitButtonInEditForm:
+          "編集画面で送信ボタンを浮動化する",
+        labelSettingEnableFloatingSubmitButtonInNewForm:
+          "新規チケット画面で送信ボタンを浮動化する",
         labelSettingEnableResizableAttachmentTable:
           "添付ファイル欄をリサイズ可能にする",
         labelSettingEnableCorrectAttributesPositionInEditView:
@@ -192,7 +199,8 @@
       constructor(
         enableTabView,
         enableSideBySideMode,
-        enableFloatingSubmitButton,
+        enableFloatingSubmitButtonInEditForm,
+        enableFloatingSubmitButtonInNewForm,
         enableResizableAttachmentTable,
         enableCorrectAttributesPositionInEditView,
         isDescriptionEditFieldOpenByDefault,
@@ -202,7 +210,12 @@
         this.sideBySideModeEnabled = isNewForm
           ? false
           : enableSideBySideMode ?? true;
-        this.floatingSubmitButtonEnabled = enableFloatingSubmitButton ?? true;
+        this.floatingSubmitButtonInEditFormEnabled = isEditable
+          ? enableFloatingSubmitButtonInEditForm ?? true
+          : false;
+        this.floatingSubmitButtonInNewFormEnabled = isNewForm
+          ? enableFloatingSubmitButtonInNewForm ?? true
+          : false;
         this.resizableAttachmentTableEnabled = isNewForm
           ? false
           : enableResizableAttachmentTable ?? true;
@@ -613,7 +626,10 @@
       }
 
       #setupFloatingSubmitButton() {
-        if (this.floatingSubmitButtonEnabled) {
+        if (
+          this.floatingSubmitButtonInEditFormEnabled ||
+          this.floatingSubmitButtonInNewFormEnabled
+        ) {
           $("#issue-form").addClass("floating-submit-button-enabled");
           $(window)
             .on("scroll", () => {
@@ -631,7 +647,14 @@
       }
 
       updateSubmitButtonPosition() {
-        if (!this.floatingSubmitButtonEnabled) return;
+        if (
+          !(
+            this.floatingSubmitButtonInEditFormEnabled ||
+            this.floatingSubmitButtonInNewFormEnabled
+          )
+        ) {
+          return;
+        }
 
         const $box = $("#issue-form>div.box").eq(0);
         if (!$submitButton.is(":visible")) return;
@@ -2172,7 +2195,8 @@
       issueLayoutManager = new IssueLayoutManager(
         settingsManager.settings.enableIssueTabView,
         settingsManager.settings.enableSideBySideMode,
-        settingsManager.settings.enableFloatingSubmitButton,
+        settingsManager.settings.enableFloatingSubmitButtonInEditForm,
+        settingsManager.settings.enableFloatingSubmitButtonInNewForm,
         settingsManager.settings.enableResizableAttachmentTable,
         settingsManager.settings.enableCorrectAttributesPositionInEditView,
         settingsManager.settings.isDescriptionEditFieldOpenByDefault,
