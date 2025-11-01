@@ -606,7 +606,7 @@
 
       #setupFloatingSubmitButton() {
         if (this.floatingSubmitButtonEnabled) {
-          $("#issue-form").addClass("enable-floating-submit-button");
+          $("#issue-form").addClass("floating-submit-button-enabled");
           $(window)
             .on("scroll", () => {
               this.updateSubmitButtonPosition();
@@ -2250,9 +2250,19 @@
       background: #fff;
     }
 
-    form.edit_issue > div.box {
-      border-top: 0;
+    #issue-form.edit_issue {
+      & > div.box {
+        border-top: 0;
+      }
     }
+  }
+  #wrapper.side-by-side-mode-enabled.side-by-side
+    #container
+    #update
+    #issue-form.edit_issue:not(.floating-submit-button-enabled)
+    > div.box {
+    margin-bottom: 10px;
+    height: calc(100% - 50px);
   }
 
   #notes-dialog-content #update div.box fieldset.tabular {
@@ -2449,7 +2459,7 @@
         }
       }
 
-      #issue-form
+      #issue-form.floating-submit-button-enabled
         :where(input[type="submit"], .save-draft-button):not(.fixed-position) {
         margin-top: -83px;
       }
@@ -2810,7 +2820,7 @@
     max-height: var(--attachment-table-max-height);
   }
 
-  #issue-form.enable-floating-submit-button {
+  #issue-form.floating-submit-button-enabled {
     /* Submit button space */
     & > div.box {
       padding-bottom: 120px;
@@ -2852,7 +2862,7 @@
   }
 
   #content:not(.issue-tab-view-enabled)
-    #issue-form.enable-floating-submit-button
+    #issue-form.floating-submit-button-enabled
     .save-draft-button
     ~ input[type="submit"] {
     left: 96px;
@@ -2881,16 +2891,16 @@
 
   /* Support Redmine theme Bleuclair */
   body.theme-Bleuclair {
-    #update #issue-form.enable-floating-submit-button > div.box {
+    #update #issue-form.floating-submit-button-enabled > div.box {
       padding-bottom: 90px;
     }
-    #issue-form.enable-floating-submit-button
+    #issue-form.floating-submit-button-enabled
       :where(input[type="submit"], .save-draft-button):not(.fixed-position) {
       margin-top: -110px;
     }
 
     #wrapper.side-by-side-mode-enabled.side-by-side
-      #issue-form
+      #issue-form.floating-submit-button-enabled
       :where(input[type="submit"], .save-draft-button):not(.fixed-position) {
       margin-top: -80px;
     }
