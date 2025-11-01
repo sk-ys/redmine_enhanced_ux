@@ -29,10 +29,12 @@ module EnhancedUx
             end
           end
 
-          if /\/issues\/[0-9]+$/.match?(path)
+          if /\/issues\/([0-9]+|new|[0-9]+\/copy)\/{0,1}$/.match?(path)
             if Setting.plugin_redmine_enhanced_ux[:custom_issue] == '1'
               tags << controller.render_to_string(partial: 'enhanced_ux/issues/custom_issue')
             end
+          end
+          if /\/issues\/[0-9]+$/.match?(path)
             if Setting.plugin_redmine_enhanced_ux[:scroll_to_top_or_bottom] == '1'
               tags << controller.render_to_string(partial: 'enhanced_ux/issues/scroll_to_top_or_bottom')
             end
@@ -101,9 +103,6 @@ module EnhancedUx
           if /\/issues(|\/new|\/[0-9]+\/copy)$/.match?(path)
             if Setting.plugin_redmine_enhanced_ux[:copy_issue_form_link_with_data] == '1'
               tags << javascript_include_tag("issues/copy_issue_form_link_with_data", :plugin => "redmine_enhanced_ux")
-            end
-            if Setting.plugin_redmine_enhanced_ux[:fixed_submit_button] == '1'
-              tags << stylesheet_link_tag("issues/fixed_submit_button", :plugin => "redmine_enhanced_ux", media: "all")
             end
           end
 
