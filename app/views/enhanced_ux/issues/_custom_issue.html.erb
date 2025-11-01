@@ -997,6 +997,7 @@
     class BaseDialog {
       constructor(config = {}) {
         this.config = {
+          fitWindowWhenOpen: true,
           ...dialogBaseConfig,
           create: () => this.createEvent(),
           close: () => this.closeEvent(),
@@ -1012,8 +1013,23 @@
       isOpen() {
         return this.$dialog !== null && this.$dialog.dialog("isOpen");
       }
+      fitToWindow() {
+        const activeWidth = this.$dialog.dialog("option", "width");
+        this.$dialog.dialog(
+          "option",
+          "width",
+          Math.min(activeWidth, window.innerWidth)
+        );
+        const activeHeight = this.$dialog.dialog("option", "height");
+        this.$dialog.dialog(
+          "option",
+          "height",
+          Math.min(activeHeight, window.innerHeight)
+        );
+      }
       open(title) {
         this.setupDialog();
+        this.config.fitWindowWhenOpen && this.fitToWindow();
         if (title) this.$dialog.dialog("option", "title", title);
         this.$dialog.dialog("open");
       }
