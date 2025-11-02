@@ -1315,7 +1315,7 @@
 
       onActionComplete($contents) {
         ajaxUpdateIssueList();
-        this.closeEvent();
+        this.close();
       }
 
       isActionCompleted($contents) {
@@ -1408,7 +1408,7 @@
       }
 
       onActionComplete($contents) {
-        this.closeEvent();
+        this.close();
         this.updateAttachments();
       }
 
@@ -1508,7 +1508,7 @@
 
       onActionComplete($contents) {
         this.updateTimeEntry();
-        this.closeEvent();
+        this.close();
       }
 
       isActionCompleted($contents) {
