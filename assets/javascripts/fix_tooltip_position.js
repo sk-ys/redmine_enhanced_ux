@@ -12,31 +12,40 @@ $(() => {
     // Calculate tooltip position
     const clientWidth = document.documentElement.clientWidth;
     const clientHeight = document.documentElement.clientHeight;
+    const tooltipParentOffset = ui.tooltip.parent().offset();
     const margin = 5;
+
     let tooltipTop =
-      $(e.target).offset().top - ui.tooltip.outerHeight() - margin;
-    if (tooltipTop < 0) {
+      $(e.target).offset().top -
+      tooltipParentOffset.top -
+      ui.tooltip.outerHeight() -
+      margin;
+    if (tooltipTop + tooltipParentOffset.top < 0) {
       // If tooltip goes above viewport, flip it below the element
       tooltipTop =
-        $(e.target).offset().top + $(e.target).outerHeight() + margin;
+        $(e.target).offset().top -
+        tooltipParentOffset.top +
+        $(e.target).outerHeight() +
+        margin;
     }
     // Ensure flipped tooltip is within viewport height
     if (tooltipTop + ui.tooltip.outerHeight() > clientHeight) {
-      tooltipTop = clientHeight - ui.tooltip.outerHeight();
+      tooltipTop =
+        clientHeight - tooltipParentOffset.top - ui.tooltip.outerHeight();
     }
     const tooltipLeft =
-      $(e.target).offset().left +
+      $(e.target).offset().left -
+      tooltipParentOffset.left +
       $(e.target).outerWidth() / 2 -
       ui.tooltip.outerWidth() / 2;
 
     // Set tooltip position
     ui.tooltip.css({
-      // position: "fixed",  // Fixed positioning breaks layout on issue pages (issue found in v1.0.3)
       position: "absolute",
       top: tooltipTop,
       left: Math.min(
         Math.max(tooltipLeft, 0),
-        clientWidth - ui.tooltip.outerWidth()
+        clientWidth - tooltipParentOffset.left - ui.tooltip.outerWidth()
       ),
     });
   });
