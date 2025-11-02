@@ -61,7 +61,7 @@ This is a plugin for Redmine. This plugin is designed to improve the user experi
 - Show only opened issues - Filter the issue list to show only open issues using a checkbox.
 - Simple menu bar - Simplify the top menu and application menu for a more compact experience.
 - Two pane mode - Split the screen into two panes for easier multitasking.
-- Auto reload - Automatically reload the page at the specified interval.
+- Auto reload - Automatically reload the page at the specified interval. Supports URL parameter `auto_reload` to enable auto-reload with a custom interval (e.g., `?auto_reload=30` for 30-second intervals).
 - Fixes for RTL design - RTL design fixes for some pages (excluding Gantt chart).
 
 ## Installation
