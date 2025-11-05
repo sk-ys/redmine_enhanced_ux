@@ -740,10 +740,14 @@
         $("div#attributes").after($descriptionAttribute);
 
         // Add <hr>
-        $("#attributes")
-          .before($("<hr>"))
-          .children(".splitcontent")
-          .after($("<hr>"));
+        if ($("#attributes").prev()[0].nodeName !== "HR") {
+          $("#attributes").before($("<hr>"));
+        }
+        $("#attributes>.splitcontent").each((_, el) => {
+          if ($(el).next()[0].nodeName !== "HR") {
+            $(el).after($("<hr>"));
+          }
+        });
 
         // Fix placement of "assign to me" button
         $("#issue_assigned_to_id").after($("<br>"));
