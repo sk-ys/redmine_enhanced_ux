@@ -740,11 +740,11 @@
         $("div#attributes").after($descriptionAttribute);
 
         // Add <hr>
-        if ($("#attributes").prev()[0].nodeName !== "HR") {
+        if ($("#attributes").prev()[0]?.nodeName !== "HR") {
           $("#attributes").before($("<hr>"));
         }
         $("#attributes>.splitcontent").each((_, el) => {
-          if ($(el).next()[0].nodeName !== "HR") {
+          if ($(el).next()[0]?.nodeName !== "HR") {
             $(el).after($("<hr>"));
           }
         });
