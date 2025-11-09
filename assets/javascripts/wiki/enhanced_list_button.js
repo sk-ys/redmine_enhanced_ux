@@ -104,13 +104,16 @@
           " ".repeat(tabCount * tabSize) + index + ". "
         );
       },
-      fnOl: (lineStr, tabCount, _, shift) => {
+      fnOl: (lineStr, tabCount, index, shift) => {
         const tabOffset = shift ? -1 : 1;
         const newTabCount = Math.max(0, tabCount + tabOffset);
         if (tabCount + tabOffset < 0) {
           lineStr = markdownMethods.olDecorator.fnClear(lineStr);
         } else {
-          lineStr = lineStr.replace(/^\s*/, " ".repeat(newTabCount * tabSize));
+          lineStr = lineStr.replace(
+            /^\s*\d+\.\s/,
+            " ".repeat(newTabCount * tabSize) + index + ". "
+          );
         }
         return lineStr;
       },
