@@ -3,7 +3,7 @@
 // Type:               JavaScript
 // Comment:            Enhanced list button
 (() => {
-  const tabSize = 4;
+  const tabSize = 2;
   let methods = null;
 
   function checkJsToolBarExist() {
