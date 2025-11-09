@@ -2162,7 +2162,7 @@
           )
           .serialize() +
         "&" +
-        $("#issue_notes").serialize() +
+        $("#add_notes").serialize() +
         "&" +
         $("#new-attachments input").serialize();
 
@@ -3155,5 +3155,11 @@
         float: left;
       }
     }
+  }
+
+  /* Support for Redmine silencer plugin */
+  #add_notes .plugin_redmine_silencer {
+    display: inline-block;
+    margin: 0 1em;
   }
 </style>
