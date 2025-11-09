@@ -2,64 +2,64 @@
 // Insertion position: Head of all pages
 // Type:               JavaScript
 // Comment:            Fix tooltip position
+// Description:        Adjust tooltip positions to ensure they remain within the viewport.
 $(() => {
   $("[title]:not(.no-tooltip)").on("tooltipopen", function (e, ui) {
-    // Update tooltip position manually
+    const tooltip = ui.tooltip;
+    const targetRect = e.target.getBoundingClientRect();
+    const targetOffset = $(e.target).offset();
+    const tooltipParentOffset = tooltip.parent().offset();
 
-    // Temporary reset tooltip position
-    ui.tooltip.css({ top: 0, left: 0 });
+    // Get default CSS position
+    const tooltipDefaultTop = parseFloat(tooltip.css("top"));
+    const tooltipDefaultLeft = parseFloat(tooltip.css("left"));
 
-    // Calculate tooltip position
-    const clientWidth = document.documentElement.clientWidth;
-    const clientHeight = document.documentElement.clientHeight;
-    const tooltipParentOffset = ui.tooltip.parent().offset();
-    const margin = 5;
+    // Calculate tooltip size
+    const originalPosition = tooltip.css("position");
+    tooltip.css({ position: "fixed", top: 0, left: 0 });
+    const tooltipWidth = tooltip.outerWidth();
+    const tooltipHeight = tooltip.outerHeight();
+    tooltip.css({
+      position: originalPosition,
+      top: tooltipDefaultTop,
+      left: tooltipDefaultLeft,
+    });
 
-    let tooltipTop =
-      $(e.target).offset().top -
-      tooltipParentOffset.top -
-      ui.tooltip.outerHeight() -
-      margin;
-    if (tooltipTop + tooltipParentOffset.top < 0) {
-      // If tooltip goes above viewport, flip it below the element
-      tooltipTop =
-        $(e.target).offset().top -
-        tooltipParentOffset.top +
-        $(e.target).outerHeight() +
-        margin;
+    // Calculate relative offset from target to tooltip
+    const relativeOffsetX =
+      tooltipDefaultLeft + tooltipParentOffset.left - targetOffset.left;
+    const relativeOffsetY =
+      tooltipDefaultTop + tooltipParentOffset.top - targetOffset.top;
+
+    // Adjust position to keep tooltip within viewport
+    let offsetX = 0;
+    let offsetY = 0;
+
+    const viewportWidth = document.documentElement.clientWidth;
+    const viewportHeight = document.documentElement.clientHeight;
+
+    // Calculate current position on page
+    const tooltipPageTop = targetRect.top + relativeOffsetY;
+    const tooltipPageLeft = targetRect.left + relativeOffsetX;
+
+    // Adjust vertical position
+    if (tooltipPageTop < 0) {
+      offsetY = -tooltipPageTop + tooltipHeight;
+    } else if (tooltipPageTop + tooltipHeight > viewportHeight) {
+      offsetY = -(tooltipPageTop + tooltipHeight - viewportHeight);
     }
-    // Ensure flipped tooltip is within viewport height
-    if (tooltipTop + ui.tooltip.outerHeight() > clientHeight) {
-      tooltipTop =
-        clientHeight - tooltipParentOffset.top - ui.tooltip.outerHeight();
-    }
-    const tooltipLeft =
-      $(e.target).offset().left -
-      tooltipParentOffset.left +
-      $(e.target).outerWidth() / 2 -
-      ui.tooltip.outerWidth() / 2;
 
-    // Set tooltip position
-    ui.tooltip.css({
-      position: "absolute",
-      top: tooltipTop,
-      left: Math.min(
-        Math.max(tooltipLeft, 0),
-        clientWidth - tooltipParentOffset.left - ui.tooltip.outerWidth()
-      ),
+    // Adjust horizontal position
+    if (tooltipPageLeft < 0) {
+      offsetX = -tooltipPageLeft;
+    } else if (tooltipPageLeft + tooltipWidth > viewportWidth) {
+      offsetX = -(tooltipPageLeft + tooltipWidth - viewportWidth);
+    }
+
+    // Apply adjusted position
+    tooltip.css({
+      top: tooltipDefaultTop + offsetY,
+      left: tooltipDefaultLeft + offsetX,
     });
   });
 });
-
-// Original code in application.js
-// $(function () {
-//   $("[title]:not(.no-tooltip)").tooltip({
-//     show: {
-//       delay: 400
-//     },
-//     position: {
-//       my: "center bottom-5",
-//       at: "center top"
-//     }
-//   });
-// });
