@@ -34,6 +34,9 @@
       const numStr = trimmed.substring(0, posDot);
       return /^\d+$/.test(numStr) ? Number(numStr) : false;
     },
+    isList: (text) => {
+      return /^\s*[*\-]|\d+\.\s/.test(text);
+    },
     evalStr: (decorator, lineStr, tabShift, indexList) => {
       const tabCount = calcTabCount(lineStr);
 
@@ -151,6 +154,9 @@
     isOl: (text) => {
       const res = /^\#+ /.exec(text);
       return res ? res[0].length - 1 : false;
+    },
+    isList: (text) => {
+      return /^[\*\#]+\s/.test(text);
     },
     evalStr: (decorator, lineStr, tabShift) => {
       const ulIndex = textileMethods.isUl(lineStr);
@@ -444,15 +450,66 @@
   }
 
   function handleTabKey(e, jsToolBarInstance) {
-    const currentLine = extractCurrentLine(jsToolBarInstance.textarea);
+    const textarea = jsToolBarInstance.textarea;
 
-    if (methods.isUl(currentLine)) {
-      e.preventDefault();
-      ulDecorator.call(jsToolBarInstance, e);
-    } else if (methods.isOl(currentLine)) {
-      e.preventDefault();
-      olDecorator.call(jsToolBarInstance, e);
+    // Backup selection range
+    const initialSelectionStart = textarea.selectionStart;
+    const initialSelectionEnd = textarea.selectionEnd;
+
+    const startLine =
+      textarea.value.lastIndexOf("\n", initialSelectionStart - 1) + 1;
+    const endLine =
+      textarea.value.indexOf("\n", initialSelectionEnd) === -1
+        ? textarea.value.length
+        : textarea.value.indexOf("\n", initialSelectionEnd);
+
+    const selectedLines = textarea.value
+      .substring(startLine, endLine)
+      .split("\n");
+
+    const tabCounts = selectedLines.map(calcTabCount);
+    const maxTabCount = Math.max(...tabCounts);
+    const lineLengths = selectedLines.map((line) => line.length);
+    const countShifts = selectedLines.map(() => 0);
+
+    for (let i = selectedLines.length - 1; i >= 0; i--) {
+      const line = selectedLines[i];
+      const cursorPos =
+        lineLengths.slice(0, i).reduce((a, b) => a + b, 0) + (i > 0 ? i : 0);
+      let flgDecorated = false;
+      if (methods.isUl(line)) {
+        e.preventDefault();
+        if (!(e.shiftKey && tabCounts[i] === 0) || maxTabCount === 0) {
+          textarea.setSelectionRange(
+            startLine + cursorPos,
+            startLine + cursorPos + line.length
+          );
+          ulDecorator.call(jsToolBarInstance, e);
+          flgDecorated = true;
+        }
+      } else if (methods.isOl(line)) {
+        e.preventDefault();
+        if (!(e.shiftKey && tabCounts[i] === 0) || maxTabCount === 0) {
+          textarea.setSelectionRange(
+            startLine + cursorPos,
+            startLine + cursorPos + line.length
+          );
+          olDecorator.call(jsToolBarInstance, e);
+          flgDecorated = true;
+        }
+      }
+      if (flgDecorated) {
+        countShifts[i] = e.shiftKey
+          ? textarea.selectionEnd - (startLine + cursorPos + line.length)
+          : textarea.selectionStart - (startLine + cursorPos);
+      }
     }
+
+    // Restore selection range
+    textarea.setSelectionRange(
+      initialSelectionStart + countShifts[0],
+      initialSelectionEnd + countShifts.reduce((a, b) => a + b, 0)
+    );
   }
 
   function handleEnterKey(e, jsToolBarInstance, isTextile) {
