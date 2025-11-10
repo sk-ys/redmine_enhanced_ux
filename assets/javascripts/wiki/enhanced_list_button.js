@@ -34,7 +34,7 @@
       const numStr = trimmed.substring(0, posDot);
       return /^\d+$/.test(numStr) ? Number(numStr) : false;
     },
-    evalStr: (decorator, lineStr, shift, indexList) => {
+    evalStr: (decorator, lineStr, tabShift, indexList) => {
       const tabCount = calcTabCount(lineStr);
 
       // Manage list index for ordered lists
@@ -46,19 +46,18 @@
       const index = indexList[tabCount];
 
       if (markdownMethods.isUl(lineStr)) {
-        lineStr = decorator.fnUl(lineStr, tabCount, index, shift);
+        lineStr = decorator.fnUl(lineStr, tabCount, index, tabShift);
       } else if (markdownMethods.isOl(lineStr)) {
-        lineStr = decorator.fnOl(lineStr, tabCount, index, shift);
+        lineStr = decorator.fnOl(lineStr, tabCount, index, tabShift);
       } else {
-        lineStr = decorator.fnDefault(lineStr, tabCount, index, shift);
+        lineStr = decorator.fnDefault(lineStr, tabCount, index, tabShift);
       }
       return lineStr;
     },
     ulDecorator: {
-      fnUl: (lineStr, tabCount, _, shift) => {
-        const tabOffset = shift ? -1 : 1;
-        const newTabCount = Math.max(0, tabCount + tabOffset);
-        if (tabCount + tabOffset < 0) {
+      fnUl: (lineStr, tabCount, _, tabShift) => {
+        const newTabCount = Math.max(0, tabCount + tabShift);
+        if (tabCount + tabShift < 0) {
           lineStr = markdownMethods.ulDecorator.fnClear(lineStr);
         } else {
           lineStr = lineStr.replace(/^\s*/, " ".repeat(newTabCount * tabSize));
@@ -71,8 +70,8 @@
           " ".repeat(tabCount * tabSize) + "* "
         );
       },
-      fnDefault: (lineStr, tabCount, _, shift, sign = "*") => {
-        if (shift) return lineStr;
+      fnDefault: (lineStr, tabCount, _, tabShift, sign = "*") => {
+        if (tabShift < 1) return lineStr;
         return lineStr.replace(
           /^\s*/,
           " ".repeat(tabCount * tabSize) + sign + " "
@@ -92,7 +91,7 @@
           markdownMethods.evalStr(
             markdownMethods.ulDecorator,
             lineStr,
-            e.shiftKey,
+            e.shiftKey ? -1 : 1,
             indexList
           );
       },
@@ -104,10 +103,9 @@
           " ".repeat(tabCount * tabSize) + index + ". "
         );
       },
-      fnOl: (lineStr, tabCount, index, shift) => {
-        const tabOffset = shift ? -1 : 1;
-        const newTabCount = Math.max(0, tabCount + tabOffset);
-        if (tabCount + tabOffset < 0) {
+      fnOl: (lineStr, tabCount, index, tabShift) => {
+        const newTabCount = Math.max(0, tabCount + tabShift);
+        if (tabCount + tabShift < 0) {
           lineStr = markdownMethods.olDecorator.fnClear(lineStr);
         } else {
           lineStr = lineStr.replace(
@@ -117,8 +115,8 @@
         }
         return lineStr;
       },
-      fnDefault: (lineStr, tabCount, index, shift) => {
-        if (shift) return lineStr;
+      fnDefault: (lineStr, tabCount, index, tabShift) => {
+        if (tabShift < 1) return lineStr;
         return lineStr.replace(
           /^\s*/,
           " ".repeat(tabCount * tabSize) + index + ". "
@@ -138,7 +136,7 @@
           markdownMethods.evalStr(
             markdownMethods.olDecorator,
             lineStr,
-            e.shiftKey,
+            e.shiftKey ? -1 : 1,
             indexList
           );
       },
@@ -154,25 +152,24 @@
       const res = /^\#+ /.exec(text);
       return res ? res[0].length - 1 : false;
     },
-    evalStr: (decorator, lineStr, shift) => {
+    evalStr: (decorator, lineStr, tabShift) => {
       const ulIndex = textileMethods.isUl(lineStr);
       if (ulIndex) {
-        lineStr = decorator.fnUl(lineStr, ulIndex, shift);
+        lineStr = decorator.fnUl(lineStr, ulIndex, tabShift);
       } else {
         const olIndex = textileMethods.isOl(lineStr);
         if (olIndex) {
-          lineStr = decorator.fnOl(lineStr, olIndex, shift);
+          lineStr = decorator.fnOl(lineStr, olIndex, tabShift);
         } else {
-          lineStr = decorator.fnDefault(lineStr, 1, shift);
+          lineStr = decorator.fnDefault(lineStr, 1, tabShift);
         }
       }
       return lineStr;
     },
     ulDecorator: {
-      fnUl: (lineStr, tabCount, shift) => {
-        const tabOffset = shift ? -1 : 1;
-        const newTabCount = Math.max(0, tabCount + tabOffset);
-        if (tabCount + tabOffset < 1) {
+      fnUl: (lineStr, tabCount, tabShift) => {
+        const newTabCount = Math.max(0, tabCount + tabShift);
+        if (tabCount + tabShift < 1) {
           lineStr = textileMethods.ulDecorator.fnClear(lineStr);
         } else {
           lineStr = lineStr.replace(/^\*+\s/, "*".repeat(newTabCount) + " ");
@@ -182,8 +179,8 @@
       fnOl: (lineStr, tabCount) => {
         return lineStr.replace(/^#+\s/, "*".repeat(tabCount) + " ");
       },
-      fnDefault: (lineStr, tabCount, shift) => {
-        if (shift) return lineStr;
+      fnDefault: (lineStr, tabCount, tabShift) => {
+        if (tabShift < 1) return lineStr;
         return "*".repeat(tabCount) + " " + lineStr;
       },
       fnClear: (lineStr) => {
@@ -194,7 +191,7 @@
           textileMethods.evalStr(
             textileMethods.ulDecorator,
             lineStr,
-            e.shiftKey
+            e.shiftKey ? -1 : 1
           );
       },
     },
@@ -202,18 +199,17 @@
       fnUl: (lineStr, tabCount) => {
         return lineStr.replace(/^\*+\s/, "#".repeat(tabCount) + " ");
       },
-      fnOl: (lineStr, tabCount, shift) => {
-        const tabOffset = shift ? -1 : 1;
-        const newTabCount = Math.max(0, tabCount + tabOffset);
-        if (tabCount + tabOffset < 1) {
+      fnOl: (lineStr, tabCount, tabShift) => {
+        const newTabCount = Math.max(0, tabCount + tabShift);
+        if (tabCount + tabShift < 1) {
           lineStr = textileMethods.olDecorator.fnClear(lineStr);
         } else {
           lineStr = lineStr.replace(/^#+\s/, "#".repeat(newTabCount) + " ");
         }
         return lineStr;
       },
-      fnDefault: (lineStr, tabCount, shift) => {
-        if (shift) return lineStr;
+      fnDefault: (lineStr, tabCount, tabShift) => {
+        if (tabShift < 1) return lineStr;
         return "#".repeat(tabCount) + " " + lineStr;
       },
       fnClear: (lineStr) => {
@@ -224,7 +220,7 @@
           textileMethods.evalStr(
             textileMethods.olDecorator,
             lineStr,
-            e.shiftKey
+            e.shiftKey ? -1 : 1
           );
       },
     },
@@ -279,6 +275,78 @@
 
   function olDecorator(e) {
     decorateLines(this, methods.olDecorator.createEvalStr(e));
+
+    if (methods === markdownMethods) {
+      renumberList(this.textarea);
+    }
+  }
+
+  function renumberList(textarea) {
+    // Backup selection range
+    const selectionStart = textarea.selectionStart;
+    const selectionEnd = textarea.selectionEnd;
+
+    // For Markdown, renumber the ordered list
+    const { listStart, listEnd } = detectSelectedList(textarea);
+
+    // Select the list
+    textarea.setSelectionRange(listStart, listEnd);
+
+    // Renumbering
+    let indexList = [];
+    decorateLines({ textarea }, (lineStr) =>
+      markdownMethods.evalStr(
+        markdownMethods.olDecorator,
+        lineStr,
+        0,
+        indexList
+      )
+    );
+
+    // Restore selection range
+    textarea.setSelectionRange(selectionStart, selectionEnd);
+  }
+
+  function detectSelectedList(textarea) {
+    const start = textarea.selectionStart;
+    const beforeText = textarea.value.substring(0, start);
+    const beforeTextSplitted = beforeText.split("\n");
+    const afterText = textarea.value.substring(start);
+    const afterTextSplitted = afterText.split("\n");
+    const currentLinePrefix = beforeTextSplitted.slice(-1)[0];
+    const currentLineSuffix = afterTextSplitted[0];
+    const currentLine = currentLinePrefix + currentLineSuffix;
+
+    let listBeforeLength = 0;
+    let listAfterLength = 0;
+    let listStart = start;
+    let listEnd = listStart;
+
+    if (methods.isOl(currentLine)) {
+      // Search list item before cursor
+      for (let i = beforeTextSplitted.length - 2; i >= 0; i--) {
+        const line = beforeTextSplitted[i];
+        if (methods.isOl(line)) {
+          listBeforeLength += line.length + 1; // +1 for \n
+        } else {
+          break;
+        }
+      }
+      listStart = listStart - currentLinePrefix.length - listBeforeLength;
+
+      // Search list item after cursor
+      for (let i = 1; i < afterTextSplitted.length; i++) {
+        const line = afterTextSplitted[i];
+        if (methods.isOl(line)) {
+          listAfterLength += line.length + 1; // +1 for \n
+        } else {
+          break;
+        }
+      }
+      listEnd = listEnd + currentLineSuffix.length + listAfterLength;
+    }
+
+    return { listStart, listEnd };
   }
 
   function getListInfo(line) {
@@ -313,7 +381,7 @@
         "",
         isTextile ? listInfo.markerOrIndex : listInfo.tabCount,
         null,
-        null,
+        1,
         listInfo.markerOrIndex
       );
       changed = head !== line;
@@ -321,7 +389,8 @@
       head = methods.olDecorator.fnDefault(
         "",
         isTextile ? listInfo.markerOrIndex : listInfo.tabCount,
-        isTextile ? false : listInfo.markerOrIndex + 1
+        isTextile ? false : listInfo.markerOrIndex + 1,
+        1
       );
       changed =
         (isTextile
