@@ -241,6 +241,7 @@
     const afterTextSplitted = text.substring(end).split("\n");
     const selectedTextBlock =
       beforeTextSplitted.slice(-1)[0] + selectedText + afterTextSplitted[0];
+    const startOfLine = beforeTextSplitted.slice(-1)[0].length;
 
     const selectedTextBlockReplaced = selectedTextBlock
       .replace(/\r/g, "")
@@ -255,15 +256,19 @@
       (afterTextSplitted.length > 1 ? "\n" : "") +
       afterTextSplitted.slice(1).join("\n");
 
-    const startNew =
-      start +
+    const startDelta =
       selectedTextBlockReplaced.split("\n")[0].length -
       selectedTextBlock.split("\n")[0].length;
+    const startNew =
+      startOfLine + startDelta > 0 ? start + startDelta : start - startOfLine;
 
     const endNew =
       end + selectedTextBlockReplaced.length - selectedTextBlock.length;
 
-    textarea.setSelectionRange(startNew, endNew);
+    textarea.setSelectionRange(
+      Math.max(0, startNew),
+      Math.max(0, startNew, endNew)
+    );
 
     textarea.focus();
   }
@@ -360,16 +365,22 @@
     textarea.setSelectionRange(newStart, newStart);
   }
 
-  function handleTabKey(e, jsToolBarInstance) {
-    const textarea = jsToolBarInstance.textarea;
+  function extractCurrentLine(textarea) {
     const start = textarea.selectionStart;
     const beforeText = textarea.value.substring(0, start);
-    const beforeLastLine = beforeText.split("\n").slice(-1)[0];
+    const afterText = textarea.value.substring(start);
+    const currentLinePrefix = beforeText.split("\n").slice(-1)[0];
+    const currentLineSuffix = afterText.split("\n")[0];
+    return currentLinePrefix + currentLineSuffix;
+  }
 
-    if (methods.isUl(beforeLastLine)) {
+  function handleTabKey(e, jsToolBarInstance) {
+    const currentLine = extractCurrentLine(jsToolBarInstance.textarea);
+
+    if (methods.isUl(currentLine)) {
       e.preventDefault();
       ulDecorator.call(jsToolBarInstance, e);
-    } else if (methods.isOl(beforeLastLine)) {
+    } else if (methods.isOl(currentLine)) {
       e.preventDefault();
       olDecorator.call(jsToolBarInstance, e);
     }
@@ -382,14 +393,13 @@
     const start = textarea.selectionStart;
     const beforeText = textarea.value.substring(0, start);
     const beforeTextSplitted = beforeText.split("\n");
-    const beforeLastLine = beforeTextSplitted.slice(-1)[0];
-
-    const listInfo = getListInfo(beforeLastLine);
+    const currentLinePrefix = beforeTextSplitted.slice(-1)[0];
+    const listInfo = getListInfo(currentLinePrefix);
     if (!listInfo) return;
 
     const { head, changed, offset } = prepareNewLine(
       listInfo,
-      beforeLastLine,
+      currentLinePrefix,
       isTextile
     );
 
@@ -400,13 +410,10 @@
   }
 
   function handleSlashKey(e, jsToolBarInstance) {
-    const textarea = jsToolBarInstance.textarea;
-    const start = textarea.selectionStart;
-    const beforeText = textarea.value.substring(0, start);
-    const beforeLastLine = beforeText.split("\n").slice(-1)[0];
-
     e.preventDefault();
-    if (methods.isOl(beforeLastLine)) {
+
+    const currentLine = extractCurrentLine(jsToolBarInstance.textarea);
+    if (methods.isOl(currentLine)) {
       // ulDecorator.call(jsToolBarInstance, e);
       decorateLines(jsToolBarInstance, methods.olDecorator.fnClear);
     } else {
@@ -415,13 +422,10 @@
   }
 
   function handlePeriodKey(e, jsToolBarInstance) {
-    const textarea = jsToolBarInstance.textarea;
-    const start = textarea.selectionStart;
-    const beforeText = textarea.value.substring(0, start);
-    const beforeLastLine = beforeText.split("\n").slice(-1)[0];
-
     e.preventDefault();
-    if (methods.isUl(beforeLastLine)) {
+
+    const currentLine = extractCurrentLine(jsToolBarInstance.textarea);
+    if (methods.isUl(currentLine)) {
       // olDecorator.call(jsToolBarInstance, e);
       decorateLines(jsToolBarInstance, methods.ulDecorator.fnClear);
     } else {
