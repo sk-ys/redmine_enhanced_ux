@@ -3,7 +3,7 @@
 // Type:               JavaScript
 // Comment:            Enhanced list button
 (() => {
-  const tabSize = 2;
+  const TAB_SIZE = 2;
   const DEFAULT_MARKDOWN_UL_MARKER = "*";
   let methods = null;
 
@@ -18,7 +18,7 @@
 
   function calcTabCount(str) {
     const startSpaceCount = str.length - str.trimStart().length;
-    return Math.floor(startSpaceCount / tabSize);
+    return Math.floor(startSpaceCount / TAB_SIZE);
   }
 
   const markdownMethods = {
@@ -70,14 +70,14 @@
         if (tabCount + tabShift < 0) {
           lineStr = markdownMethods.ulDecorator.fnClear(lineStr);
         } else {
-          lineStr = lineStr.replace(/^\s*/, " ".repeat(newTabCount * tabSize));
+          lineStr = lineStr.replace(/^\s*/, " ".repeat(newTabCount * TAB_SIZE));
         }
         return lineStr;
       },
       fnOl: (lineStr, tabCount) => {
         return lineStr.replace(
           /^\s*\d+\.\s/,
-          " ".repeat(tabCount * tabSize) + DEFAULT_MARKDOWN_UL_MARKER + " "
+          " ".repeat(tabCount * TAB_SIZE) + DEFAULT_MARKDOWN_UL_MARKER + " "
         );
       },
       fnDefault: (
@@ -90,7 +90,7 @@
         if (tabShift < 1) return lineStr;
         return lineStr.replace(
           /^\s*/,
-          " ".repeat(tabCount * tabSize) + sign + " "
+          " ".repeat(tabCount * TAB_SIZE) + sign + " "
         );
       },
       fnClear: (lineStr) => {
@@ -116,7 +116,7 @@
       fnUl: (lineStr, tabCount, index) => {
         return lineStr.replace(
           /^\s*[*-]\s/,
-          " ".repeat(tabCount * tabSize) + index + ". "
+          " ".repeat(tabCount * TAB_SIZE) + index + ". "
         );
       },
       fnOl: (lineStr, tabCount, index, tabShift) => {
@@ -126,7 +126,7 @@
         } else {
           lineStr = lineStr.replace(
             /^\s*\d+\.\s/,
-            " ".repeat(newTabCount * tabSize) + index + ". "
+            " ".repeat(newTabCount * TAB_SIZE) + index + ". "
           );
         }
         return lineStr;
@@ -135,7 +135,7 @@
         if (tabShift < 1) return lineStr;
         return lineStr.replace(
           /^\s*/,
-          " ".repeat(tabCount * tabSize) + index + ". "
+          " ".repeat(tabCount * TAB_SIZE) + index + ". "
         );
       },
       fnClear: (lineStr) => {
@@ -297,10 +297,10 @@
 
     if (firstLineInfo && !firstLineReplacedInfo) {
       // Clear
-      if (startOfLine <= firstLineInfo.tabCount * tabSize) {
+      if (startOfLine <= firstLineInfo.tabCount * TAB_SIZE) {
         startNew = start;
       } else if (startOfLine <= firstLineHeader.length) {
-        startNew = start - startOfLine + firstLineInfo.tabCount * tabSize;
+        startNew = start - startOfLine + firstLineInfo.tabCount * TAB_SIZE;
       }
       endNew += textBlockDelta;
     } else if (!firstLineInfo && firstLineReplacedInfo) {
@@ -583,9 +583,9 @@
     const suffixListInfo = getListInfo(currentLineSuffix);
     const { head, changed, offset } = suffixListInfo
       ? {
-          head: " ".repeat(prefixListInfo.tabCount * tabSize),
+          head: " ".repeat(prefixListInfo.tabCount * TAB_SIZE),
           changed: true,
-          offset: prefixListInfo.tabCount * tabSize + 1,
+          offset: prefixListInfo.tabCount * TAB_SIZE + 1,
         }
       : prepareNewLine(prefixListInfo, currentLinePrefix, isTextile);
 
