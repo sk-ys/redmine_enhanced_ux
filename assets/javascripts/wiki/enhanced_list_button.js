@@ -270,14 +270,52 @@
       (afterTextSplitted.length > 1 ? "\n" : "") +
       afterTextSplitted.slice(1).join("\n");
 
-    const startDelta =
-      selectedTextBlockReplaced.split("\n")[0].length -
-      selectedTextBlock.split("\n")[0].length;
-    const startNew =
-      startOfLine + startDelta > 0 ? start + startDelta : start - startOfLine;
+    const firstLine = selectedTextBlock.split("\n")[0];
+    const firstLineReplaced = selectedTextBlockReplaced.split("\n")[0];
 
-    const endNew =
-      end + selectedTextBlockReplaced.length - selectedTextBlock.length;
+    const firstLineInfo = getListInfo(firstLine);
+    const firstLineHeader = firstLineInfo
+      ? methods.extractHeader(firstLine)
+      : " ".repeat(firstLine.length - firstLine.trimStart().length);
+    const firstLineReplacedInfo = getListInfo(firstLineReplaced);
+    const firstLineDelta = firstLineReplaced.length - firstLine.length;
+    const textBlockDelta =
+      selectedTextBlockReplaced.length - selectedTextBlock.length;
+
+    let startNew =
+      startOfLine + firstLineDelta > 0
+        ? start + firstLineDelta
+        : start - startOfLine;
+    let endNew = end;
+
+    if (firstLineInfo && !firstLineReplacedInfo) {
+      // Clear
+      if (startOfLine <= firstLineInfo.tabCount * tabSize) {
+        startNew = start;
+      } else if (startOfLine <= firstLineHeader.length) {
+        startNew = start - startOfLine + firstLineInfo.tabCount * tabSize;
+      }
+      endNew += textBlockDelta;
+    } else if (!firstLineInfo && firstLineReplacedInfo) {
+      // Add
+      if (startOfLine < firstLineHeader.length) {
+        startNew = start;
+      } else {
+        endNew += textBlockDelta;
+      }
+    } else if (firstLineInfo && firstLineReplacedInfo) {
+      if (firstLineInfo.type !== firstLineReplacedInfo.type) {
+        // Change type
+        if (startOfLine < firstLineHeader.length) {
+          startNew = start;
+        } else {
+          endNew += textBlockDelta;
+        }
+      } else {
+        // Tab shift
+        endNew += textBlockDelta;
+      }
+    }
 
     textarea.setSelectionRange(
       Math.max(0, startNew),
