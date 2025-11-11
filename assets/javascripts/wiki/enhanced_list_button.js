@@ -4,6 +4,7 @@
 // Comment:            Enhanced list button
 (() => {
   const tabSize = 2;
+  const DEFAULT_MARKDOWN_UL_MARKER = "*";
   let methods = null;
 
   function checkJsToolBarExist() {
@@ -76,10 +77,16 @@
       fnOl: (lineStr, tabCount) => {
         return lineStr.replace(
           /^\s*\d+\.\s/,
-          " ".repeat(tabCount * tabSize) + "* "
+          " ".repeat(tabCount * tabSize) + DEFAULT_MARKDOWN_UL_MARKER + " "
         );
       },
-      fnDefault: (lineStr, tabCount, _, tabShift, sign = "*") => {
+      fnDefault: (
+        lineStr,
+        tabCount,
+        _,
+        tabShift,
+        sign = DEFAULT_MARKDOWN_UL_MARKER
+      ) => {
         if (tabShift < 1) return lineStr;
         return lineStr.replace(
           /^\s*/,
