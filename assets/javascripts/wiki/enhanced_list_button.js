@@ -37,6 +37,12 @@
     isList: (text) => {
       return /^\s*[*\-]|\d+\.\s/.test(text);
     },
+    extractHeader: (lineStr) => {
+      const match = /^\s*(?:[*\-]|\d+\.\s)/.exec(lineStr);
+      if (match) {
+        return match[0];
+      }
+    },
     evalStr: (decorator, lineStr, tabShift, indexList) => {
       const tabCount = calcTabCount(lineStr);
 
@@ -157,6 +163,12 @@
     },
     isList: (text) => {
       return /^[\*\#]+\s/.test(text);
+    },
+    extractHeader: (lineStr) => {
+      const match = /^[\*\#]+\s/.exec(lineStr);
+      if (match) {
+        return match[0];
+      }
     },
     evalStr: (decorator, lineStr, tabShift) => {
       const ulIndex = textileMethods.isUl(lineStr);
@@ -559,6 +571,22 @@
     }
   }
 
+  function handleHomeKey(e, jsToolBarInstance) {
+    const textarea = jsToolBarInstance.textarea;
+    const start = textarea.selectionStart;
+    const currentLinePrefix = textarea.value
+      .substring(0, start)
+      .split("\n")
+      .slice(-1)[0];
+
+    const header = methods.extractHeader(currentLinePrefix);
+    if (header !== undefined && currentLinePrefix.length > header.length) {
+      e.preventDefault();
+      const newPos = start - currentLinePrefix.length + header.length;
+      textarea.setSelectionRange(newPos, newPos);
+    }
+  }
+
   function setUpJsToolbar() {
     if (!checkJsToolBarExist()) return false;
 
@@ -601,6 +629,10 @@
           case ".":
             if (!e.ctrlKey && !e.metaKey) return;
             handlePeriodKey(e, jsToolBarInstance);
+            break;
+          case "Home":
+            if (e.ctrlKey || e.metaKey) return;
+            handleHomeKey(e, jsToolBarInstance);
             break;
           default:
             break;
