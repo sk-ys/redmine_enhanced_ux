@@ -458,7 +458,7 @@
     const afterText = textarea.value.substring(start);
     const currentLinePrefix = beforeText.split("\n").slice(-1)[0];
     const currentLineSuffix = afterText.split("\n")[0];
-    return currentLinePrefix + currentLineSuffix;
+    return [currentLinePrefix, currentLineSuffix];
   }
 
   function handleTabKey(e, jsToolBarInstance) {
@@ -531,15 +531,18 @@
     const start = textarea.selectionStart;
     const beforeText = textarea.value.substring(0, start);
     const beforeTextSplitted = beforeText.split("\n");
-    const currentLinePrefix = beforeTextSplitted.slice(-1)[0];
-    const listInfo = getListInfo(currentLinePrefix);
-    if (!listInfo) return;
+    const [currentLinePrefix, currentLineSuffix] = extractCurrentLine(textarea);
+    const prefixListInfo = getListInfo(currentLinePrefix);
+    if (!prefixListInfo) return;
 
-    const { head, changed, offset } = prepareNewLine(
-      listInfo,
-      currentLinePrefix,
-      isTextile
-    );
+    const suffixListInfo = getListInfo(currentLineSuffix);
+    const { head, changed, offset } = suffixListInfo
+      ? {
+          head: " ".repeat(prefixListInfo.tabCount * tabSize),
+          changed: true,
+          offset: prefixListInfo.tabCount * tabSize + 1,
+        }
+      : prepareNewLine(prefixListInfo, currentLinePrefix, isTextile);
 
     if (head === null) return;
 
@@ -550,7 +553,7 @@
   function handleSlashKey(e, jsToolBarInstance) {
     e.preventDefault();
 
-    const currentLine = extractCurrentLine(jsToolBarInstance.textarea);
+    const currentLine = extractCurrentLine(jsToolBarInstance.textarea).join("");
     if (methods.isOl(currentLine)) {
       // ulDecorator.call(jsToolBarInstance, e);
       decorateLines(jsToolBarInstance, methods.olDecorator.fnClear);
@@ -562,7 +565,7 @@
   function handlePeriodKey(e, jsToolBarInstance) {
     e.preventDefault();
 
-    const currentLine = extractCurrentLine(jsToolBarInstance.textarea);
+    const currentLine = extractCurrentLine(jsToolBarInstance.textarea).join("");
     if (methods.isUl(currentLine)) {
       // olDecorator.call(jsToolBarInstance, e);
       decorateLines(jsToolBarInstance, methods.ulDecorator.fnClear);
