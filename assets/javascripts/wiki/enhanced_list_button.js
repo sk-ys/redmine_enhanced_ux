@@ -3,7 +3,12 @@
 // Type:               JavaScript
 // Comment:            Enhanced list button
 (() => {
-  const tabSize = 2;
+  const TAB_SIZE = 2;
+  const DEFAULT_MARKDOWN_UL_MARKER = "*";
+  const UL_KEYBOARD_SHORTCUT = ".";
+  const OL_KEYBOARD_SHORTCUT = "/";
+  const TL_KEYBOARD_SHORTCUT = ",";
+  const TOGGLE_TL_KEYBOARD_SHORTCUT = ";";
   let methods = null;
 
   function checkJsToolBarExist() {
@@ -17,15 +22,14 @@
 
   function calcTabCount(str) {
     const startSpaceCount = str.length - str.trimStart().length;
-    return Math.floor(startSpaceCount / tabSize);
+    return Math.floor(startSpaceCount / TAB_SIZE);
   }
 
   const markdownMethods = {
     isUl: (text) => {
       const trimmed = text.trimStart();
-      return trimmed.startsWith("* ") || trimmed.startsWith("- ")
-        ? trimmed[0]
-        : false;
+      // return trimmed.startsWith("* ") || trimmed.startsWith("- ")
+      return /^[*-]\s(?!\[[x\s]\]\s)/.test(trimmed) ? trimmed[0] : false;
     },
     isOl: (text) => {
       const trimmed = text.trimStart();
@@ -34,7 +38,27 @@
       const numStr = trimmed.substring(0, posDot);
       return /^\d+$/.test(numStr) ? Number(numStr) : false;
     },
-    evalStr: (decorator, lineStr, shift, indexList) => {
+    isTl: (text) => {
+      const trimmed = text.trimStart();
+      const start2 = trimmed.slice(0, 2);
+      if (start2 !== "* " && start2 !== "- ") return false;
+      const trimmed2 = trimmed.substr(2);
+      return trimmed2.startsWith("[ ] ")
+        ? start2[0] + "0"
+        : trimmed2.startsWith("[x] ")
+        ? start2[0] + "1"
+        : false;
+    },
+    isList: (text) => {
+      return /^\s*[*\-]|\d+\.\s/.test(text);
+    },
+    extractHeader: (lineStr) => {
+      const match = /^\s*(?:[*\-]\s\[[x\s]\]|[*\-]|\d+\.)\s/.exec(lineStr);
+      if (match) {
+        return match[0];
+      }
+    },
+    evalStr: (decorator, lineStr, tabShift, indexList) => {
       const tabCount = calcTabCount(lineStr);
 
       // Manage list index for ordered lists
@@ -46,36 +70,46 @@
       const index = indexList[tabCount];
 
       if (markdownMethods.isUl(lineStr)) {
-        lineStr = decorator.fnUl(lineStr, tabCount, index, shift);
+        lineStr = decorator.fnUl(lineStr, tabCount, index, tabShift);
       } else if (markdownMethods.isOl(lineStr)) {
-        lineStr = decorator.fnOl(lineStr, tabCount, index, shift);
+        lineStr = decorator.fnOl(lineStr, tabCount, index, tabShift);
+      } else if (markdownMethods.isTl(lineStr)) {
+        lineStr = decorator.fnTl(lineStr, tabCount, index, tabShift);
       } else {
-        lineStr = decorator.fnDefault(lineStr, tabCount, index, shift);
+        lineStr = decorator.fnDefault(lineStr, tabCount, index, tabShift);
       }
       return lineStr;
     },
     ulDecorator: {
-      fnUl: (lineStr, tabCount, _, shift) => {
-        const tabOffset = shift ? -1 : 1;
-        const newTabCount = Math.max(0, tabCount + tabOffset);
-        if (tabCount + tabOffset < 0) {
+      fnUl: (lineStr, tabCount, _, tabShift) => {
+        const newTabCount = Math.max(0, tabCount + tabShift);
+        if (tabCount + tabShift < 0) {
           lineStr = markdownMethods.ulDecorator.fnClear(lineStr);
         } else {
-          lineStr = lineStr.replace(/^\s*/, " ".repeat(newTabCount * tabSize));
+          lineStr = lineStr.replace(/^\s*/, " ".repeat(newTabCount * TAB_SIZE));
         }
         return lineStr;
       },
       fnOl: (lineStr, tabCount) => {
         return lineStr.replace(
           /^\s*\d+\.\s/,
-          " ".repeat(tabCount * tabSize) + "* "
+          " ".repeat(tabCount * TAB_SIZE) + DEFAULT_MARKDOWN_UL_MARKER + " "
         );
       },
-      fnDefault: (lineStr, tabCount, _, shift, sign = "*") => {
-        if (shift) return lineStr;
+      fnTl: (lineStr, _) => {
+        return lineStr.replace(/^(\s*[*-])\s\[[x\s]\]\s/, "$1 ");
+      },
+      fnDefault: (
+        lineStr,
+        tabCount,
+        _,
+        tabShift,
+        sign = DEFAULT_MARKDOWN_UL_MARKER
+      ) => {
+        if (tabShift < 1) return lineStr;
         return lineStr.replace(
           /^\s*/,
-          " ".repeat(tabCount * tabSize) + sign + " "
+          " ".repeat(tabCount * TAB_SIZE) + sign + " "
         );
       },
       fnClear: (lineStr) => {
@@ -92,7 +126,7 @@
           markdownMethods.evalStr(
             markdownMethods.ulDecorator,
             lineStr,
-            e.shiftKey,
+            e.shiftKey ? -1 : 1,
             indexList
           );
       },
@@ -101,24 +135,32 @@
       fnUl: (lineStr, tabCount, index) => {
         return lineStr.replace(
           /^\s*[*-]\s/,
-          " ".repeat(tabCount * tabSize) + index + ". "
+          " ".repeat(tabCount * TAB_SIZE) + index + ". "
         );
       },
-      fnOl: (lineStr, tabCount, _, shift) => {
-        const tabOffset = shift ? -1 : 1;
-        const newTabCount = Math.max(0, tabCount + tabOffset);
-        if (tabCount + tabOffset < 0) {
+      fnOl: (lineStr, tabCount, index, tabShift) => {
+        const newTabCount = Math.max(0, tabCount + tabShift);
+        if (tabCount + tabShift < 0) {
           lineStr = markdownMethods.olDecorator.fnClear(lineStr);
         } else {
-          lineStr = lineStr.replace(/^\s*/, " ".repeat(newTabCount * tabSize));
+          lineStr = lineStr.replace(
+            /^\s*\d+\.\s/,
+            " ".repeat(newTabCount * TAB_SIZE) + index + ". "
+          );
         }
         return lineStr;
       },
-      fnDefault: (lineStr, tabCount, index, shift) => {
-        if (shift) return lineStr;
+      fnTl: (lineStr, tabCount, index) => {
+        return lineStr.replace(
+          /^\s*[*-]\s\[[x\s]\]\s/,
+          " ".repeat(tabCount * TAB_SIZE) + index + ". "
+        );
+      },
+      fnDefault: (lineStr, tabCount, index, tabShift) => {
+        if (tabShift < 1) return lineStr;
         return lineStr.replace(
           /^\s*/,
-          " ".repeat(tabCount * tabSize) + index + ". "
+          " ".repeat(tabCount * TAB_SIZE) + index + ". "
         );
       },
       fnClear: (lineStr) => {
@@ -135,7 +177,64 @@
           markdownMethods.evalStr(
             markdownMethods.olDecorator,
             lineStr,
-            e.shiftKey,
+            e.shiftKey ? -1 : 1,
+            indexList
+          );
+      },
+    },
+    tlDecorator: {
+      fnUl: (lineStr, tabCount) => {
+        return lineStr.replace(
+          /^\s*([*-])\s/,
+          " ".repeat(tabCount * TAB_SIZE) + "$1 [ ] "
+        );
+      },
+      fnOl: (lineStr, tabCount) => {
+        return lineStr.replace(
+          /^\s*\d+\.\s/,
+          " ".repeat(tabCount * TAB_SIZE) + DEFAULT_MARKDOWN_UL_MARKER + " [ ] "
+        );
+      },
+      fnTl: (lineStr, tabCount, _, tabShift) => {
+        const newTabCount = Math.max(0, tabCount + tabShift);
+        if (tabCount + tabShift < 0) {
+          lineStr = markdownMethods.tlDecorator.fnClear(lineStr);
+        } else {
+          lineStr = lineStr.replace(
+            /^\s*([*-]\s\[[x\s]\]\s)/,
+            " ".repeat(newTabCount * TAB_SIZE) + "$1"
+          );
+        }
+        return lineStr;
+      },
+      fnDefault: (
+        lineStr,
+        tabCount,
+        _,
+        tabShift,
+        sign = DEFAULT_MARKDOWN_UL_MARKER
+      ) => {
+        if (tabShift < 1) return lineStr;
+        return lineStr.replace(
+          /^\s*/,
+          " ".repeat(tabCount * TAB_SIZE) + sign + " [ ] "
+        );
+      },
+      fnClear: (lineStr) => {
+        const trimmed = lineStr.trimStart();
+        const beforeSpace = lineStr.substring(
+          0,
+          lineStr.length - trimmed.length
+        );
+        return beforeSpace + trimmed.replace(/^[*-]\s\[[x\s]\]\s/, "");
+      },
+      createEvalStr: (e) => {
+        let indexList = [];
+        return (lineStr) =>
+          markdownMethods.evalStr(
+            markdownMethods.tlDecorator,
+            lineStr,
+            e.shiftKey ? -1 : 1,
             indexList
           );
       },
@@ -151,25 +250,33 @@
       const res = /^\#+ /.exec(text);
       return res ? res[0].length - 1 : false;
     },
-    evalStr: (decorator, lineStr, shift) => {
+    isList: (text) => {
+      return /^[\*\#]+\s/.test(text);
+    },
+    extractHeader: (lineStr) => {
+      const match = /^[\*\#]+\s/.exec(lineStr);
+      if (match) {
+        return match[0];
+      }
+    },
+    evalStr: (decorator, lineStr, tabShift) => {
       const ulIndex = textileMethods.isUl(lineStr);
       if (ulIndex) {
-        lineStr = decorator.fnUl(lineStr, ulIndex, shift);
+        lineStr = decorator.fnUl(lineStr, ulIndex, tabShift);
       } else {
         const olIndex = textileMethods.isOl(lineStr);
         if (olIndex) {
-          lineStr = decorator.fnOl(lineStr, olIndex, shift);
+          lineStr = decorator.fnOl(lineStr, olIndex, tabShift);
         } else {
-          lineStr = decorator.fnDefault(lineStr, 1, shift);
+          lineStr = decorator.fnDefault(lineStr, 1, tabShift);
         }
       }
       return lineStr;
     },
     ulDecorator: {
-      fnUl: (lineStr, tabCount, shift) => {
-        const tabOffset = shift ? -1 : 1;
-        const newTabCount = Math.max(0, tabCount + tabOffset);
-        if (tabCount + tabOffset < 1) {
+      fnUl: (lineStr, tabCount, tabShift) => {
+        const newTabCount = Math.max(0, tabCount + tabShift);
+        if (tabCount + tabShift < 1) {
           lineStr = textileMethods.ulDecorator.fnClear(lineStr);
         } else {
           lineStr = lineStr.replace(/^\*+\s/, "*".repeat(newTabCount) + " ");
@@ -179,8 +286,8 @@
       fnOl: (lineStr, tabCount) => {
         return lineStr.replace(/^#+\s/, "*".repeat(tabCount) + " ");
       },
-      fnDefault: (lineStr, tabCount, shift) => {
-        if (shift) return lineStr;
+      fnDefault: (lineStr, tabCount, tabShift) => {
+        if (tabShift < 1) return lineStr;
         return "*".repeat(tabCount) + " " + lineStr;
       },
       fnClear: (lineStr) => {
@@ -191,7 +298,7 @@
           textileMethods.evalStr(
             textileMethods.ulDecorator,
             lineStr,
-            e.shiftKey
+            e.shiftKey ? -1 : 1
           );
       },
     },
@@ -199,18 +306,17 @@
       fnUl: (lineStr, tabCount) => {
         return lineStr.replace(/^\*+\s/, "#".repeat(tabCount) + " ");
       },
-      fnOl: (lineStr, tabCount, shift) => {
-        const tabOffset = shift ? -1 : 1;
-        const newTabCount = Math.max(0, tabCount + tabOffset);
-        if (tabCount + tabOffset < 1) {
+      fnOl: (lineStr, tabCount, tabShift) => {
+        const newTabCount = Math.max(0, tabCount + tabShift);
+        if (tabCount + tabShift < 1) {
           lineStr = textileMethods.olDecorator.fnClear(lineStr);
         } else {
           lineStr = lineStr.replace(/^#+\s/, "#".repeat(newTabCount) + " ");
         }
         return lineStr;
       },
-      fnDefault: (lineStr, tabCount, shift) => {
-        if (shift) return lineStr;
+      fnDefault: (lineStr, tabCount, tabShift) => {
+        if (tabShift < 1) return lineStr;
         return "#".repeat(tabCount) + " " + lineStr;
       },
       fnClear: (lineStr) => {
@@ -221,7 +327,7 @@
           textileMethods.evalStr(
             textileMethods.olDecorator,
             lineStr,
-            e.shiftKey
+            e.shiftKey ? -1 : 1
           );
       },
     },
@@ -238,6 +344,7 @@
     const afterTextSplitted = text.substring(end).split("\n");
     const selectedTextBlock =
       beforeTextSplitted.slice(-1)[0] + selectedText + afterTextSplitted[0];
+    const startOfLine = beforeTextSplitted.slice(-1)[0].length;
 
     const selectedTextBlockReplaced = selectedTextBlock
       .replace(/\r/g, "")
@@ -252,15 +359,57 @@
       (afterTextSplitted.length > 1 ? "\n" : "") +
       afterTextSplitted.slice(1).join("\n");
 
-    const startNew =
-      start +
-      selectedTextBlockReplaced.split("\n")[0].length -
-      selectedTextBlock.split("\n")[0].length;
+    const firstLine = selectedTextBlock.split("\n")[0];
+    const firstLineReplaced = selectedTextBlockReplaced.split("\n")[0];
 
-    const endNew =
-      end + selectedTextBlockReplaced.length - selectedTextBlock.length;
+    const firstLineInfo = getListInfo(firstLine);
+    const firstLineHeader = firstLineInfo
+      ? methods.extractHeader(firstLine)
+      : " ".repeat(firstLine.length - firstLine.trimStart().length);
+    const firstLineReplacedInfo = getListInfo(firstLineReplaced);
+    const firstLineDelta = firstLineReplaced.length - firstLine.length;
+    const textBlockDelta =
+      selectedTextBlockReplaced.length - selectedTextBlock.length;
 
-    textarea.setSelectionRange(startNew, endNew);
+    let startNew =
+      startOfLine + firstLineDelta > 0
+        ? start + firstLineDelta
+        : start - startOfLine;
+    let endNew = end;
+
+    if (firstLineInfo && !firstLineReplacedInfo) {
+      // Clear
+      if (startOfLine <= firstLineInfo.tabCount * TAB_SIZE) {
+        startNew = start;
+      } else if (startOfLine <= firstLineHeader.length) {
+        startNew = start - startOfLine + firstLineInfo.tabCount * TAB_SIZE;
+      }
+      endNew += textBlockDelta;
+    } else if (!firstLineInfo && firstLineReplacedInfo) {
+      // Add
+      if (startOfLine < firstLineHeader.length) {
+        startNew = start;
+      } else {
+        endNew += textBlockDelta;
+      }
+    } else if (firstLineInfo && firstLineReplacedInfo) {
+      if (firstLineInfo.type !== firstLineReplacedInfo.type) {
+        // Change type
+        if (startOfLine < firstLineHeader.length) {
+          startNew = start;
+        } else {
+          endNew += textBlockDelta;
+        }
+      } else {
+        // Tab shift
+        endNew += textBlockDelta;
+      }
+    }
+
+    textarea.setSelectionRange(
+      Math.max(0, startNew),
+      Math.max(0, startNew, endNew)
+    );
 
     textarea.focus();
   }
@@ -271,6 +420,82 @@
 
   function olDecorator(e) {
     decorateLines(this, methods.olDecorator.createEvalStr(e));
+
+    if (methods === markdownMethods) {
+      renumberList(this.textarea);
+    }
+  }
+
+  function tlDecorator(e) {
+    decorateLines(this, methods.tlDecorator.createEvalStr(e));
+  }
+
+  function renumberList(textarea) {
+    // Backup selection range
+    const selectionStart = textarea.selectionStart;
+    const selectionEnd = textarea.selectionEnd;
+
+    // For Markdown, renumber the ordered list
+    const { listStart, listEnd } = detectSelectedList(textarea, methods.isOl);
+
+    // Select the list
+    textarea.setSelectionRange(listStart, listEnd);
+
+    // Renumbering
+    let indexList = [];
+    decorateLines({ textarea }, (lineStr) =>
+      markdownMethods.evalStr(
+        markdownMethods.olDecorator,
+        lineStr,
+        0,
+        indexList
+      )
+    );
+
+    // Restore selection range
+    textarea.setSelectionRange(selectionStart, selectionEnd);
+  }
+
+  function detectSelectedList(textarea, fn) {
+    const start = textarea.selectionStart;
+    const beforeText = textarea.value.substring(0, start);
+    const beforeTextSplitted = beforeText.split("\n");
+    const afterText = textarea.value.substring(start);
+    const afterTextSplitted = afterText.split("\n");
+    const currentLinePrefix = beforeTextSplitted.slice(-1)[0];
+    const currentLineSuffix = afterTextSplitted[0];
+    const currentLine = currentLinePrefix + currentLineSuffix;
+
+    let listBeforeLength = 0;
+    let listAfterLength = 0;
+    let listStart = start;
+    let listEnd = listStart;
+
+    if (fn(currentLine)) {
+      // Search list item before cursor
+      for (let i = beforeTextSplitted.length - 2; i >= 0; i--) {
+        const line = beforeTextSplitted[i];
+        if (fn(line)) {
+          listBeforeLength += line.length + 1; // +1 for \n
+        } else {
+          break;
+        }
+      }
+      listStart = listStart - currentLinePrefix.length - listBeforeLength;
+
+      // Search list item after cursor
+      for (let i = 1; i < afterTextSplitted.length; i++) {
+        const line = afterTextSplitted[i];
+        if (fn(line)) {
+          listAfterLength += line.length + 1; // +1 for \n
+        } else {
+          break;
+        }
+      }
+      listEnd = listEnd + currentLineSuffix.length + listAfterLength;
+    }
+
+    return { listStart, listEnd };
   }
 
   function getListInfo(line) {
@@ -293,6 +518,15 @@
       };
     }
 
+    const tlMarker = methods.isTl(line);
+    if (tlMarker !== false) {
+      return {
+        type: "tl",
+        markerOrIndex: tlMarker,
+        tabCount,
+      };
+    }
+
     return null;
   }
 
@@ -304,8 +538,8 @@
       head = methods.ulDecorator.fnDefault(
         "",
         isTextile ? listInfo.markerOrIndex : listInfo.tabCount,
-        null,
-        null,
+        1,
+        1,
         listInfo.markerOrIndex
       );
       changed = head !== line;
@@ -313,7 +547,8 @@
       head = methods.olDecorator.fnDefault(
         "",
         isTextile ? listInfo.markerOrIndex : listInfo.tabCount,
-        isTextile ? false : listInfo.markerOrIndex + 1
+        isTextile ? 1 : listInfo.markerOrIndex + 1,
+        1
       );
       changed =
         (isTextile
@@ -323,6 +558,15 @@
               listInfo.tabCount,
               listInfo.markerOrIndex
             )) !== line;
+    } else if (methods === markdownMethods && listInfo.type === "tl") {
+      head = methods.tlDecorator.fnDefault(
+        "",
+        listInfo.tabCount,
+        1,
+        1,
+        listInfo.markerOrIndex[0]
+      );
+      changed = head !== line;
     }
 
     const offset = changed ? 1 + head.length : -head.length;
@@ -357,19 +601,83 @@
     textarea.setSelectionRange(newStart, newStart);
   }
 
-  function handleTabKey(e, jsToolBarInstance) {
-    const textarea = jsToolBarInstance.textarea;
+  function extractCurrentLine(textarea) {
     const start = textarea.selectionStart;
     const beforeText = textarea.value.substring(0, start);
-    const beforeLastLine = beforeText.split("\n").slice(-1)[0];
+    const afterText = textarea.value.substring(start);
+    const currentLinePrefix = beforeText.split("\n").slice(-1)[0];
+    const currentLineSuffix = afterText.split("\n")[0];
+    return [currentLinePrefix, currentLineSuffix];
+  }
 
-    if (methods.isUl(beforeLastLine)) {
-      e.preventDefault();
-      ulDecorator.call(jsToolBarInstance, e);
-    } else if (methods.isOl(beforeLastLine)) {
-      e.preventDefault();
-      olDecorator.call(jsToolBarInstance, e);
+  function extractCurrentLines(textarea) {
+    const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
+    const beforeText = textarea.value.substring(0, start);
+    const selectedText = textarea.value.substring(start, end);
+    const afterText = textarea.value.substring(end);
+    const currentBlockPrefix = beforeText.split("\n").slice(-1)[0];
+    const currentBlockSuffix = afterText.split("\n")[0];
+    return [currentBlockPrefix, selectedText, currentBlockSuffix];
+  }
+
+  function getListDecorator(line) {
+    if (methods.isUl(line)) return ulDecorator;
+    if (methods.isOl(line)) return olDecorator;
+    if (methods?.isTl(line)) return tlDecorator;
+    return null;
+  }
+
+  function handleTabKey(e, jsToolBarInstance) {
+    const textarea = jsToolBarInstance.textarea;
+
+    // Backup selection range
+    const initialSelectionStart = textarea.selectionStart;
+    const initialSelectionEnd = textarea.selectionEnd;
+
+    const startLine =
+      textarea.value.lastIndexOf("\n", initialSelectionStart - 1) + 1;
+    const endLine =
+      textarea.value.indexOf("\n", initialSelectionEnd) === -1
+        ? textarea.value.length
+        : textarea.value.indexOf("\n", initialSelectionEnd);
+
+    const selectedLines = textarea.value
+      .substring(startLine, endLine)
+      .split("\n");
+
+    const tabCounts = selectedLines.map(calcTabCount);
+    const maxTabCount = Math.max(...tabCounts);
+    const lineLengths = selectedLines.map((line) => line.length);
+    const countShifts = selectedLines.map(() => 0);
+
+    for (let i = selectedLines.length - 1; i >= 0; i--) {
+      const line = selectedLines[i];
+      const cursorPos =
+        lineLengths.slice(0, i).reduce((a, b) => a + b, 0) + (i > 0 ? i : 0);
+
+      const decorator = getListDecorator(line);
+      if (decorator) {
+        e.preventDefault();
+        if (!(e.shiftKey && tabCounts[i] === 0) || maxTabCount === 0) {
+          textarea.setSelectionRange(
+            startLine + cursorPos,
+            startLine + cursorPos + line.length
+          );
+          decorator.call(jsToolBarInstance, e);
+        }
+
+        countShifts[i] = e.shiftKey
+          ? textarea.selectionEnd - (startLine + cursorPos + line.length)
+          : textarea.selectionStart - (startLine + cursorPos);
+      }
     }
+
+    // Restore selection range
+    textarea.setSelectionRange(
+      initialSelectionStart + countShifts[0],
+      initialSelectionEnd + countShifts.reduce((a, b) => a + b, 0)
+    );
   }
 
   function handleEnterKey(e, jsToolBarInstance, isTextile) {
@@ -379,16 +687,18 @@
     const start = textarea.selectionStart;
     const beforeText = textarea.value.substring(0, start);
     const beforeTextSplitted = beforeText.split("\n");
-    const beforeLastLine = beforeTextSplitted.slice(-1)[0];
+    const [currentLinePrefix, currentLineSuffix] = extractCurrentLine(textarea);
+    const prefixListInfo = getListInfo(currentLinePrefix);
+    if (!prefixListInfo) return;
 
-    const listInfo = getListInfo(beforeLastLine);
-    if (!listInfo) return;
-
-    const { head, changed, offset } = prepareNewLine(
-      listInfo,
-      beforeLastLine,
-      isTextile
-    );
+    const suffixListInfo = getListInfo(currentLineSuffix);
+    const { head, changed, offset } = suffixListInfo
+      ? {
+          head: " ".repeat(prefixListInfo.tabCount * TAB_SIZE),
+          changed: true,
+          offset: prefixListInfo.tabCount * TAB_SIZE + 1,
+        }
+      : prepareNewLine(prefixListInfo, currentLinePrefix, isTextile);
 
     if (head === null) return;
 
@@ -397,13 +707,10 @@
   }
 
   function handleSlashKey(e, jsToolBarInstance) {
-    const textarea = jsToolBarInstance.textarea;
-    const start = textarea.selectionStart;
-    const beforeText = textarea.value.substring(0, start);
-    const beforeLastLine = beforeText.split("\n").slice(-1)[0];
-
     e.preventDefault();
-    if (methods.isOl(beforeLastLine)) {
+
+    const currentLine = extractCurrentLine(jsToolBarInstance.textarea).join("");
+    if (methods.isOl(currentLine)) {
       // ulDecorator.call(jsToolBarInstance, e);
       decorateLines(jsToolBarInstance, methods.olDecorator.fnClear);
     } else {
@@ -412,13 +719,10 @@
   }
 
   function handlePeriodKey(e, jsToolBarInstance) {
-    const textarea = jsToolBarInstance.textarea;
-    const start = textarea.selectionStart;
-    const beforeText = textarea.value.substring(0, start);
-    const beforeLastLine = beforeText.split("\n").slice(-1)[0];
-
     e.preventDefault();
-    if (methods.isUl(beforeLastLine)) {
+
+    const currentLine = extractCurrentLine(jsToolBarInstance.textarea).join("");
+    if (methods.isUl(currentLine)) {
       // olDecorator.call(jsToolBarInstance, e);
       decorateLines(jsToolBarInstance, methods.ulDecorator.fnClear);
     } else {
@@ -426,15 +730,67 @@
     }
   }
 
+  function handleCommaKey(e, jsToolBarInstance) {
+    e.preventDefault();
+
+    const currentLine = extractCurrentLine(jsToolBarInstance.textarea).join("");
+    if (methods.isTl(currentLine)) {
+      decorateLines(jsToolBarInstance, methods.tlDecorator.fnClear);
+    } else {
+      tlDecorator.call(jsToolBarInstance, e);
+    }
+  }
+
+  function handleSemicolonKey(e, jsToolBarInstance) {
+    const currentBlock = extractCurrentLines(jsToolBarInstance.textarea).join(
+      ""
+    );
+    const currentBlockHasTl = currentBlock
+      .split("\n")
+      .filter((line) => methods.isTl(line));
+
+    if (currentBlockHasTl.length > 0) {
+      e.preventDefault();
+      decorateLines(jsToolBarInstance, (lineStr) => {
+        const tlInfo = methods.isTl(lineStr);
+        return tlInfo
+          ? lineStr.replace(/\[[x\s]\]/, tlInfo.endsWith("1") ? "[ ]" : "[x]")
+          : lineStr;
+      });
+    }
+  }
+
+  function handleHomeKey(e, jsToolBarInstance) {
+    const textarea = jsToolBarInstance.textarea;
+    const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
+    const currentLinePrefix = textarea.value
+      .substring(0, start)
+      .split("\n")
+      .slice(-1)[0];
+
+    const header = methods.extractHeader(currentLinePrefix);
+    if (header !== undefined && currentLinePrefix.length > header.length) {
+      e.preventDefault();
+      const newStart = start - currentLinePrefix.length + header.length;
+      textarea.setSelectionRange(newStart, e.shiftKey ? end : newStart);
+    }
+  }
+
   function setUpJsToolbar() {
     if (!checkJsToolBarExist()) return false;
 
+    // Replace existing functions on jsToolBar buttons
     if (jsToolBar.prototype.elements.ul !== undefined) {
       jsToolBar.prototype.elements.ul.fn.wiki = ulDecorator;
     }
 
     if (jsToolBar.prototype.elements.ol !== undefined) {
       jsToolBar.prototype.elements.ol.fn.wiki = olDecorator;
+    }
+
+    if (jsToolBar.prototype.elements.tl !== undefined) {
+      jsToolBar.prototype.elements.tl.fn.wiki = tlDecorator;
     }
 
     const jsToolBarDrawOrg = jsToolBar.prototype.draw;
@@ -454,20 +810,43 @@
 
         switch (e.key) {
           case "Tab":
+            // Indent or outdent list
             if (e.ctrlKey || e.metaKey) return;
             handleTabKey(e, jsToolBarInstance);
             break;
           case "Enter":
+            // Insert new line with list marker
             if (e.ctrlKey || e.metaKey) return;
             handleEnterKey(e, jsToolBarInstance, isTextile);
             break;
-          case "/":
+          case OL_KEYBOARD_SHORTCUT:
+            // Append ordered list marker
             if (!e.ctrlKey && !e.metaKey) return;
             handleSlashKey(e, jsToolBarInstance);
             break;
-          case ".":
+          case UL_KEYBOARD_SHORTCUT:
+            // Append unordered list marker
             if (!e.ctrlKey && !e.metaKey) return;
             handlePeriodKey(e, jsToolBarInstance);
+            break;
+          case "Home":
+            // Move cursor to the beginning of the line or to the first list
+            if (e.ctrlKey || e.metaKey) return;
+            handleHomeKey(e, jsToolBarInstance);
+            break;
+          case TL_KEYBOARD_SHORTCUT:
+            // Append task list marker
+            if (methods === textileMethods || (!e.ctrlKey && !e.metaKey)) {
+              return;
+            }
+            handleCommaKey(e, jsToolBarInstance);
+            break;
+          case TOGGLE_TL_KEYBOARD_SHORTCUT:
+            // Toggle task list state
+            if (methods === textileMethods || (!e.ctrlKey && !e.metaKey)) {
+              return;
+            }
+            handleSemicolonKey(e, jsToolBarInstance);
             break;
           default:
             break;
