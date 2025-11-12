@@ -621,6 +621,13 @@
     return [currentBlockPrefix, selectedText, currentBlockSuffix];
   }
 
+  function getListDecorator(line) {
+    if (methods.isUl(line)) return ulDecorator;
+    if (methods.isOl(line)) return olDecorator;
+    if (methods?.isTl(line)) return tlDecorator;
+    return null;
+  }
+
   function handleTabKey(e, jsToolBarInstance) {
     const textarea = jsToolBarInstance.textarea;
 
@@ -648,39 +655,18 @@
       const line = selectedLines[i];
       const cursorPos =
         lineLengths.slice(0, i).reduce((a, b) => a + b, 0) + (i > 0 ? i : 0);
-      let flgDecorated = false;
-      if (methods.isUl(line)) {
+
+      const decorator = getListDecorator(line);
+      if (decorator) {
         e.preventDefault();
         if (!(e.shiftKey && tabCounts[i] === 0) || maxTabCount === 0) {
           textarea.setSelectionRange(
             startLine + cursorPos,
             startLine + cursorPos + line.length
           );
-          ulDecorator.call(jsToolBarInstance, e);
-          flgDecorated = true;
+          decorator.call(jsToolBarInstance, e);
         }
-      } else if (methods.isOl(line)) {
-        e.preventDefault();
-        if (!(e.shiftKey && tabCounts[i] === 0) || maxTabCount === 0) {
-          textarea.setSelectionRange(
-            startLine + cursorPos,
-            startLine + cursorPos + line.length
-          );
-          olDecorator.call(jsToolBarInstance, e);
-          flgDecorated = true;
-        }
-      } else if (methods.isTl(line)) {
-        e.preventDefault();
-        if (!(e.shiftKey && tabCounts[i] === 0) || maxTabCount === 0) {
-          textarea.setSelectionRange(
-            startLine + cursorPos,
-            startLine + cursorPos + line.length
-          );
-          tlDecorator.call(jsToolBarInstance, e);
-          flgDecorated = true;
-        }
-      }
-      if (flgDecorated) {
+
         countShifts[i] = e.shiftKey
           ? textarea.selectionEnd - (startLine + cursorPos + line.length)
           : textarea.selectionStart - (startLine + cursorPos);
