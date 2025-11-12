@@ -443,7 +443,7 @@
       head = methods.ulDecorator.fnDefault(
         "",
         isTextile ? listInfo.markerOrIndex : listInfo.tabCount,
-        null,
+        1,
         1,
         listInfo.markerOrIndex
       );
@@ -452,7 +452,7 @@
       head = methods.olDecorator.fnDefault(
         "",
         isTextile ? listInfo.markerOrIndex : listInfo.tabCount,
-        isTextile ? false : listInfo.markerOrIndex + 1,
+        isTextile ? 1 : listInfo.markerOrIndex + 1,
         1
       );
       changed =
