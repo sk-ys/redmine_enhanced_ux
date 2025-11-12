@@ -24,9 +24,8 @@
   const markdownMethods = {
     isUl: (text) => {
       const trimmed = text.trimStart();
-      return trimmed.startsWith("* ") || trimmed.startsWith("- ")
-        ? trimmed[0]
-        : false;
+      // return trimmed.startsWith("* ") || trimmed.startsWith("- ")
+      return /^[*-]\s(?!\[[x\s]\]\s)/.test(trimmed) ? trimmed[0] : false;
     },
     isOl: (text) => {
       const trimmed = text.trimStart();
@@ -35,11 +34,22 @@
       const numStr = trimmed.substring(0, posDot);
       return /^\d+$/.test(numStr) ? Number(numStr) : false;
     },
+    isTl: (text) => {
+      const trimmed = text.trimStart();
+      const start2 = trimmed.slice(0, 2);
+      if (start2 !== "* " && start2 !== "- ") return false;
+      const trimmed2 = trimmed.substr(2);
+      return trimmed2.startsWith("[ ] ")
+        ? start2[0] + "0"
+        : trimmed2.startsWith("[x] ")
+        ? start2[0] + "1"
+        : false;
+    },
     isList: (text) => {
       return /^\s*[*\-]|\d+\.\s/.test(text);
     },
     extractHeader: (lineStr) => {
-      const match = /^\s*(?:[*\-]|\d+\.)\s/.exec(lineStr);
+      const match = /^\s*(?:[*\-]\s\[[x\s]\]|[*\-]|\d+\.)\s/.exec(lineStr);
       if (match) {
         return match[0];
       }
@@ -59,6 +69,8 @@
         lineStr = decorator.fnUl(lineStr, tabCount, index, tabShift);
       } else if (markdownMethods.isOl(lineStr)) {
         lineStr = decorator.fnOl(lineStr, tabCount, index, tabShift);
+      } else if (markdownMethods.isTl(lineStr)) {
+        lineStr = decorator.fnTl(lineStr, tabCount, index, tabShift);
       } else {
         lineStr = decorator.fnDefault(lineStr, tabCount, index, tabShift);
       }
@@ -79,6 +91,9 @@
           /^\s*\d+\.\s/,
           " ".repeat(tabCount * TAB_SIZE) + DEFAULT_MARKDOWN_UL_MARKER + " "
         );
+      },
+      fnTl: (lineStr, _) => {
+        return lineStr.replace(/^(\s*[*-])\s\[[x\s]\]\s/, "$1 ");
       },
       fnDefault: (
         lineStr,
@@ -131,6 +146,12 @@
         }
         return lineStr;
       },
+      fnTl: (lineStr, tabCount, index) => {
+        return lineStr.replace(
+          /^\s*[*-]\s\[[x\s]\]\s/,
+          " ".repeat(tabCount * TAB_SIZE) + index + ". "
+        );
+      },
       fnDefault: (lineStr, tabCount, index, tabShift) => {
         if (tabShift < 1) return lineStr;
         return lineStr.replace(
@@ -151,6 +172,63 @@
         return (lineStr) =>
           markdownMethods.evalStr(
             markdownMethods.olDecorator,
+            lineStr,
+            e.shiftKey ? -1 : 1,
+            indexList
+          );
+      },
+    },
+    tlDecorator: {
+      fnUl: (lineStr, tabCount) => {
+        return lineStr.replace(
+          /^\s*([*-])\s/,
+          " ".repeat(tabCount * TAB_SIZE) + "$1 [ ] "
+        );
+      },
+      fnOl: (lineStr, tabCount) => {
+        return lineStr.replace(
+          /^\s*\d+\.\s/,
+          " ".repeat(tabCount * TAB_SIZE) + DEFAULT_MARKDOWN_UL_MARKER + " [ ] "
+        );
+      },
+      fnTl: (lineStr, tabCount, _, tabShift) => {
+        const newTabCount = Math.max(0, tabCount + tabShift);
+        if (tabCount + tabShift < 0) {
+          lineStr = markdownMethods.tlDecorator.fnClear(lineStr);
+        } else {
+          lineStr = lineStr.replace(
+            /^\s*([*-]\s\[[x\s]\]\s)/,
+            " ".repeat(newTabCount * TAB_SIZE) + "$1"
+          );
+        }
+        return lineStr;
+      },
+      fnDefault: (
+        lineStr,
+        tabCount,
+        _,
+        tabShift,
+        sign = DEFAULT_MARKDOWN_UL_MARKER
+      ) => {
+        if (tabShift < 1) return lineStr;
+        return lineStr.replace(
+          /^\s*/,
+          " ".repeat(tabCount * TAB_SIZE) + sign + " [ ] "
+        );
+      },
+      fnClear: (lineStr) => {
+        const trimmed = lineStr.trimStart();
+        const beforeSpace = lineStr.substring(
+          0,
+          lineStr.length - trimmed.length
+        );
+        return beforeSpace + trimmed.replace(/^[*-]\s\[[x\s]\]\s/, "");
+      },
+      createEvalStr: (e) => {
+        let indexList = [];
+        return (lineStr) =>
+          markdownMethods.evalStr(
+            markdownMethods.tlDecorator,
             lineStr,
             e.shiftKey ? -1 : 1,
             indexList
@@ -344,6 +422,10 @@
     }
   }
 
+  function tlDecorator(e) {
+    decorateLines(this, methods.tlDecorator.createEvalStr(e));
+  }
+
   function renumberList(textarea) {
     // Backup selection range
     const selectionStart = textarea.selectionStart;
@@ -432,6 +514,15 @@
       };
     }
 
+    const tlMarker = methods.isTl(line);
+    if (tlMarker !== false) {
+      return {
+        type: "tl",
+        markerOrIndex: tlMarker,
+        tabCount,
+      };
+    }
+
     return null;
   }
 
@@ -463,6 +554,15 @@
               listInfo.tabCount,
               listInfo.markerOrIndex
             )) !== line;
+    } else if (methods === markdownMethods && listInfo.type === "tl") {
+      head = methods.tlDecorator.fnDefault(
+        "",
+        listInfo.tabCount,
+        1,
+        1,
+        listInfo.markerOrIndex[0]
+      );
+      changed = head !== line;
     }
 
     const offset = changed ? 1 + head.length : -head.length;
@@ -554,6 +654,16 @@
           olDecorator.call(jsToolBarInstance, e);
           flgDecorated = true;
         }
+      } else if (methods.isTl(line)) {
+        e.preventDefault();
+        if (!(e.shiftKey && tabCounts[i] === 0) || maxTabCount === 0) {
+          textarea.setSelectionRange(
+            startLine + cursorPos,
+            startLine + cursorPos + line.length
+          );
+          tlDecorator.call(jsToolBarInstance, e);
+          flgDecorated = true;
+        }
       }
       if (flgDecorated) {
         countShifts[i] = e.shiftKey
@@ -619,6 +729,29 @@
     }
   }
 
+  function handleCommaKey(e, jsToolBarInstance) {
+    e.preventDefault();
+
+    const currentLine = extractCurrentLine(jsToolBarInstance.textarea).join("");
+    if (methods.isTl(currentLine)) {
+      decorateLines(jsToolBarInstance, methods.tlDecorator.fnClear);
+    } else {
+      tlDecorator.call(jsToolBarInstance, e);
+    }
+  }
+
+  function handleSemicolonKey(e, jsToolBarInstance) {
+    const currentLine = extractCurrentLine(jsToolBarInstance.textarea).join("");
+    const tlInfo = methods.isTl(currentLine);
+    if (tlInfo) {
+      e.preventDefault();
+      const isChecked = tlInfo.endsWith("1");
+      decorateLines(jsToolBarInstance, (lineStr) => {
+        return lineStr.replace(/\[[x\s]\]/, isChecked ? "[ ]" : "[x]");
+      });
+    }
+  }
+
   function handleHomeKey(e, jsToolBarInstance) {
     const textarea = jsToolBarInstance.textarea;
     const start = textarea.selectionStart;
@@ -645,6 +778,10 @@
 
     if (jsToolBar.prototype.elements.ol !== undefined) {
       jsToolBar.prototype.elements.ol.fn.wiki = olDecorator;
+    }
+
+    if (jsToolBar.prototype.elements.tl !== undefined) {
+      jsToolBar.prototype.elements.tl.fn.wiki = tlDecorator;
     }
 
     const jsToolBarDrawOrg = jsToolBar.prototype.draw;
@@ -682,6 +819,20 @@
           case "Home":
             if (e.ctrlKey || e.metaKey) return;
             handleHomeKey(e, jsToolBarInstance);
+            break;
+          case ",":
+            // Append task list marker
+            if (methods === textileMethods || (!e.ctrlKey && !e.metaKey)) {
+              return;
+            }
+            handleCommaKey(e, jsToolBarInstance);
+            break;
+          case ";":
+            // Toggle task list marker
+            if (methods === textileMethods || (!e.ctrlKey && !e.metaKey)) {
+              return;
+            }
+            handleSemicolonKey(e, jsToolBarInstance);
             break;
           default:
             break;
