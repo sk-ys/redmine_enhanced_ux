@@ -100,7 +100,7 @@
 
         if (configs.replaceTrWithDiv) {
           // Replace TR to DIV
-          $table.replaceWith(function () {
+          $table.find("tr.issue.closed").replaceWith(function () {
             return $("<div>")
               .append($(this).contents())
               .addClass($(this).attr("class"));
