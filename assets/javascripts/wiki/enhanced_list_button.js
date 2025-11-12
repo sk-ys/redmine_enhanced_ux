@@ -794,6 +794,7 @@
   function setUpJsToolbar() {
     if (!checkJsToolBarExist()) return false;
 
+    // Replace existing functions on jsToolBar buttons
     if (jsToolBar.prototype.elements.ul !== undefined) {
       jsToolBar.prototype.elements.ul.fn.wiki = ulDecorator;
     }
@@ -823,22 +824,27 @@
 
         switch (e.key) {
           case "Tab":
+            // Indent or outdent list
             if (e.ctrlKey || e.metaKey) return;
             handleTabKey(e, jsToolBarInstance);
             break;
           case "Enter":
+            // Insert new line with list marker
             if (e.ctrlKey || e.metaKey) return;
             handleEnterKey(e, jsToolBarInstance, isTextile);
             break;
           case OL_KEYBOARD_SHORTCUT:
+            // Append ordered list marker
             if (!e.ctrlKey && !e.metaKey) return;
             handleSlashKey(e, jsToolBarInstance);
             break;
           case UL_KEYBOARD_SHORTCUT:
+            // Append unordered list marker
             if (!e.ctrlKey && !e.metaKey) return;
             handlePeriodKey(e, jsToolBarInstance);
             break;
           case "Home":
+            // Move cursor to the beginning of the line or to the first list
             if (e.ctrlKey || e.metaKey) return;
             handleHomeKey(e, jsToolBarInstance);
             break;
@@ -850,7 +856,7 @@
             handleCommaKey(e, jsToolBarInstance);
             break;
           case TOGGLE_TL_KEYBOARD_SHORTCUT:
-            // Toggle task list marker
+            // Toggle task list state
             if (methods === textileMethods || (!e.ctrlKey && !e.metaKey)) {
               return;
             }
