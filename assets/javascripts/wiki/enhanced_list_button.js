@@ -5,6 +5,10 @@
 (() => {
   const TAB_SIZE = 2;
   const DEFAULT_MARKDOWN_UL_MARKER = "*";
+  const UL_KEYBOARD_SHORTCUT = ".";
+  const OL_KEYBOARD_SHORTCUT = "/";
+  const TL_KEYBOARD_SHORTCUT = ",";
+  const TOGGLE_TL_KEYBOARD_SHORTCUT = ";";
   let methods = null;
 
   function checkJsToolBarExist() {
@@ -808,11 +812,11 @@
             if (e.ctrlKey || e.metaKey) return;
             handleEnterKey(e, jsToolBarInstance, isTextile);
             break;
-          case "/":
+          case OL_KEYBOARD_SHORTCUT:
             if (!e.ctrlKey && !e.metaKey) return;
             handleSlashKey(e, jsToolBarInstance);
             break;
-          case ".":
+          case UL_KEYBOARD_SHORTCUT:
             if (!e.ctrlKey && !e.metaKey) return;
             handlePeriodKey(e, jsToolBarInstance);
             break;
@@ -820,14 +824,14 @@
             if (e.ctrlKey || e.metaKey) return;
             handleHomeKey(e, jsToolBarInstance);
             break;
-          case ",":
+          case TL_KEYBOARD_SHORTCUT:
             // Append task list marker
             if (methods === textileMethods || (!e.ctrlKey && !e.metaKey)) {
               return;
             }
             handleCommaKey(e, jsToolBarInstance);
             break;
-          case ";":
+          case TOGGLE_TL_KEYBOARD_SHORTCUT:
             // Toggle task list marker
             if (methods === textileMethods || (!e.ctrlKey && !e.metaKey)) {
               return;
