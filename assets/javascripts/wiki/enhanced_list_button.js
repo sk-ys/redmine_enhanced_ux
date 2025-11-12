@@ -436,7 +436,7 @@
     const selectionEnd = textarea.selectionEnd;
 
     // For Markdown, renumber the ordered list
-    const { listStart, listEnd } = detectSelectedList(textarea);
+    const { listStart, listEnd } = detectSelectedList(textarea, methods.isOl);
 
     // Select the list
     textarea.setSelectionRange(listStart, listEnd);
@@ -456,7 +456,7 @@
     textarea.setSelectionRange(selectionStart, selectionEnd);
   }
 
-  function detectSelectedList(textarea) {
+  function detectSelectedList(textarea, fn) {
     const start = textarea.selectionStart;
     const beforeText = textarea.value.substring(0, start);
     const beforeTextSplitted = beforeText.split("\n");
@@ -471,11 +471,11 @@
     let listStart = start;
     let listEnd = listStart;
 
-    if (methods.isOl(currentLine)) {
+    if (fn(currentLine)) {
       // Search list item before cursor
       for (let i = beforeTextSplitted.length - 2; i >= 0; i--) {
         const line = beforeTextSplitted[i];
-        if (methods.isOl(line)) {
+        if (fn(line)) {
           listBeforeLength += line.length + 1; // +1 for \n
         } else {
           break;
@@ -486,7 +486,7 @@
       // Search list item after cursor
       for (let i = 1; i < afterTextSplitted.length; i++) {
         const line = afterTextSplitted[i];
-        if (methods.isOl(line)) {
+        if (fn(line)) {
           listAfterLength += line.length + 1; // +1 for \n
         } else {
           break;
