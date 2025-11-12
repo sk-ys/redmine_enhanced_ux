@@ -610,6 +610,17 @@
     return [currentLinePrefix, currentLineSuffix];
   }
 
+  function extractCurrentLines(textarea) {
+    const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
+    const beforeText = textarea.value.substring(0, start);
+    const selectedText = textarea.value.substring(start, end);
+    const afterText = textarea.value.substring(end);
+    const currentBlockPrefix = beforeText.split("\n").slice(-1)[0];
+    const currentBlockSuffix = afterText.split("\n")[0];
+    return [currentBlockPrefix, selectedText, currentBlockSuffix];
+  }
+
   function handleTabKey(e, jsToolBarInstance) {
     const textarea = jsToolBarInstance.textarea;
 
@@ -745,13 +756,20 @@
   }
 
   function handleSemicolonKey(e, jsToolBarInstance) {
-    const currentLine = extractCurrentLine(jsToolBarInstance.textarea).join("");
-    const tlInfo = methods.isTl(currentLine);
-    if (tlInfo) {
+    const currentBlock = extractCurrentLines(jsToolBarInstance.textarea).join(
+      ""
+    );
+    const currentBlockHasTl = currentBlock
+      .split("\n")
+      .filter((line) => methods.isTl(line));
+
+    if (currentBlockHasTl.length > 0) {
       e.preventDefault();
-      const isChecked = tlInfo.endsWith("1");
       decorateLines(jsToolBarInstance, (lineStr) => {
-        return lineStr.replace(/\[[x\s]\]/, isChecked ? "[ ]" : "[x]");
+        const tlInfo = methods.isTl(lineStr);
+        return tlInfo
+          ? lineStr.replace(/\[[x\s]\]/, tlInfo.endsWith("1") ? "[ ]" : "[x]")
+          : lineStr;
       });
     }
   }
