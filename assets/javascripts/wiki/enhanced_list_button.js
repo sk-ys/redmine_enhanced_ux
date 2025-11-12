@@ -3,7 +3,7 @@
 // Type:               JavaScript
 // Comment:            Enhanced list button
 (() => {
-  const TAB_SIZE = 2;
+  const TAB_SIZE = 4;
   const DEFAULT_MARKDOWN_UL_MARKER = "*";
   const UL_KEYBOARD_SHORTCUT = ".";
   const OL_KEYBOARD_SHORTCUT = "/";
