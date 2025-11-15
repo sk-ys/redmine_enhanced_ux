@@ -1706,7 +1706,7 @@
             $("#content").prepend(contentsNoticeBar);
           }
           return 2;
-        } else if (/\/time_entries\/.*[new|edit]$/.test(contentsPathName)) {
+        } else if (/\/time_entries\/.*(new|edit)$/.test(contentsPathName)) {
           if ($contents.find("#flash_notice.notice").length > 0) {
             // Create and add another
             return 1;
