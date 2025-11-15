@@ -31,6 +31,7 @@
       enableFloatingSubmitButtonInNewForm: true,
       enableResizableAttachmentTable: true,
       enableCorrectAttributesPositionInEditView: true,
+      enableFixedIssueSubject: true,
       sideBySideModeBreakpointWidth: 1280,
     };
 
@@ -90,6 +91,7 @@
           "Enable resizable attachment table",
         labelSettingEnableCorrectAttributesPositionInEditView:
           "Enable correct attributes position in edit view",
+        labelSettingEnableFixedIssueSubject: "Enable fixed issue subject",
         labelSettingSideBySideModeBreakpointWidth:
           "Minimum screen width for side-by-side mode",
         messageSettingEnableSideBySideMode:
@@ -145,6 +147,7 @@
           "添付ファイル欄をリサイズ可能にする",
         labelSettingEnableCorrectAttributesPositionInEditView:
           "編集画面の項目の位置を修正する",
+        labelSettingEnableFixedIssueSubject: "チケットの件名を固定して表示する",
         labelSettingSideBySideModeBreakpointWidth:
           "左右に並べて表示を有効にする最小の画面幅",
         messageSettingEnableSideBySideMode:
@@ -204,6 +207,7 @@
         enableResizableAttachmentTable,
         enableCorrectAttributesPositionInEditView,
         isDescriptionEditFieldOpenByDefault,
+        enableFixedIssueSubject,
         sideBySideModeBreakpointWidth
       ) {
         this.tabViewEnabled = isNewForm ? false : enableTabView ?? true;
@@ -224,6 +228,7 @@
         this.isDescriptionEditFieldOpenByDefault = isNewForm
           ? false
           : isDescriptionEditFieldOpenByDefault ?? true;
+        this.fixedIssueSubjectEnabled = enableFixedIssueSubject ?? true;
         this.sideBySideModeBreakpointWidth =
           sideBySideModeBreakpointWidth ?? 1280;
         this.hasHistoryData = $("#history>p.nodata").length === 0;
@@ -264,6 +269,10 @@
         }
 
         this.#setupFormChangeDetection();
+
+        if (this.fixedIssueSubjectEnabled) {
+          this.#setupFixedIssueSubject();
+        }
       }
 
       sideBySideProperty = {
@@ -820,6 +829,9 @@
           $("#content > div.flash").remove();
           $flash.prependTo("#content");
         }
+
+        // Update subject in fixed header
+        this.updateFixedIssueSubject();
       }
 
       /**
@@ -859,6 +871,160 @@
       handleFormReplacement() {
         console.log("Issue view replacement detected.");
         this.resetHeightOfAttachmentTable();
+      }
+
+      #setupFixedIssueSubject() {
+        // [Original structure]
+        // #content
+        // ├─ .contextual (issue top menu)
+        // ├─ h2 (issue title)
+        // ├─ span.badge (issue status)
+        // ├─ div.issue.details
+        // ├─ #side-by-side-switch-box (side-by-side mode switch)
+        // └─ #history
+        //
+        // [Structure after fixed subject setup]
+        // #content
+        // ├─ #content-header (newly created)
+        // │    ├─ .contextual (issue top menu)
+        // │    ├─ h2 (issue title)
+        // │    ├─ span.badge (issue status)
+        // │    └─ #side-by-side-switch-box (side-by-side mode switch)
+        // ├─ div.issue.details
+        // └─ #history
+
+        if (!this.fixedIssueSubjectEnabled) return;
+
+        let baseTop = 0;
+
+        const $contentHeader = $("<div>").attr("id", "content-header");
+
+        function moveItemsToContentHeader() {
+          const $issueTopMenu = $("#content>.contextual:first");
+          const $issueTopMenuClone = $issueTopMenu.clone(true, true);
+          const $headerTitle = $("#content>h2:first");
+          const $headerBadge = $("#content>span.badge:first");
+          const $sideBySideSwitchBox = $("#content>#side-by-side-switch-box");
+
+          // Support for Theme Bleuclair
+          const $sidebarSwitchPanel = $("#sidebar-switch-panel");
+
+          $contentHeader
+            .insertAfter($issueTopMenu)
+            .append($sidebarSwitchPanel)
+            .append($issueTopMenuClone)
+            .append($headerTitle)
+            .append($headerBadge)
+            .append($sideBySideSwitchBox);
+
+          // Add line break after issue title
+          $headerTitle[0].insertAdjacentText("afterend", "\n");
+        }
+
+        function calcBaseTop() {
+          baseTop =
+            ($("#header").outerHeight() ?? 0) +
+            (isMobile() ? 0 : $("#top-menu").outerHeight() ?? 0);
+        }
+
+        function updateMarginTop() {
+          $contentHeader.css({
+            marginTop: baseTop,
+          });
+        }
+
+        function handleScroll() {
+          const scrollTop = $(window).scrollTop();
+          // 20px tolerance prevents fixed/unfixed state flickering
+          // caused by #content-header height change
+          // (padding: 10px adds ~20px when fixed)
+          const tolerance = 20;
+
+          if (scrollTop > baseTop) {
+            if ($contentHeader.hasClass("fixed")) return;
+
+            // Recalculate baseTop in case of dynamic header height
+            calcBaseTop();
+            updateMarginTop();
+            if (scrollTop <= baseTop - tolerance) return;
+
+            $contentHeader.addClass("fixed");
+          } else if (scrollTop <= baseTop - tolerance || scrollTop <= 0) {
+            if (!$contentHeader.hasClass("fixed")) return;
+
+            // Recalculate baseTop in case of dynamic header height
+            calcBaseTop();
+            updateMarginTop();
+            if (scrollTop > 0 && scrollTop > baseTop) return;
+
+            $contentHeader.removeClass("fixed");
+          }
+        }
+
+        function handleMobileChange(e) {
+          $contentHeader.toggleClass("mobile", e.matches);
+          calcBaseTop();
+          updateMarginTop();
+        }
+
+        initialize = () => {
+          moveItemsToContentHeader();
+
+          // Calculate baseTop first
+          calcBaseTop();
+
+          // Set initial styles
+          $contentHeader.css({
+            marginTop: baseTop,
+            backgroundColor:
+              $("#content").css("background-color") ??
+              $("#content").parent().css("background-color"),
+          });
+
+          if (isMobile()) {
+            $contentHeader.addClass("mobile");
+          }
+
+          this.updateFixedIssueSubject();
+
+          $(window).on("scroll", handleScroll);
+
+          // Compatible with simple menu bar
+          new MutationObserver((mutationList, observer) => {
+            calcBaseTop();
+            updateMarginTop();
+            handleScroll();
+          }).observe($("#header")[0], {
+            childList: false,
+            subtree: false,
+            attributes: true,
+            attributeFilter: ["style"],
+          });
+
+          const mobileQuery = window.matchMedia("(max-width: 899px)");
+          mobileQuery.addEventListener("change", (e) => {
+            // Recalculate positions on mobile/desktop switch
+            setTimeout(() => handleMobileChange(e));
+          });
+
+          // Initial check
+          handleScroll();
+        };
+
+        setTimeout(() => initialize());
+      }
+
+      updateFixedIssueSubject() {
+        if (!this.fixedIssueSubjectEnabled) return;
+
+        $(".subject-clone").remove();
+
+        const $headerTitle = $("#content>h2:first, #content-header>h2:first");
+        const $subject = $("div.issue.details>.subject h3:last");
+        const $subjectClone = $("<span>")
+          .addClass("subject-clone")
+          .text(": " + $subject.text().trim());
+        $headerTitle.append($subjectClone).attr({ title: $headerTitle.text() });
       }
     }
 
@@ -1282,7 +1448,7 @@
         $contents.find("#sidebarHandler").remove();
 
         // Remove the header from the content
-        $contents.find("#content>h2:first").remove();
+        $contents.find("#content>h2:first, #content-header>h2:first").remove();
 
         // Remove padding and margin from the main element
         $contents.find("#main").css({ padding: 0, margin: 0 });
@@ -2021,7 +2187,7 @@
         super({
           title: resources.labelCustomIssueViewSettings,
           width: 400,
-          height: 450,
+          height: 500,
           modal: true,
           autoOpen: false,
           ...config,
@@ -2234,6 +2400,7 @@
         settingsManager.settings.enableResizableAttachmentTable,
         settingsManager.settings.enableCorrectAttributesPositionInEditView,
         settingsManager.settings.isDescriptionEditFieldOpenByDefault,
+        settingsManager.settings.enableFixedIssueSubject,
         settingsManager.settings.sideBySideModeBreakpointWidth
       );
 
@@ -2436,6 +2603,7 @@
         display: grid;
         grid-template: "issue-container history-container" 100% / min-content 1fr;
         height: calc(100% - 50px);
+        overflow-y: hidden;
         #issue-container {
           resize: horizontal;
           grid-area: issue-container;
@@ -3155,6 +3323,49 @@
         float: left;
       }
     }
+  }
+
+  /* Content header related style settings */
+  #content-header {
+    background-color: #fff;
+    z-index: 100;
+    transition: all 0.2s ease;
+    &:not(.fixed) {
+      margin-top: 0 !important;
+    }
+    &.fixed {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+      padding: 10px;
+    }
+
+    @media screen and (max-width: 899px) {
+      .contextual {
+        display: none;
+      }
+    }
+  }
+
+  #content:has(#content-header) > .contextual:first-child {
+    display: none;
+
+    @media screen and (max-width: 899px) {
+      display: block;
+    }
+  }
+
+  #top-menu:not(.fixed) ~ #main #content-header:not(.mobile) {
+    margin-top: 0 !important;
+  }
+
+  .subject-clone {
+    max-width: 50vw;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    overflow: hidden;
   }
 
   /* Support for Redmine silencer plugin */
