@@ -164,7 +164,6 @@
       ...(resourcesAll[document.documentElement.lang] || {}),
     };
     const isRtl = $('head link[rel="stylesheet"][href*="/rtl"]').length > 0;
-    const isMac = navigator.platform.indexOf("Mac") !== -1;
     const issuePathname = location.pathname;
     const issueUrl = location.origin + issuePathname;
     const issueEditUrl = issueUrl + "/edit";
