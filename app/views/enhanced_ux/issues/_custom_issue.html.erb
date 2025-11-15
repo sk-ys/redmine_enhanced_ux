@@ -32,6 +32,7 @@
       enableResizableAttachmentTable: true,
       enableCorrectAttributesPositionInEditView: true,
       enableFixedIssueSubject: true,
+      enableFixedIssueSubjectInIframe: false,
       sideBySideModeBreakpointWidth: 1280,
     };
 
@@ -92,6 +93,8 @@
         labelSettingEnableCorrectAttributesPositionInEditView:
           "Enable correct attributes position in edit view",
         labelSettingEnableFixedIssueSubject: "Enable fixed issue subject",
+        labelSettingEnableFixedIssueSubjectInIframe:
+          "Enable fixed issue subject in iframe",
         labelSettingSideBySideModeBreakpointWidth:
           "Minimum screen width for side-by-side mode",
         messageSettingEnableSideBySideMode:
@@ -148,6 +151,8 @@
         labelSettingEnableCorrectAttributesPositionInEditView:
           "編集画面の項目の位置を修正する",
         labelSettingEnableFixedIssueSubject: "チケットの件名を固定して表示する",
+        labelSettingEnableFixedIssueSubjectInIframe:
+          "iframe内でチケットの件名を固定表示する",
         labelSettingSideBySideModeBreakpointWidth:
           "左右に並べて表示を有効にする最小の画面幅",
         messageSettingEnableSideBySideMode:
@@ -174,6 +179,7 @@
     const $submitButton = $('#issue-form input[type="submit"]');
     const $history = $("#history");
     const enableRedmineRT = $("#quick_notes").length > 0;
+    const isInIframe = window.self !== window.top;
     let notesManager = null;
     let issueLayoutManager = null;
 
@@ -208,6 +214,7 @@
         enableCorrectAttributesPositionInEditView,
         isDescriptionEditFieldOpenByDefault,
         enableFixedIssueSubject,
+        enableFixedIssueSubjectInIframe,
         sideBySideModeBreakpointWidth
       ) {
         this.tabViewEnabled = isNewForm ? false : enableTabView ?? true;
@@ -229,6 +236,8 @@
           ? false
           : isDescriptionEditFieldOpenByDefault ?? true;
         this.fixedIssueSubjectEnabled = enableFixedIssueSubject ?? true;
+        this.fixedIssueSubjectInIframeEnabled =
+          enableFixedIssueSubjectInIframe ?? false;
         this.sideBySideModeBreakpointWidth =
           sideBySideModeBreakpointWidth ?? 1280;
         this.hasHistoryData = $("#history>p.nodata").length === 0;
@@ -270,9 +279,7 @@
 
         this.#setupFormChangeDetection();
 
-        if (this.fixedIssueSubjectEnabled) {
-          this.#setupFixedIssueSubject();
-        }
+        this.#setupFixedIssueSubject();
       }
 
       sideBySideProperty = {
@@ -893,7 +900,11 @@
         // ├─ div.issue.details
         // └─ #history
 
-        if (!this.fixedIssueSubjectEnabled) return;
+        if (
+          !(!isInIframe && this.fixedIssueSubjectEnabled) &&
+          !(isInIframe && this.fixedIssueSubjectInIframeEnabled)
+        )
+          return;
 
         let baseTop = 0;
 
@@ -1015,7 +1026,11 @@
       }
 
       updateFixedIssueSubject() {
-        if (!this.fixedIssueSubjectEnabled) return;
+        if (
+          !(!isInIframe && this.fixedIssueSubjectEnabled) &&
+          !(isInIframe && this.fixedIssueSubjectInIframeEnabled)
+        )
+          return;
 
         $(".subject-clone").remove();
 
@@ -2187,7 +2202,7 @@
         super({
           title: resources.labelCustomIssueViewSettings,
           width: 400,
-          height: 500,
+          height: 520,
           modal: true,
           autoOpen: false,
           ...config,
@@ -2401,6 +2416,7 @@
         settingsManager.settings.enableCorrectAttributesPositionInEditView,
         settingsManager.settings.isDescriptionEditFieldOpenByDefault,
         settingsManager.settings.enableFixedIssueSubject,
+        settingsManager.settings.enableFixedIssueSubjectInIframe,
         settingsManager.settings.sideBySideModeBreakpointWidth
       );
 
