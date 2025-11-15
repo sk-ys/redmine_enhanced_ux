@@ -1,5 +1,5 @@
 <!-- 
-// Path pattern:       (/issues/[0-9]+$|/issues/new|/issues/[0-9]+/copy)
+// Path pattern:       (/issues/[0-9]+$|/issues/new|/issues/[0-9]+/copy|/issues/[0-9]+/edit)
 // Insertion position: Head of all pages
 // Type:               HTML
 // Comment:            Custom issue
@@ -170,10 +170,17 @@
     const issueEditUrl = issueUrl + "/edit";
     const issueIdMatch = issuePathname.match(/\/issues\/([0-9]+)\/{0,1}$/);
     const issueId = issueIdMatch ? Number(issueIdMatch[1]) : null;
-    const isEditable = $("#update").length !== 0;
-    const isNewForm = /\/issues\/new$|\/issues\/[0-9]+\/copy$/.test(
-      issuePathname
-    );
+    const isNewForm =
+      $("body").hasClass("controller-issues") &&
+      $("body").hasClass("action-new");
+    const isEditOrUpdateView =
+      $("body").hasClass("controller-issues") &&
+      ($("body").hasClass("action-edit") ||
+        $("body").hasClass("action-update"));
+    const isEditable = $("#update").length !== 0 || isEditOrUpdateView;
+    const isShowView =
+      $("body").hasClass("controller-issues") &&
+      $("body").hasClass("action-show");
     const issueNotesTextareaRowsDefault = $("#issue_notes").attr("rows");
     const addNotesLegendDefault = $("#add_notes>legend:first").text();
     const $submitButton = $('#issue-form input[type="submit"]');
@@ -217,27 +224,25 @@
         enableFixedIssueSubjectInIframe,
         sideBySideModeBreakpointWidth
       ) {
-        this.tabViewEnabled = isNewForm ? false : enableTabView ?? true;
-        this.sideBySideModeEnabled = isNewForm
-          ? false
-          : enableSideBySideMode ?? true;
-        this.floatingSubmitButtonInEditFormEnabled = isEditable
-          ? enableFloatingSubmitButtonInEditForm ?? true
-          : false;
-        this.floatingSubmitButtonInNewFormEnabled = isNewForm
-          ? enableFloatingSubmitButtonInNewForm ?? true
-          : false;
-        this.resizableAttachmentTableEnabled = isNewForm
-          ? false
-          : enableResizableAttachmentTable ?? true;
+        this.tabViewEnabled = isShowView && (enableTabView ?? true);
+        this.sideBySideModeEnabled =
+          this.tabViewEnabled && (enableSideBySideMode ?? true);
+        this.floatingSubmitButtonInEditFormEnabled =
+          isEditable && (enableFloatingSubmitButtonInEditForm ?? true);
+        this.floatingSubmitButtonInNewFormEnabled =
+          isNewForm && (enableFloatingSubmitButtonInNewForm ?? true);
+        this.resizableAttachmentTableEnabled =
+          isShowView && (enableResizableAttachmentTable ?? true);
         this.correctAttributesPositionInEditViewEnabled =
-          enableCorrectAttributesPositionInEditView ?? true;
-        this.isDescriptionEditFieldOpenByDefault = isNewForm
-          ? false
-          : isDescriptionEditFieldOpenByDefault ?? true;
-        this.fixedIssueSubjectEnabled = enableFixedIssueSubject ?? true;
+          (isEditable || isNewForm) &&
+          (enableCorrectAttributesPositionInEditView ?? true);
+        this.isDescriptionEditFieldOpenByDefault =
+          (isEditable || isNewForm) &&
+          (isDescriptionEditFieldOpenByDefault ?? true);
+        this.fixedIssueSubjectEnabled =
+          isShowView && (enableFixedIssueSubject ?? true);
         this.fixedIssueSubjectInIframeEnabled =
-          enableFixedIssueSubjectInIframe ?? false;
+          isShowView && (enableFixedIssueSubjectInIframe ?? false);
         this.sideBySideModeBreakpointWidth =
           sideBySideModeBreakpointWidth ?? 1280;
         this.hasHistoryData = $("#history>p.nodata").length === 0;
@@ -271,14 +276,10 @@
         }
 
         this.#setupCustomAttachmentTable();
-        if (isEditable || isNewForm) {
-          this.#setupCorrectAttributesPositionInEditView();
-          this.#setupFloatingSubmitButton();
-          this.#setupShowDescriptionEditFieldOpenByDefault();
-        }
-
+        this.#setupCorrectAttributesPositionInEditView();
+        this.#setupFloatingSubmitButton();
+        this.#setupShowDescriptionEditFieldOpenByDefault();
         this.#setupFormChangeDetection();
-
         this.#setupFixedIssueSubject();
       }
 
