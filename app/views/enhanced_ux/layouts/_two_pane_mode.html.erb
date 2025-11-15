@@ -1413,10 +1413,7 @@
             throw new Error(`Error ${response.status}: ${response.statusText}`);
           }
           const htmlString = await response.text();
-          const data = new DOMParser().parseFromString(
-            htmlString,
-            "text/html"
-          );
+          const data = new DOMParser().parseFromString(htmlString, "text/html");
           const scrollTargetSelector = this.config.scrollTargetSelector;
           const scrollPositionBeforeUpdate = scrollTargetSelector
             ? {
@@ -1518,6 +1515,11 @@
       position: fixed !important;
       z-index: 200;
       padding: 0 !important;
+
+      @media screen and (max-width: 899px) {
+        top: 64px !important;
+        height: calc(100% - 64px - 16px) !important;
+      }
 
       #issue-pane-toggle-minimize {
         display: none;

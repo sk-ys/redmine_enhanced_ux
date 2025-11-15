@@ -1192,6 +1192,11 @@
     position: fixed !important;
     display: flex;
     flex-direction: column;
+
+    @media screen and (max-width: 899px) {
+      top: 64px !important;
+      height: calc(100% - 64px - 16px) !important;
+    }
   }
 
   .ui-dialog.popup-anywhere-maximize .ui-dialog-content {
