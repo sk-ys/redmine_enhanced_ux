@@ -1,264 +1,568 @@
-<fieldset class="box tabular settings">
-  <legend><%= l(:label_module_specific_customization, scope: :enhanced_ux) %></legend>
-  <fieldset class="box tabular settings">
-    <legend><%= l(:label_issue_index_view_customization, scope: :enhanced_ux) %></legend>
-    <p>
-      <label for="custom_issue_list">Custom issue list:</label>
-      <input type="hidden" name="settings[custom_issue_list]" value="'0'">
-      <%= check_box_tag 'settings[custom_issue_list]', '1', @settings[:custom_issue_list] == '1' %>
-       <br>
-      <img src="<%= asset_path('plugin_assets/redmine_enhanced_ux/images/features/custom_issue_list.png') %>" 
-       style="max-width: 300px; height: 200px; margin: 5px 0; border: 1px solid #ddd;" 
-       alt="Custom issue list preview">
-    </p>
-    <p>
-      <label for="fuzzy_timestamps_formatter">Fuzzy timestamps formatter:</label>
-      <input type="hidden" name="settings[fuzzy_timestamps_formatter]" value="'0'">
-      <%= check_box_tag 'settings[fuzzy_timestamps_formatter]', '1', @settings[:fuzzy_timestamps_formatter] == '1' %>
-       <br>
-      <img src="<%= asset_path('plugin_assets/redmine_enhanced_ux/images/features/fuzzy_timestamps_formatter.png') %>" 
-       style="max-width: 300px; height: 200px; margin: 5px 0; border: 1px solid #ddd;" 
-       alt="Fuzzy timestamps formatter preview">
-    </p>
-  </fieldset>
-  <fieldset class="box tabular settings">
-    <legend><%= l(:label_issue_view_customization, scope: :enhanced_ux) %></legend>
-    <p>
-      <label for="custom_issue">Custom issue:</label>
-      <input type="hidden" name="settings[custom_issue]" value="'0'">
-      <%= check_box_tag 'settings[custom_issue]', '1', @settings[:custom_issue] == '1' %>
-       <br>
-      <img src="<%= asset_path('plugin_assets/redmine_enhanced_ux/images/features/custom_issue.png') %>" 
-       style="max-width: 300px; height: 200px; margin: 5px 0; border: 1px solid #ddd;" 
-       alt="Custom issue preview">
-    </p>
-    <p>
-      <label for="copy_issue_form_link_with_data">Copy issue form link with data:</label>
-      <input type="hidden" name="settings[copy_issue_form_link_with_data]" value="'0'">
-      <%= check_box_tag 'settings[copy_issue_form_link_with_data]', '1', @settings[:copy_issue_form_link_with_data] == '1' %>
-       <br>
-      <img src="<%= asset_path('plugin_assets/redmine_enhanced_ux/images/features/copy_issue_form_link_with_data.png') %>" 
-       style="max-width: 300px; height: 200px; margin: 5px 0; border: 1px solid #ddd;" 
-       alt="Copy issue form link with data preview">
-    </p>
-    <p>
-      <label for="issue_attributes_to_link">Issue attributes to link:</label>
-      <input type="hidden" name="settings[issue_attributes_to_link]" value="'0'">
-      <%= check_box_tag 'settings[issue_attributes_to_link]', '1', @settings[:issue_attributes_to_link] == '1' %>
-       <br>
-      <img src="<%= asset_path('plugin_assets/redmine_enhanced_ux/images/features/issue_attributes_to_link.png') %>" 
-       style="max-width: 300px; height: 200px; margin: 5px 0; border: 1px solid #ddd;" 
-       alt="Issue attributes to link preview">
-    </p>
-    <p>
-      <label for="scroll_to_top_or_bottom">Scroll to top or bottom:</label>
-      <input type="hidden" name="settings[scroll_to_top_or_bottom]" value="'0'">
-      <%= check_box_tag 'settings[scroll_to_top_or_bottom]', '1', @settings[:scroll_to_top_or_bottom] == '1' %>
-        <br>
-      <img src="<%= asset_path('plugin_assets/redmine_enhanced_ux/images/features/scroll_to_top_or_bottom.png') %>" 
-       style="max-width: 300px; height: 200px; margin: 5px 0; border: 1px solid #ddd;" 
-       alt="Scroll to top or bottom preview">
-    </p>
-  </fieldset>
-  <fieldset class="box tabular settings">
-    <legend><%= l(:label_issue_gantt_view_customization, scope: :enhanced_ux) %></legend>
-    <p>
-      <label for="enhanced_gantt_entry_click">Enhanced gantt entry click function:</label>
-      <input type="hidden" name="settings[enhanced_gantt_entry_click]" value="'0'">
-      <%= check_box_tag 'settings[enhanced_gantt_entry_click]', '1', @settings[:enhanced_gantt_entry_click] == '1' %>
-        <br>
-      <img src="<%= asset_path('plugin_assets/redmine_enhanced_ux/images/features/enhanced_gantt_entry_click.png') %>" 
-       style="max-width: 300px; height: 200px; margin: 5px 0; border: 1px solid #ddd;" 
-       alt="Enhanced gantt entry click function preview">
-    </p>
-    <p>
-      <label for="custom_gantt_chart">Custom gantt chart:</label>
-      <input type="hidden" name="settings[custom_gantt_chart]" value="'0'">
-      <%= check_box_tag 'settings[custom_gantt_chart]', '1', @settings[:custom_gantt_chart] == '1' %>
-        <br>
-      <img src="<%= asset_path('plugin_assets/redmine_enhanced_ux/images/features/custom_gantt_chart.png') %>" 
-       style="max-width: 300px; height: 200px; margin: 5px 0; border: 1px solid #ddd;" 
-       alt="Custom gantt chart preview">
-    </p>
-  </fieldset>
-  <fieldset class="box tabular settings">
-    <legend><%= l(:label_other_view_customization, scope: :enhanced_ux) %></legend>
-    <p>
-      <label for="custom_roadmap_and_version">Custom roadmap and version:</label>
-      <input type="hidden" name="settings[custom_roadmap_and_version]" value="'0'">
-      <%= check_box_tag 'settings[custom_roadmap_and_version]', '1', @settings[:custom_roadmap_and_version] == '1' %>
-      <br>
-      <img src="<%= asset_path('plugin_assets/redmine_enhanced_ux/images/features/custom_roadmap_and_version.png') %>" 
-       style="max-width: 300px; height: 200px; margin: 5px 0; border: 1px solid #ddd;" 
-       alt="Custom roadmap and version preview">
-    </p>
-    <p>
-      <label for="custom_calendar">Custom calendar:</label>
-      <input type="hidden" name="settings[custom_calendar]" value="'0'">
-      <%= check_box_tag 'settings[custom_calendar]', '1', @settings[:custom_calendar] == '1' %>
-      <br>
-      <img src="<%= asset_path('plugin_assets/redmine_enhanced_ux/images/features/custom_calendar.png') %>" 
-       style="max-width: 300px; height: 200px; margin: 5px 0; border: 1px solid #ddd;" 
-       alt="Custom calendar preview">
-    </p>
-    <p>
-      <label for="custom_issue_note_list">Custom issue note list:</label>
-      <input type="hidden" name="settings[custom_issue_note_list]" value="'0'">
-      <%= check_box_tag 'settings[custom_issue_note_list]', '1', @settings[:custom_issue_note_list] == '1' %>
-      <!--
-      <br>
-      <img src="<%= asset_path('plugin_assets/redmine_enhanced_ux/images/features/custom_issue_note_list.png') %>" 
-       style="max-width: 300px; height: 200px; margin: 5px 0; border: 1px solid #ddd;" 
-       alt="Custom issue note list preview">
-       -->
-    </p>
-    <p>
-      <label for="local_storage_manager">Local storage manager:</label>
-      <input type="hidden" name="settings[local_storage_manager]" value="'0'">
-      <%= check_box_tag 'settings[local_storage_manager]', '1', @settings[:local_storage_manager] == '1' %>
-      <br>
-      <img src="<%= asset_path('plugin_assets/redmine_enhanced_ux/images/features/local_storage_manager.png') %>" 
-       style="max-width: 300px; height: 200px; margin: 5px 0; border: 1px solid #ddd;" 
-       alt="Local storage manager preview">
-    </p>
-  </fieldset>
-</fieldset>
+<style>
+  .enhanced-ux-settings {
+    max-width: 1400px;
+    margin: 0 auto;
+  }
+  
+  .settings-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    padding: 15px;
+    background: #f7f7f7;
+    border-radius: 4px;
+  }
+  
+  .search-box {
+    padding: 8px 12px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    width: 300px;
+  }
+  
+  .feature-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: 20px;
+    margin: 20px 0;
+  }
+  
+  .feature-card {
+    background: white;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    padding: 15px;
+    transition: all 0.3s ease;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    cursor: pointer;
+  }
+  
+  .feature-card:hover {
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    transform: translateY(-2px);
+  }
+  
+  .feature-card.enabled {
+    border-color: #28a745;
+    background: #f0fff4;
+  }
+  
+  .feature-header {
+    display: flex;
+    align-items: flex-start;
+    margin-bottom: 12px;
+  }
+  
+  .feature-checkbox {
+    margin-right: 12px;
+    margin-top: 3px;
+  }
+  
+  .feature-title {
+    flex: 1;
+    font-weight: bold;
+    font-size: 14px;
+    line-height: 1.4;
+    color: #333;
+  }
+  
+  .feature-image {
+    width: 100%;
+    height: 180px;
+    object-fit: cover;
+    border: 1px solid #e0e0e0;
+    border-radius: 4px;
+  }
+  
+  .category-section {
+    margin-bottom: 30px;
+  }
+  
+  .category-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 15px;
+    background: #e8f4f8;
+    border-left: 4px solid #169bd5;
+    margin-bottom: 15px;
+    border-radius: 4px;
+  }
+  
+  .category-title {
+    font-size: 16px;
+    font-weight: bold;
+    color: #333;
+  }
+  
+  .category-controls {
+    display: flex;
+    gap: 10px;
+  }
+  
+  .category-controls a {
+    font-size: 12px;
+    padding: 4px 10px;
+    background: white;
+    border: 1px solid #ddd;
+    border-radius: 3px;
+    text-decoration: none;
+  }
+  
+  .category-controls a:hover {
+    background: #f5f5f5;
+  }
+  
 
-<fieldset class="box tabular settings">
-  <legend><%= l(:label_wiki_customization, scope: :enhanced_ux) %></legend>
-  <p>
-    <label for="add_copy_button_to_the_pre_block">Add copy button to the pre block:</label>
-    <input type="hidden" name="settings[add_copy_button_to_the_pre_block]" value="'0'">
-    <%= check_box_tag 'settings[add_copy_button_to_the_pre_block]', '1', @settings[:add_copy_button_to_the_pre_block] == '1' %>
-    <br>
-    <img src="<%= asset_path('plugin_assets/redmine_enhanced_ux/images/features/add_copy_button_to_the_pre_block.png') %>" 
-     style="max-width: 300px; height: 200px; margin: 5px 0; border: 1px solid #ddd;" 
-     alt="Add copy button to the pre block preview">
-  </p>
-  <p>
-    <label for="enhanced_list_button">Enhanced list button:</label>
-    <input type="hidden" name="settings[enhanced_list_button]" value="'0'">
-    <%= check_box_tag 'settings[enhanced_list_button]', '1', @settings[:enhanced_list_button] == '1' %>
-    <br>
-    <img src="<%= asset_path('plugin_assets/redmine_enhanced_ux/images/features/enhanced_list_button.png') %>" 
-     style="max-width: 300px; height: 200px; margin: 5px 0; border: 1px solid #ddd;" 
-     alt="Enhanced list button preview">
-  </p>
-  <p>
-    <label for="image_insertion_modal">Image insertion modal:</label>
-    <input type="hidden" name="settings[image_insertion_modal]" value="'0'">
-    <%= check_box_tag 'settings[image_insertion_modal]', '1', @settings[:image_insertion_modal] == '1' %>
-    <br>
-    <img src="<%= asset_path('plugin_assets/redmine_enhanced_ux/images/features/image_insertion_modal.png') %>" 
-     style="max-width: 300px; height: 200px; margin: 5px 0; border: 1px solid #ddd;" 
-     alt="Image insertion modal preview">
-  </p>
-  <p>
-    <label for="insert_attachment_tag">Insert attachment tag:</label>
-    <input type="hidden" name="settings[insert_attachment_tag]" value="'0'">
-    <%= check_box_tag 'settings[insert_attachment_tag]', '1', @settings[:insert_attachment_tag] == '1' %>
-    <br>
-    <img src="<%= asset_path('plugin_assets/redmine_enhanced_ux/images/features/insert_attachment_tag.png') %>" 
-     style="max-width: 300px; height: 200px; margin: 5px 0; border: 1px solid #ddd;" 
-     alt="Insert attachment tag preview">
-  </p>
-  <p>
-    <label for="responsive_table_scroll">Responsive table scroll:</label>
-    <input type="hidden" name="settings[responsive_table_scroll]" value="'0'">
-    <%= check_box_tag 'settings[responsive_table_scroll]', '1', @settings[:responsive_table_scroll] == '1' %>
-    <br>
-    <img src="<%= asset_path('plugin_assets/redmine_enhanced_ux/images/features/responsive_table_scroll.png') %>" 
-     style="max-width: 300px; height: 200px; margin: 5px 0; border: 1px solid #ddd;" 
-     alt="Responsive table scroll preview">
-  </p>
-</fieldset>
+  
+  .buttons {
+    position: sticky;
+    bottom: 0;
+    background: white;
+    padding: 15px;
+    border-top: 2px solid #ddd;
+    box-shadow: 0 -2px 10px rgba(0,0,0,0.1);
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+  }
+  
+  .buttons a {
+    padding: 8px 20px;
+    border-radius: 4px;
+  }
+</style>
 
-<fieldset class="box tabular settings">
-  <legend><%= l(:label_global_customization, scope: :enhanced_ux) %></legend>
-  <p>
-    <label for="compact_notice_bar">Compact notice bar:</label>
-    <input type="hidden" name="settings[compact_notice_bar]" value="'0'">
-    <%= check_box_tag 'settings[compact_notice_bar]', '1', @settings[:compact_notice_bar] == '1' %>
-    <br>
-    <img src="<%= asset_path('plugin_assets/redmine_enhanced_ux/images/features/compact_notice_bar.png') %>" 
-     style="max-width: 300px; height: 200px; margin: 5px 0; border: 1px solid #ddd;" 
-     alt="Compact notice bar preview">
-  </p>
-  <p>
-    <label for="direct_edit_on_issue_list">Direct edit on issue list:</label>
-    <input type="hidden" name="settings[direct_edit_on_issue_list]" value="'0'">
-    <%= check_box_tag 'settings[direct_edit_on_issue_list]', '1', @settings[:direct_edit_on_issue_list] == '1' %>
-    <br>
-    <img src="<%= asset_path('plugin_assets/redmine_enhanced_ux/images/features/direct_edit_on_issue_list.png') %>" 
-     style="max-width: 300px; height: 200px; margin: 5px 0; border: 1px solid #ddd;" 
-     alt="Direct edit on issue list preview">
-  </p>
-  <p>
-    <label for="fix_tooltip_position">Fix tooltip position:</label>
-    <input type="hidden" name="settings[fix_tooltip_position]" value="'0'">
-    <%= check_box_tag 'settings[fix_tooltip_position]', '1', @settings[:fix_tooltip_position] == '1' %>
-    <br>
-    <img src="<%= asset_path('plugin_assets/redmine_enhanced_ux/images/features/fix_tooltip_position.png') %>" 
-     style="max-width: 300px; height: 200px; margin: 5px 0; border: 1px solid #ddd;" 
-     alt="Fix tooltip position preview">
-  </p>
-  <p>
-    <label for="popup_anywhere">Popup anywhere:</label>
-    <input type="hidden" name="settings[popup_anywhere]" value="'0'">
-    <%= check_box_tag 'settings[popup_anywhere]', '1', @settings[:popup_anywhere] == '1' %>
-    <br>
-    <img src="<%= asset_path('plugin_assets/redmine_enhanced_ux/images/features/popup_anywhere.png') %>" 
-     style="max-width: 300px; height: 200px; margin: 5px 0; border: 1px solid #ddd;" 
-     alt="Popup anywhere preview">
-  </p>
-  <p>
-    <label for="show_only_opened_issues">Show only opened issues:</label>
-    <input type="hidden" name="settings[show_only_opened_issues]" value="'0'">
-    <%= check_box_tag 'settings[show_only_opened_issues]', '1', @settings[:show_only_opened_issues] == '1' %>
-    <br>
-    <img src="<%= asset_path('plugin_assets/redmine_enhanced_ux/images/features/show_only_opened_issues.png') %>" 
-     style="max-width: 300px; height: 200px; margin: 5px 0; border: 1px solid #ddd;" 
-     alt="Show only opened issues preview">
-  </p>
-  <p>
-    <label for="simple_menu_bar">Simple menu bar:</label>
-    <input type="hidden" name="settings[simple_menu_bar]" value="'0'">
-    <%= check_box_tag 'settings[simple_menu_bar]', '1', @settings[:simple_menu_bar] == '1' %>
-    <br>
-    <img src="<%= asset_path('plugin_assets/redmine_enhanced_ux/images/features/simple_menu_bar.png') %>" 
-     style="max-width: 300px; height: 200px; margin: 5px 0; border: 1px solid #ddd;" 
-     alt="Simple menu bar preview">
-  </p>
-  <p>
-    <label for="two_pane_mode">Two pane mode:</label>
-    <input type="hidden" name="settings[two_pane_mode]" value="'0'">
-    <%= check_box_tag 'settings[two_pane_mode]', '1', @settings[:two_pane_mode] == '1' %>
-    <br>
-    <img src="<%= asset_path('plugin_assets/redmine_enhanced_ux/images/features/two_pane_mode.png') %>" 
-     style="max-width: 300px; height: 200px; margin: 5px 0; border: 1px solid #ddd;" 
-     alt="Two pane mode preview">
-  </p>
-  <p>
-    <label for="auto_reload">Auto reload:</label>
-    <input type="hidden" name="settings[auto_reload]" value="'0'">
-    <%= check_box_tag 'settings[auto_reload]', '1', @settings[:auto_reload] == '1' %>
-    <br>
-    <img src="<%= asset_path('plugin_assets/redmine_enhanced_ux/images/features/auto_reload.png') %>" 
-     style="max-width: 300px; height: 200px; margin: 5px 0; border: 1px solid #ddd;" 
-     alt="Auto reload preview">
-  </p>
-  <p>
-    <label for="fixes_for_rtl_design">Fixes for RTL design:</label>
-    <input type="hidden" name="settings[fixes_for_rtl_design]" value="'0'">
-    <%= check_box_tag 'settings[fixes_for_rtl_design]', '1', @settings[:fixes_for_rtl_design] == '1' %>
-    <br>
-    <img src="<%= asset_path('plugin_assets/redmine_enhanced_ux/images/features/fixes_for_rtl_design.png') %>" 
-     style="max-width: 300px; height: 200px; margin: 5px 0; border: 1px solid #ddd;" 
-     alt="Fixes for RTL design preview">
-  </p>
-</fieldset>
+<div class="enhanced-ux-settings">
+  <div class="settings-header">
+    <div>
+      <h3 style="margin: 0 0 5px 0;">Enhanced UX Settings</h3>
+      <small>Configure plugin features by category</small>
+    </div>
+    <input type="text" class="search-box" placeholder="Search features..." id="featureSearch">
+  </div>
+
+  <!-- Issue Index View -->
+  <div class="category-section" data-category="issue-index">
+    <div class="category-header">
+      <span class="category-title"><%= l(:label_issue_index_view_customization, scope: :enhanced_ux) %></span>
+      <div class="category-controls">
+        <a href="#" class="enable-category">Enable all</a>
+        <a href="#" class="disable-category">Disable all</a>
+      </div>
+    </div>
+    <div class="feature-grid">
+      <div class="feature-card" data-feature="custom_issue_list">
+        <div class="feature-header">
+          <input type="hidden" name="settings[custom_issue_list]" value="0">
+          <%= check_box_tag 'settings[custom_issue_list]', '1', @settings[:custom_issue_list] == '1', class: 'feature-checkbox' %>
+          <label class="feature-title" for="settings_custom_issue_list">Custom issue list</label>
+        </div>
+        <img src="<%= asset_path('plugin_assets/redmine_enhanced_ux/images/features/custom_issue_list.png') %>" 
+             class="feature-image" 
+             alt="Custom issue list preview">
+      </div>
+      
+      <div class="feature-card" data-feature="fuzzy_timestamps_formatter">
+        <div class="feature-header">
+          <input type="hidden" name="settings[fuzzy_timestamps_formatter]" value="0">
+          <%= check_box_tag 'settings[fuzzy_timestamps_formatter]', '1', @settings[:fuzzy_timestamps_formatter] == '1', class: 'feature-checkbox' %>
+          <label class="feature-title" for="settings_fuzzy_timestamps_formatter">Fuzzy timestamps formatter</label>
+        </div>
+        <img src="<%= asset_path('plugin_assets/redmine_enhanced_ux/images/features/fuzzy_timestamps_formatter.png') %>" 
+             class="feature-image" 
+             alt="Fuzzy timestamps formatter preview">
+      </div>
+    </div>
+  </div>
+
+  <!-- Issue View -->
+  <div class="category-section" data-category="issue-view">
+    <div class="category-header">
+      <span class="category-title"><%= l(:label_issue_view_customization, scope: :enhanced_ux) %></span>
+      <div class="category-controls">
+        <a href="#" class="enable-category">Enable all</a>
+        <a href="#" class="disable-category">Disable all</a>
+      </div>
+    </div>
+    <div class="feature-grid">
+      <div class="feature-card" data-feature="custom_issue">
+        <div class="feature-header">
+          <input type="hidden" name="settings[custom_issue]" value="0">
+          <%= check_box_tag 'settings[custom_issue]', '1', @settings[:custom_issue] == '1', class: 'feature-checkbox' %>
+          <label class="feature-title" for="settings_custom_issue">Custom issue</label>
+        </div>
+        <img src="<%= asset_path('plugin_assets/redmine_enhanced_ux/images/features/custom_issue.png') %>" 
+             class="feature-image" 
+             alt="Custom issue preview">
+      </div>
+
+      <div class="feature-card" data-feature="copy_issue_form_link_with_data">
+        <div class="feature-header">
+          <input type="hidden" name="settings[copy_issue_form_link_with_data]" value="0">
+          <%= check_box_tag 'settings[copy_issue_form_link_with_data]', '1', @settings[:copy_issue_form_link_with_data] == '1', class: 'feature-checkbox' %>
+          <label class="feature-title" for="settings_copy_issue_form_link_with_data">Copy issue form link with data</label>
+        </div>
+        <img src="<%= asset_path('plugin_assets/redmine_enhanced_ux/images/features/copy_issue_form_link_with_data.png') %>" 
+             class="feature-image" 
+             alt="Copy issue form link with data preview">
+      </div>
+
+      <div class="feature-card" data-feature="issue_attributes_to_link">
+        <div class="feature-header">
+          <input type="hidden" name="settings[issue_attributes_to_link]" value="0">
+          <%= check_box_tag 'settings[issue_attributes_to_link]', '1', @settings[:issue_attributes_to_link] == '1', class: 'feature-checkbox' %>
+          <label class="feature-title" for="settings_issue_attributes_to_link">Issue attributes to link</label>
+        </div>
+        <img src="<%= asset_path('plugin_assets/redmine_enhanced_ux/images/features/issue_attributes_to_link.png') %>" 
+             class="feature-image" 
+             alt="Issue attributes to link preview">
+      </div>
+
+      <div class="feature-card" data-feature="scroll_to_top_or_bottom">
+        <div class="feature-header">
+          <input type="hidden" name="settings[scroll_to_top_or_bottom]" value="0">
+          <%= check_box_tag 'settings[scroll_to_top_or_bottom]', '1', @settings[:scroll_to_top_or_bottom] == '1', class: 'feature-checkbox' %>
+          <label class="feature-title" for="settings_scroll_to_top_or_bottom">Scroll to top or bottom</label>
+        </div>
+        <img src="<%= asset_path('plugin_assets/redmine_enhanced_ux/images/features/scroll_to_top_or_bottom.png') %>" 
+             class="feature-image" 
+             alt="Scroll to top or bottom preview">
+      </div>
+    </div>
+  </div>
+
+  <!-- Issue Gantt View -->
+  <div class="category-section" data-category="issue-gantt">
+    <div class="category-header">
+      <span class="category-title"><%= l(:label_issue_gantt_view_customization, scope: :enhanced_ux) %></span>
+      <div class="category-controls">
+        <a href="#" class="enable-category">Enable all</a>
+        <a href="#" class="disable-category">Disable all</a>
+      </div>
+    </div>
+    <div class="feature-grid">
+      <div class="feature-card" data-feature="enhanced_gantt_entry_click">
+        <div class="feature-header">
+          <input type="hidden" name="settings[enhanced_gantt_entry_click]" value="0">
+          <%= check_box_tag 'settings[enhanced_gantt_entry_click]', '1', @settings[:enhanced_gantt_entry_click] == '1', class: 'feature-checkbox' %>
+          <label class="feature-title" for="settings_enhanced_gantt_entry_click">Enhanced gantt entry click function</label>
+        </div>
+        <img src="<%= asset_path('plugin_assets/redmine_enhanced_ux/images/features/enhanced_gantt_entry_click.png') %>" 
+             class="feature-image" 
+             alt="Enhanced gantt entry click function preview">
+      </div>
+
+      <div class="feature-card" data-feature="custom_gantt_chart">
+        <div class="feature-header">
+          <input type="hidden" name="settings[custom_gantt_chart]" value="0">
+          <%= check_box_tag 'settings[custom_gantt_chart]', '1', @settings[:custom_gantt_chart] == '1', class: 'feature-checkbox' %>
+          <label class="feature-title" for="settings_custom_gantt_chart">Custom gantt chart</label>
+        </div>
+        <img src="<%= asset_path('plugin_assets/redmine_enhanced_ux/images/features/custom_gantt_chart.png') %>" 
+             class="feature-image" 
+             alt="Custom gantt chart preview">
+      </div>
+    </div>
+  </div>
+
+  <!-- Other Views -->
+  <div class="category-section" data-category="other-views">
+    <div class="category-header">
+      <span class="category-title"><%= l(:label_other_view_customization, scope: :enhanced_ux) %></span>
+      <div class="category-controls">
+        <a href="#" class="enable-category">Enable all</a>
+        <a href="#" class="disable-category">Disable all</a>
+      </div>
+    </div>
+    <div class="feature-grid">
+      <div class="feature-card" data-feature="custom_roadmap_and_version">
+        <div class="feature-header">
+          <input type="hidden" name="settings[custom_roadmap_and_version]" value="0">
+          <%= check_box_tag 'settings[custom_roadmap_and_version]', '1', @settings[:custom_roadmap_and_version] == '1', class: 'feature-checkbox' %>
+          <label class="feature-title" for="settings_custom_roadmap_and_version">Custom roadmap and version</label>
+        </div>
+        <img src="<%= asset_path('plugin_assets/redmine_enhanced_ux/images/features/custom_roadmap_and_version.png') %>" 
+             class="feature-image" 
+             alt="Custom roadmap and version preview">
+      </div>
+
+      <div class="feature-card" data-feature="custom_calendar">
+        <div class="feature-header">
+          <input type="hidden" name="settings[custom_calendar]" value="0">
+          <%= check_box_tag 'settings[custom_calendar]', '1', @settings[:custom_calendar] == '1', class: 'feature-checkbox' %>
+          <label class="feature-title" for="settings_custom_calendar">Custom calendar</label>
+        </div>
+        <img src="<%= asset_path('plugin_assets/redmine_enhanced_ux/images/features/custom_calendar.png') %>" 
+             class="feature-image" 
+             alt="Custom calendar preview">
+      </div>
+
+      <div class="feature-card" data-feature="custom_issue_note_list">
+        <div class="feature-header">
+          <input type="hidden" name="settings[custom_issue_note_list]" value="0">
+          <%= check_box_tag 'settings[custom_issue_note_list]', '1', @settings[:custom_issue_note_list] == '1', class: 'feature-checkbox' %>
+          <label class="feature-title" for="settings_custom_issue_note_list">Custom issue note list</label>
+        </div>
+      </div>
+
+      <div class="feature-card" data-feature="local_storage_manager">
+        <div class="feature-header">
+          <input type="hidden" name="settings[local_storage_manager]" value="0">
+          <%= check_box_tag 'settings[local_storage_manager]', '1', @settings[:local_storage_manager] == '1', class: 'feature-checkbox' %>
+          <label class="feature-title" for="settings_local_storage_manager">Local storage manager</label>
+        </div>
+        <img src="<%= asset_path('plugin_assets/redmine_enhanced_ux/images/features/local_storage_manager.png') %>" 
+             class="feature-image" 
+             alt="Local storage manager preview">
+      </div>
+    </div>
+  </div>
+
+  <!-- Wiki Customization -->
+  <div class="category-section" data-category="wiki">
+    <div class="category-header">
+      <span class="category-title"><%= l(:label_wiki_customization, scope: :enhanced_ux) %></span>
+      <div class="category-controls">
+        <a href="#" class="enable-category">Enable all</a>
+        <a href="#" class="disable-category">Disable all</a>
+      </div>
+    </div>
+    <div class="feature-grid">
+      <div class="feature-card" data-feature="add_copy_button_to_the_pre_block">
+        <div class="feature-header">
+          <input type="hidden" name="settings[add_copy_button_to_the_pre_block]" value="0">
+          <%= check_box_tag 'settings[add_copy_button_to_the_pre_block]', '1', @settings[:add_copy_button_to_the_pre_block] == '1', class: 'feature-checkbox' %>
+          <label class="feature-title" for="settings_add_copy_button_to_the_pre_block">Add copy button to the pre block</label>
+        </div>
+        <img src="<%= asset_path('plugin_assets/redmine_enhanced_ux/images/features/add_copy_button_to_the_pre_block.png') %>" 
+             class="feature-image" 
+             alt="Add copy button to the pre block preview">
+      </div>
+
+      <div class="feature-card" data-feature="enhanced_list_button">
+        <div class="feature-header">
+          <input type="hidden" name="settings[enhanced_list_button]" value="0">
+          <%= check_box_tag 'settings[enhanced_list_button]', '1', @settings[:enhanced_list_button] == '1', class: 'feature-checkbox' %>
+          <label class="feature-title" for="settings_enhanced_list_button">Enhanced list button</label>
+        </div>
+        <img src="<%= asset_path('plugin_assets/redmine_enhanced_ux/images/features/enhanced_list_button.png') %>" 
+             class="feature-image" 
+             alt="Enhanced list button preview">
+      </div>
+
+      <div class="feature-card" data-feature="image_insertion_modal">
+        <div class="feature-header">
+          <input type="hidden" name="settings[image_insertion_modal]" value="0">
+          <%= check_box_tag 'settings[image_insertion_modal]', '1', @settings[:image_insertion_modal] == '1', class: 'feature-checkbox' %>
+          <label class="feature-title" for="settings_image_insertion_modal">Image insertion modal</label>
+        </div>
+        <img src="<%= asset_path('plugin_assets/redmine_enhanced_ux/images/features/image_insertion_modal.png') %>" 
+             class="feature-image" 
+             alt="Image insertion modal preview">
+      </div>
+
+      <div class="feature-card" data-feature="insert_attachment_tag">
+        <div class="feature-header">
+          <input type="hidden" name="settings[insert_attachment_tag]" value="0">
+          <%= check_box_tag 'settings[insert_attachment_tag]', '1', @settings[:insert_attachment_tag] == '1', class: 'feature-checkbox' %>
+          <label class="feature-title" for="settings_insert_attachment_tag">Insert attachment tag</label>
+        </div>
+        <img src="<%= asset_path('plugin_assets/redmine_enhanced_ux/images/features/insert_attachment_tag.png') %>" 
+             class="feature-image" 
+             alt="Insert attachment tag preview">
+      </div>
+
+      <div class="feature-card" data-feature="responsive_table_scroll">
+        <div class="feature-header">
+          <input type="hidden" name="settings[responsive_table_scroll]" value="0">
+          <%= check_box_tag 'settings[responsive_table_scroll]', '1', @settings[:responsive_table_scroll] == '1', class: 'feature-checkbox' %>
+          <label class="feature-title" for="settings_responsive_table_scroll">Responsive table scroll</label>
+        </div>
+        <img src="<%= asset_path('plugin_assets/redmine_enhanced_ux/images/features/responsive_table_scroll.png') %>" 
+             class="feature-image" 
+             alt="Responsive table scroll preview">
+      </div>
+    </div>
+  </div>
+
+  <!-- Global Customization -->
+  <div class="category-section" data-category="global">
+    <div class="category-header">
+      <span class="category-title"><%= l(:label_global_customization, scope: :enhanced_ux) %></span>
+      <div class="category-controls">
+        <a href="#" class="enable-category">Enable all</a>
+        <a href="#" class="disable-category">Disable all</a>
+      </div>
+    </div>
+    <div class="feature-grid">
+      <div class="feature-card" data-feature="compact_notice_bar">
+        <div class="feature-header">
+          <input type="hidden" name="settings[compact_notice_bar]" value="0">
+          <%= check_box_tag 'settings[compact_notice_bar]', '1', @settings[:compact_notice_bar] == '1', class: 'feature-checkbox' %>
+          <label class="feature-title" for="settings_compact_notice_bar">Compact notice bar</label>
+        </div>
+        <img src="<%= asset_path('plugin_assets/redmine_enhanced_ux/images/features/compact_notice_bar.png') %>" 
+             class="feature-image" 
+             alt="Compact notice bar preview">
+      </div>
+
+      <div class="feature-card" data-feature="direct_edit_on_issue_list">
+        <div class="feature-header">
+          <input type="hidden" name="settings[direct_edit_on_issue_list]" value="0">
+          <%= check_box_tag 'settings[direct_edit_on_issue_list]', '1', @settings[:direct_edit_on_issue_list] == '1', class: 'feature-checkbox' %>
+          <label class="feature-title" for="settings_direct_edit_on_issue_list">Direct edit on issue list</label>
+        </div>
+        <img src="<%= asset_path('plugin_assets/redmine_enhanced_ux/images/features/direct_edit_on_issue_list.png') %>" 
+             class="feature-image" 
+             alt="Direct edit on issue list preview">
+      </div>
+
+      <div class="feature-card" data-feature="fix_tooltip_position">
+        <div class="feature-header">
+          <input type="hidden" name="settings[fix_tooltip_position]" value="0">
+          <%= check_box_tag 'settings[fix_tooltip_position]', '1', @settings[:fix_tooltip_position] == '1', class: 'feature-checkbox' %>
+          <label class="feature-title" for="settings_fix_tooltip_position">Fix tooltip position</label>
+        </div>
+        <img src="<%= asset_path('plugin_assets/redmine_enhanced_ux/images/features/fix_tooltip_position.png') %>" 
+             class="feature-image" 
+             alt="Fix tooltip position preview">
+      </div>
+
+      <div class="feature-card" data-feature="popup_anywhere">
+        <div class="feature-header">
+          <input type="hidden" name="settings[popup_anywhere]" value="0">
+          <%= check_box_tag 'settings[popup_anywhere]', '1', @settings[:popup_anywhere] == '1', class: 'feature-checkbox' %>
+          <label class="feature-title" for="settings_popup_anywhere">Popup anywhere</label>
+        </div>
+        <img src="<%= asset_path('plugin_assets/redmine_enhanced_ux/images/features/popup_anywhere.png') %>" 
+             class="feature-image" 
+             alt="Popup anywhere preview">
+      </div>
+
+      <div class="feature-card" data-feature="show_only_opened_issues">
+        <div class="feature-header">
+          <input type="hidden" name="settings[show_only_opened_issues]" value="0">
+          <%= check_box_tag 'settings[show_only_opened_issues]', '1', @settings[:show_only_opened_issues] == '1', class: 'feature-checkbox' %>
+          <label class="feature-title" for="settings_show_only_opened_issues">Show only opened issues</label>
+        </div>
+        <img src="<%= asset_path('plugin_assets/redmine_enhanced_ux/images/features/show_only_opened_issues.png') %>" 
+             class="feature-image" 
+             alt="Show only opened issues preview">
+      </div>
+
+      <div class="feature-card" data-feature="simple_menu_bar">
+        <div class="feature-header">
+          <input type="hidden" name="settings[simple_menu_bar]" value="0">
+          <%= check_box_tag 'settings[simple_menu_bar]', '1', @settings[:simple_menu_bar] == '1', class: 'feature-checkbox' %>
+          <label class="feature-title" for="settings_simple_menu_bar">Simple menu bar</label>
+        </div>
+        <img src="<%= asset_path('plugin_assets/redmine_enhanced_ux/images/features/simple_menu_bar.png') %>" 
+             class="feature-image" 
+             alt="Simple menu bar preview">
+      </div>
+
+      <div class="feature-card" data-feature="two_pane_mode">
+        <div class="feature-header">
+          <input type="hidden" name="settings[two_pane_mode]" value="0">
+          <%= check_box_tag 'settings[two_pane_mode]', '1', @settings[:two_pane_mode] == '1', class: 'feature-checkbox' %>
+          <label class="feature-title" for="settings_two_pane_mode">Two pane mode</label>
+        </div>
+        <img src="<%= asset_path('plugin_assets/redmine_enhanced_ux/images/features/two_pane_mode.png') %>" 
+             class="feature-image" 
+             alt="Two pane mode preview">
+      </div>
+
+      <div class="feature-card" data-feature="auto_reload">
+        <div class="feature-header">
+          <input type="hidden" name="settings[auto_reload]" value="0">
+          <%= check_box_tag 'settings[auto_reload]', '1', @settings[:auto_reload] == '1', class: 'feature-checkbox' %>
+          <label class="feature-title" for="settings_auto_reload">Auto reload</label>
+        </div>
+        <img src="<%= asset_path('plugin_assets/redmine_enhanced_ux/images/features/auto_reload.png') %>" 
+             class="feature-image" 
+             alt="Auto reload preview">
+      </div>
+
+      <div class="feature-card" data-feature="fixes_for_rtl_design">
+        <div class="feature-header">
+          <input type="hidden" name="settings[fixes_for_rtl_design]" value="0">
+          <%= check_box_tag 'settings[fixes_for_rtl_design]', '1', @settings[:fixes_for_rtl_design] == '1', class: 'feature-checkbox' %>
+          <label class="feature-title" for="settings_fixes_for_rtl_design">Fixes for RTL design</label>
+        </div>
+        <img src="<%= asset_path('plugin_assets/redmine_enhanced_ux/images/features/fixes_for_rtl_design.png') %>" 
+             class="feature-image" 
+             alt="Fixes for RTL design preview">
+      </div>
+    </div>
+  </div>
+</div>
 
 <div class="buttons">
-  <a class="icon icon-ok" href="javascript:void(0)" onclick="$('input[type=checkbox]:not(:checked)').each((i, e) => e.click());">Enable all</a>
-  <a class="icon icon-not-ok" href="javascript:void(0)" onclick="$('input[type=checkbox]:checked').each((i, e) => e.click());">Disable all</a>
+  <a class="icon icon-ok" href="javascript:void(0)" onclick="enableAll();">Enable all features</a>
+  <a class="icon icon-not-ok" href="javascript:void(0)" onclick="disableAll();">Disable all features</a>
 </div>
+
+<script>
+  function enableAll() {
+    document.querySelectorAll('input[type=checkbox]:not(:checked)').forEach(cb => cb.click());
+  }
+  
+  function disableAll() {
+    document.querySelectorAll('input[type=checkbox]:checked').forEach(cb => cb.click());
+  }
+  
+  // Category-specific enable/disable
+  document.querySelectorAll('.enable-category').forEach(btn => {
+    btn.addEventListener('click', function(e) {
+      e.preventDefault();
+      const section = this.closest('.category-section');
+      section.querySelectorAll('input[type=checkbox]:not(:checked)').forEach(cb => cb.click());
+    });
+  });
+  
+  document.querySelectorAll('.disable-category').forEach(btn => {
+    btn.addEventListener('click', function(e) {
+      e.preventDefault();
+      const section = this.closest('.category-section');
+      section.querySelectorAll('input[type=checkbox]:checked').forEach(cb => cb.click());
+    });
+  });
+  
+  // Card click to toggle checkbox
+  document.querySelectorAll('.feature-card').forEach(card => {
+    card.addEventListener('click', function(e) {
+      // Prevent double-toggle if checkbox itself was clicked
+      if (e.target.type === 'checkbox') {
+        return;
+      }
+      const checkbox = this.querySelector('.feature-checkbox');
+      if (checkbox) {
+        checkbox.click();
+      }
+    });
+  });
+  
+  // Update card appearance on checkbox change
+  document.querySelectorAll('.feature-checkbox').forEach(cb => {
+    cb.addEventListener('change', function() {
+      const card = this.closest('.feature-card');
+      card.classList.toggle('enabled', this.checked);
+    });
+    
+    // Initialize
+    if (cb.checked) {
+      cb.closest('.feature-card').classList.add('enabled');
+    }
+  });
+  
+  // Search functionality
+  document.getElementById('featureSearch').addEventListener('input', function(e) {
+    const searchTerm = e.target.value.toLowerCase();
+    document.querySelectorAll('.feature-card').forEach(card => {
+      const title = card.querySelector('.feature-title').textContent.toLowerCase();
+      card.style.display = title.includes(searchTerm) ? '' : 'none';
+    });
+  });
+</script>
