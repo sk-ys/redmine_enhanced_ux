@@ -51,6 +51,7 @@
       "due_date",
       "date",
       "estimated_hours",
+      "tags",
     ];
 
     var targetElem = undefined;
@@ -302,13 +303,16 @@
       $(e.target).closest("tr.issue>td").addClass("selected");
 
       // Estimating field type
-      const fieldType = field.includes("date")
-        ? "date"
-        : field.includes("int")
-        ? "int"
-        : field.includes("float") || field.includes("estimated_hours")
-        ? "float"
-        : "text";
+      const fieldType =
+        field === "tags"
+          ? "tags"
+          : field.includes("date")
+          ? "date"
+          : field.includes("int")
+          ? "int"
+          : field.includes("float") || field.includes("estimated_hours")
+          ? "float"
+          : "text";
 
       if (
         [
@@ -356,28 +360,33 @@
           url: url,
           data: $(form).serialize(),
           success: (data) => {
-            const $fieldMenu = $('a[href][data-method="patch"]', data)
-              .filter((i, e) => {
-                const url = new URL(getAbsUrl($(e).attr("href")));
-                return Array.from(url.searchParams.keys()).some((key) =>
-                  searchParamsKeys.some((searchParamsKey) =>
-                    new RegExp(searchParamsKey.replace(/[\[\]]/g, "\\$&")).test(
-                      key
-                    )
-                  )
-                );
-              })
-              .closest("li.folder")
-              .children("ul");
-
-            if ($fieldMenu.length > 0) {
-              $("#context-menu")
-                .css({ left: e.pageX, top: e.pageY })
-                .html($fieldMenu)
-                .show();
+            if (field === "tags") {
+              const tags_anchor = $('a[href*="/edit_issue_tags?"]', data);
+              if (tags_anchor.length > 0) $.ajax({ url: tags_anchor[0].href });
             } else {
-              // Show original context menu
-              contextMenuShowOrg(e);
+              const $fieldMenu = $('a[href][data-method="patch"]', data)
+                .filter((i, e) => {
+                  const url = new URL(getAbsUrl($(e).attr("href")));
+                  return Array.from(url.searchParams.keys()).some((key) =>
+                    searchParamsKeys.some((searchParamsKey) =>
+                      new RegExp(
+                        searchParamsKey.replace(/[\[\]]/g, "\\$&")
+                      ).test(key)
+                    )
+                  );
+                })
+                .closest("li.folder")
+                .children("ul");
+
+              if ($fieldMenu.length > 0) {
+                $("#context-menu")
+                  .css({ left: e.pageX, top: e.pageY })
+                  .html($fieldMenu)
+                  .show();
+              } else {
+                // Show original context menu
+                contextMenuShowOrg(e);
+              }
             }
           },
         });
@@ -392,28 +401,48 @@
       );
     }
 
+    function isTagsForm(target) {
+      const $form = $(target).closest("form");
+      return $form.attr("id") === "edit-issue-tags-form";
+    }
+
     // Context menu content is submit from dynamically generated form
     $(document).on("click", 'input[type="submit"]', (e) => {
-      if (!isContextMenuForm(e.target)) return;
+      const flgIsTagsForm = isTagsForm(e.target);
+      if (!isContextMenuForm(e.target) && !flgIsTagsForm) return;
       if (!window["ajaxUpdateIssueList"]) return;
 
       e.preventDefault();
       const form = e.target.closest("form");
       const formData = new FormData(form);
-      $(form).remove();
+      const serializedData = $(form).serialize();
+
+      if (flgIsTagsForm) {
+        $(form).closest(".ui-dialog-content").dialog("close");
+      } else {
+        $(form).remove();
+      }
 
       $("#ajax-indicator").show();
 
-      fetch(form.action, {
-        method: "PATCH",
-        headers: {
-          "X-CSRF-Token": formData.get("authenticity_token"),
-          "Content-Type": "application/json",
-          Accept: "text/html",
-        },
-        body: JSON.stringify(Object.fromEntries(formData)),
-        redirect: "manual",
-      })
+      fetch(
+        form.action +
+          (serializedData
+            ? (form.action.includes("?") ? "&" : "?") + serializedData
+            : ""),
+        {
+          method: flgIsTagsForm ? "POST" : "PATCH",
+          headers: {
+            "X-CSRF-Token": formData.get("authenticity_token"),
+            Accept: "text/html",
+          },
+          // Note: When using the following code, if a key is duplicated, only
+          // the last value will be retained, so it cannot be used if multiple
+          // values for the same key are required.
+          // body: JSON.stringify(Object.fromEntries(formData)),
+          redirect: "manual",
+        }
+      )
         .then(async (response) => {
           if (response.type === "opaqueredirect" || response.ok) {
             // Note: In Redmine 5.1.2, the response is always `ok` even if the
@@ -443,6 +472,7 @@
   div#context-menu {
     position: fixed;
   }
+
   #context-input-form {
     /* position: fixed; */
     display: flex;
@@ -463,6 +493,7 @@
       &.apply {
         margin-right: 0;
       }
+
       &.cancel {
         margin-left: 0;
       }

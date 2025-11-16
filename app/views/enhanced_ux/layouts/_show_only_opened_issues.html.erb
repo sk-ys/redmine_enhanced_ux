@@ -52,6 +52,18 @@
       },
     }[pageType];
 
+    const configs = {
+      issues: {
+        replaceTrWithDiv: false,
+      },
+      roadmap: {
+        replaceTrWithDiv: true,
+      },
+      versions: {
+        replaceTrWithDiv: true,
+      },
+    }[pageType];
+
     function findTable(target) {
       if (pageType === "issues") {
         return $(target).closest(queries.closest).find(queries.table);
@@ -65,7 +77,7 @@
       }
     }
 
-    if ( $(queries.baseTarget).length == 0) return;
+    if ($(queries.baseTarget).length == 0) return;
 
     function createCheckBox() {
       return $("<input>")
@@ -84,77 +96,131 @@
       hide = hide ?? !$table.hasClass("closed_issue_hidden");
 
       if (hide) {
-        // Replace TR to DIV
-        $table
-          .find("tr.issue.closed")
-          .addClass("hidden")
-          .replaceWith(function () {
+        $table.find("tr.issue.closed").addClass("hidden");
+
+        if (configs.replaceTrWithDiv) {
+          // Replace TR to DIV
+          $table.find("tr.issue.closed").replaceWith(function () {
             return $("<div>")
               .append($(this).contents())
               .addClass($(this).attr("class"));
           });
+        }
       } else {
-        // Replace DIV to TR
-        $table.find("div.issue.hidden").replaceWith(function () {
-          return $("<tr>")
-            .append($(this).contents())
-            .addClass($(this).attr("class"));
-        });
+        if (configs.replaceTrWithDiv) {
+          // Replace DIV to TR
+          $table.find("div.issue.hidden").replaceWith(function () {
+            return $("<tr>")
+              .append($(this).contents())
+              .addClass($(this).attr("class"));
+          });
+        }
+
         $table.find("tr.issue").removeClass("hidden");
       }
       $table.toggleClass("closed_issue_hidden", hide);
     }
 
-    function setup(target) {
-      const $table = findTable(target);
+    function setupCheckBox(targetElement) {
+      const $table = findTable(targetElement);
 
-      // Exit if there are no items
-      if ($table.length === 0) return;
+      if (
+        $(targetElement)
+          .find(queries.checkBoxAppendTarget)
+          .find("input.hide_closed_issue").length === 0
+      ) {
+        // Exit if there are no items
+        if ($table.length === 0) return;
 
-      // Exit if all issue is opened or closed
-      const count_all = $table.find("tr.issue").length;
-      const count_closed = $table.find("tr.issue.closed").length;
-      if (count_closed === 0 || count_all === count_closed) return;
+        // Exit if all issue is opened or closed
+        const count_all = $table.find("tr.issue").length;
+        const count_closed = $table.find("tr.issue.closed").length;
+        if (count_closed === 0 || count_all === count_closed) return;
 
-      // Add CheckBox
-      $(target)
-        .find(queries.checkBoxAppendTarget)
-        .append(
-          $("<span/>")
-            .addClass("hide_closed_issue_button_outer")
-            .append(
-              $("<label>")
-                .text(resources.labelHideClosed)
-                .prepend(createCheckBox())
-            )
-        );
+        // Add CheckBox
+        $(targetElement)
+          .find(queries.checkBoxAppendTarget)
+          .append(
+            $("<span/>")
+              .addClass("hide_closed_issue_button_outer")
+              .append(
+                $("<label>")
+                  .text(resources.labelHideClosed)
+                  .prepend(createCheckBox())
+              )
+          );
 
-      // Set default state
+        setDefaultState($table);
+      }
+
+      restoreState($table);
+    }
+
+    function setDefaultState($table) {
       toggleIssueView($table, issueHiddenDefault);
     }
 
+    function restoreState($table) {
+      toggleIssueView($table, $table.hasClass("closed_issue_hidden"));
+    }
+
     setupShowOnlyOpenedIssues = function () {
-      $(queries.baseTarget).each((_, element) => {
+      $(queries.baseTarget).each((_, targetElement) => {
         if (
-          $(element)
+          $(targetElement)
             .find(queries.checkBoxAppendTarget)
             .find("input.hide_closed_issue").length === 0
         ) {
-          setup(element);
+          setupCheckBox(targetElement);
 
           new MutationObserver((mutationList, observer) => {
             for (const mutation of mutationList) {
-              setup(element);
+              setupCheckBox(targetElement);
             }
-          }).observe(element, {
+          }).observe(targetElement, {
             childList: true,
           });
         }
       });
     };
 
+    /**
+     * Set up form change detection.
+     * This method's purpose is to detect when the issue view is replaced by
+     * other plugins like Redmine RT.
+     */
+    function setupFormChangeDetection() {
+      const targetNode = $("div.issue.details").parent()[0];
+
+      if (targetNode) {
+        const observer = new MutationObserver((mutations) => {
+          mutations.forEach((mutation) => {
+            if (mutation.type === "childList") {
+              mutation.addedNodes.forEach((node) => {
+                if (
+                  node.nodeType === Node.ELEMENT_NODE &&
+                  $(node).is("div.issue.details")
+                ) {
+                  setupShowOnlyOpenedIssues();
+                }
+              });
+            }
+          });
+        });
+
+        observer.observe(targetNode, {
+          childList: true,
+          subtree: true,
+          attributes: false,
+        });
+      }
+    }
+
     // Initial invoke
     setupShowOnlyOpenedIssues();
+
+    // Set up form change detection
+    setupFormChangeDetection();
   });
   //]]>
 </script>
@@ -170,6 +236,10 @@
       width: 0.8em;
       margin-left: 5px;
       cursor: pointer;
+    }
+
+    table.list.issues.closed_issue_hidden .issue.hidden {
+      display: none !important;
     }
   }
 

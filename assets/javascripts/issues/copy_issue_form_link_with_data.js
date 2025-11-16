@@ -22,10 +22,10 @@ $(() => {
       messageCopiedForCopiedIssue: `Link to the copy form for the issue #${copyFromId} with data has been copied.`,
     },
     ja: {
-      label: "フォームへのリンクをコピー",
-      description: "データが保持されたフォームへのリンクをクリップボードにコピーします。",
-      messageCopiedForNewIssue: "データが保持された新規チケットフォームへのリンクがコピーされました。",
-      messageCopiedForCopiedIssue: `チケット#${copyFromId}のデータが保持されたコピーフォームへのリンクがコピーされました。`,
+      label: "フォームのリンクをコピー",
+      description: "現在の入力内容を含むフォームのリンクをクリップボードにコピーします。",
+      messageCopiedForNewIssue: "現在の入力内容を含む新規チケットフォームのリンクをコピーしました。",
+      messageCopiedForCopiedIssue: `チケット#${copyFromId}の入力内容を含むコピー用フォームのリンクをコピーしました。`,
     },
   };
 

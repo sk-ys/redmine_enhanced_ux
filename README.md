@@ -23,12 +23,12 @@ This is a plugin for Redmine. This plugin is designed to improve the user experi
 ##### Issue Index View Customization
 
 - Custom issue list - Enhance the issue list view to keep list headers fixed with CSS ( position: sticky ), seamless updates using AJAX to avoid page reloads, and a compact criteria box for improved usability.
+- Fuzzy timestamps formatter - Convert absolute timestamps in the issue list to human-readable relative time formats (e.g., "2 hours ago", "yesterday", "1 week ago").
 
 ##### Issue View Customization
 
 - Custom issue - Customize issue views with additional fields and options, including tab display, Side By Side mode, and Quick note feature (also compatible with [RedmineRT](https://github.com/MayamaTakeshi/redmine_rt)).
 - Copy issue form link with data - Copy a link to an issue form while retaining its current data.
-- Fixed submit button - Keep the submit button fixed on the screen for easier access.
 - Issue attributes to link - Convert issue attributes to clickable links.
 - Scroll to top or bottom - Add quick scroll buttons to navigate to the top or bottom of the page.
 
@@ -61,6 +61,7 @@ This is a plugin for Redmine. This plugin is designed to improve the user experi
 - Show only opened issues - Filter the issue list to show only open issues using a checkbox.
 - Simple menu bar - Simplify the top menu and application menu for a more compact experience.
 - Two pane mode - Split the screen into two panes for easier multitasking.
+- Auto reload - Automatically reload the page at the specified interval. Supports URL parameter `auto_reload` to enable auto-reload with a custom interval (e.g., `?auto_reload=0.5` for 30-second intervals).
 - Fixes for RTL design - RTL design fixes for some pages (excluding Gantt chart).
 
 ## Installation

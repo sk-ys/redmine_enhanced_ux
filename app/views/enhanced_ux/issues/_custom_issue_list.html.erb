@@ -211,7 +211,7 @@
         $("head>title").text($("head>title", data).text());
 
         // Update sidebar
-        $("#sidebar").replaceWith($("#sidebar", htmlString));
+        $("#sidebar").empty().append($("#sidebar", htmlString).children());
 
         // Support for RedmineUp issue_tags plugin
         if (typeof setSelect2Filter) {
@@ -426,6 +426,10 @@
   });
 </script>
 <style>
+  #context-menu {
+    position: fixed;
+  }
+
   #query_form_open_button {
     display: none;
   }

@@ -653,6 +653,10 @@
 
   /* Show headers on mobile environment */
   @media screen and (max-width: 899px) {
+    #top-menu {
+      display: none;
+    }
+
     #header {
       display: block !important;
       visibility: visible !important;
@@ -667,6 +671,11 @@
       & + ul.ui-menu {
         display: none !important;
       }
+    }
+
+    #main {
+      /* Reset margin-top to avoid layout issues on mobile */
+      margin-top: 0 !important;
     }
   }
 

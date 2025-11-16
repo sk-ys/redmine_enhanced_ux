@@ -139,7 +139,7 @@
         $("#query_form+p.query-totals", htmlString).insertAfter("#query_form");
 
         // Update sidebar
-        $("#sidebar").replaceWith($("#sidebar", htmlString));
+        $("#sidebar").empty().append($("#sidebar", htmlString).children());
 
         // Support for RedmineUp issue_tags plugin
         if (typeof setSelect2Filter) {

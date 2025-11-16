@@ -353,13 +353,47 @@
           },
           scrollTargetSelector: "#gantt_area",
           updatingTargetSelector: "table.gantt-table",
-          updateIssueListAfter: (state) => {
-            // Execute original gantt setup script
-            eval(
-              $("#content>script:first")
-                .text()
-                .match(/\$\(function\(\) {([\s\S]*?)}\)\;/)[1]
-            );
+          updateIssueListAfter: (state, data) => {
+            function runOriginalGanttSetupScripts(unavailableColumns) {
+              // Adapted from the original code in `redmine/app/views/gantts/show.html.erb`.
+              // Confirmed for Redmine versions 4.1.0 through 6.0.3.
+              // disable_unavailable_columns('<%= Redmine::Helpers::Gantt::UNAVAILABLE_COLUMNS.map(&:to_s).join(',') %>'.split(','));
+              window.disable_unavailable_columns &&
+                disable_unavailable_columns(unavailableColumns);
+              window.drawGanttHandler && drawGanttHandler();
+              window.resizableSubjectColumn && resizableSubjectColumn();
+              window.drawSelectedColumns && drawSelectedColumns();
+              $(
+                "#draw_relations, #draw_progress_line, #draw_selected_columns"
+              ).change(drawGanttHandler);
+              $("div.gantt_subjects .expander").on("click", ganttEntryClick);
+            }
+            const scriptTag = $(".gantt-table~script", data)
+              .toArray()
+              .filter((e) =>
+                $(e).text().includes("disable_unavailable_columns")
+              )[0];
+            const regexExtractUnavailableColumns =
+              /disable_unavailable_columns\(\s*'([^']+)'\.split\(\s*','\)/;
+            const match = scriptTag?.text.match(regexExtractUnavailableColumns);
+            const unavailableColumns = match ? match[1].split(",") : [];
+            runOriginalGanttSetupScripts(unavailableColumns);
+
+            // Execute actual dates plugin startup script
+            try {
+              if (
+                typeof RedmineActualDate !== "undefined" &&
+                RedmineActualDate.applyActualDates
+              ) {
+                const newActualDatesData = $("#actual_dates_data", data).text();
+                if (newActualDatesData) {
+                  // Update actual dates data
+                  $("#actual_dates_data").text(newActualDatesData);
+                }
+              }
+            } catch (error) {
+              console.error(error);
+            }
           },
           highlightOpenedItem: (className, targetAnchorSelector, url) => {
             const $issueSubject = $(
@@ -661,31 +695,6 @@
           })
           .on("click", () => {
             this.setMinimize(!status.active.minimize);
-            this.toggleGridDirectionByWindowSize();
-            if (status.active.minimize) {
-              if (status.active.direction === "Column") {
-                this.$base.css({
-                  maxWidth: 0,
-                  minWidth: 0,
-                  overflow: "hidden",
-                });
-              } else {
-                this.$base.css({
-                  maxHeight: 0,
-                  minHeight: 0,
-                  overflow: "hidden",
-                });
-              }
-              setTimeout(() => {
-                this.$base.css({
-                  maxWidth: "",
-                  maxHeight: "",
-                  minWidth: "",
-                  minHeight: "",
-                  overflow: "",
-                });
-              });
-            }
           });
 
         const $maximizeButton = $("<button>")
@@ -802,7 +811,7 @@
           });
 
           // Remove the data-changed attribute before form submission
-          $contents.find("form.edit_issue").on("submit", () => {
+          $contents.find("form#issue-form").on("submit", () => {
             $contents.find("textarea").removeAttr("data-changed");
           });
         });
@@ -889,7 +898,10 @@
           if (utils.isIssueUrl(newUrl)) {
             const issueId = utils.getIssueIdFromIssueUrl(newUrl);
 
-            if (utils.existIssueIdInIssueList(issueId)) {
+            if (
+              utils.existIssueIdInIssueList(issueId) ||
+              utils.isNewIssueUrl(this.$base.data("src"))
+            ) {
               this.$base.data("src", newUrl);
               this.status.set({ src: newUrl });
             }
@@ -1126,6 +1138,8 @@
         if (saveStatus) {
           this.status.set({ minimize: minimize });
         }
+
+        this.toggleGridDirectionByWindowSize();
       }
 
       setMaximize(maximize = true, saveStatus = true) {
@@ -1394,46 +1408,50 @@
         if (this.config.ajaxUpdateIssueList) {
           await this.config.ajaxUpdateIssueList();
         } else {
-          await $.ajax(location.href).done((data) => {
-            const scrollTargetSelector = this.config.scrollTargetSelector;
-            const scrollPositionBeforeUpdate = scrollTargetSelector
-              ? {
-                  top: $(scrollTargetSelector).scrollTop(),
-                  left: $(scrollTargetSelector).scrollLeft(),
-                }
-              : undefined;
+          const response = await fetch(location.href);
+          if (!response.ok) {
+            throw new Error(`Error ${response.status}: ${response.statusText}`);
+          }
+          const htmlString = await response.text();
+          const data = new DOMParser().parseFromString(htmlString, "text/html");
+          const scrollTargetSelector = this.config.scrollTargetSelector;
+          const scrollPositionBeforeUpdate = scrollTargetSelector
+            ? {
+                top: $(scrollTargetSelector).scrollTop(),
+                left: $(scrollTargetSelector).scrollLeft(),
+              }
+            : undefined;
 
-            const updatingTargetSelector = this.config.updatingTargetSelector;
+          const updatingTargetSelector = this.config.updatingTargetSelector;
 
-            if (updatingTargetSelector === undefined) {
-              alert(resources.messageFailedToUpdate);
-              return;
-            }
+          if (updatingTargetSelector === undefined) {
+            alert(resources.messageFailedToUpdate);
+            return;
+          }
 
-            const updatedTarget = $(
-              updatingTargetSelector,
-              $("<div>").html(data)
-            ).children();
+          const updatedTarget = $(
+            updatingTargetSelector,
+            $("<div>").html(htmlString)
+          ).children();
 
-            if (updatedTarget.length === 0) {
-              alert(resources.messageFailedToUpdate);
-              return;
-            }
+          if (updatedTarget.length === 0) {
+            alert(resources.messageFailedToUpdate);
+            return;
+          }
 
-            const state = {};
-            this.config.updateIssueListBefore?.(state);
-            $(updatingTargetSelector).empty().append(updatedTarget);
-            this.config.updateIssueListAfter?.(state);
+          const state = {};
+          this.config.updateIssueListBefore?.(state);
+          $(updatingTargetSelector).empty().append(updatedTarget);
+          this.config.updateIssueListAfter?.(state, data);
 
-            // Restore scroll position
-            if (scrollPositionBeforeUpdate) {
-              setTimeout(() => {
-                $(scrollTargetSelector)
-                  .scrollTop(scrollPositionBeforeUpdate.top)
-                  .scrollLeft(scrollPositionBeforeUpdate.left);
-              });
-            }
-          });
+          // Restore scroll position
+          if (scrollPositionBeforeUpdate) {
+            setTimeout(() => {
+              $(scrollTargetSelector)
+                .scrollTop(scrollPositionBeforeUpdate.top)
+                .scrollLeft(scrollPositionBeforeUpdate.left);
+            });
+          }
           this.#postUpdateIssueList();
         }
       }
@@ -1497,6 +1515,11 @@
       position: fixed !important;
       z-index: 200;
       padding: 0 !important;
+
+      @media screen and (max-width: 899px) {
+        top: 64px !important;
+        height: calc(100% - 64px - 16px) !important;
+      }
 
       #issue-pane-toggle-minimize {
         display: none;
@@ -1744,6 +1767,7 @@
           font-size: 12px;
           font-weight: normal;
           cursor: pointer;
+          direction: ltr;
         }
       }
     }
