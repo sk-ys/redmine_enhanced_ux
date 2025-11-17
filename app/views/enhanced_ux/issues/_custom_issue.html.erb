@@ -3349,7 +3349,6 @@
   /* Content header related style settings */
   #content-header {
     background-color: #fff;
-    z-index: 100;
     transition: all 0.2s ease;
     &:not(.fixed) {
       margin-top: 0 !important;
@@ -3361,6 +3360,7 @@
       right: 0;
       box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
       padding: 10px;
+      z-index: 10;
     }
 
     @media screen and (max-width: 899px) {
