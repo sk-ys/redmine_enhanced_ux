@@ -37,7 +37,6 @@
     const defaultIntervalMin = 1;
     const minimalIntervalMin = Math.min(...intervalMinList);
     const maximalIntervalMin = Math.max(...intervalMinList);
-    const minimalIntervalMinFromUrlParam = 1;
 
     const useLocalStorage = false; // Default to not use localStorage.
 
@@ -62,7 +61,7 @@
       } catch (error) {
         console.error(error);
         showError(resources.errorLoading);
-        enableAutoReload(false);
+        enableAutoReload(null);
       }
     }
 
@@ -105,7 +104,7 @@
       $menu.append($item);
     });
 
-    const $checkboxControl = $("<div>")
+    const $checkboxControl = $("<span>")
       .attr({ title: resources.description, id: "auto_reload_controller" })
       .append($checkbox)
       .append(
@@ -116,12 +115,23 @@
       .append($message)
       .append($menu);
 
-    function enableAutoReload(state = true, intervalMin = null) {
+    function updateUrl(intervalMin) {
+      const url = new URL(window.location);
+      if (intervalMin) {
+        url.searchParams.set("auto_reload", intervalMin);
+      } else {
+        url.searchParams.delete("auto_reload");
+      }
+      window.history.replaceState({}, "", url);
+    }
+
+    function enableAutoReload(intervalMin = null) {
       clearInterval(timerId);
       timerId = null;
 
+      const state = intervalMin && intervalMin > 0;
+
       if (state) {
-        if (!intervalMin || intervalMin <= 0) intervalMin = defaultIntervalMin;
         selectIntervalItem(intervalMin);
         timerId = setInterval(reload, intervalMin * 1000 * 60);
         $checkboxControl.attr(
@@ -133,14 +143,17 @@
           })`
         );
       } else {
+        intervalMin = 0;
         selectIntervalItem(0);
-         $checkboxControl.attr("title", resources.description);
+        $checkboxControl.attr("title", resources.description);
       }
 
       $checkbox.prop("checked", state);
       if (useLocalStorage) {
-        localStorage.setItem("autoReload", state ? "1" : "0");
+        localStorage.setItem("autoReload", intervalMin);
       }
+
+      updateUrl(intervalMin);
     }
 
     function appendCheckbox() {
@@ -161,7 +174,7 @@
         }
       }
       $checkbox.on("change", function () {
-        enableAutoReload($(this).is(":checked"));
+        enableAutoReload($(this).is(":checked") ? defaultIntervalMin : null);
       });
       setupMenu();
     }
@@ -192,7 +205,7 @@
       $menu
         .menu({
           select: function (event, ui) {
-            enableAutoReload(true, parseFloat(ui.item.data("minutes")));
+            enableAutoReload(parseFloat(ui.item.data("minutes")));
             setTimeout(() => {
               $menu.hide();
             });
@@ -228,7 +241,7 @@
       const intervalMin = hasAutoReloadParam
         ? validateInterval(
             urlParams.get("auto_reload"),
-            minimalIntervalMinFromUrlParam,
+            minimalIntervalMin,
             maximalIntervalMin
           )
         : useLocalStorage
@@ -236,9 +249,9 @@
         : null;
 
       if (intervalMin) {
-        enableAutoReload(true, parseFloat(intervalMin));
+        enableAutoReload(parseFloat(intervalMin));
       } else {
-        enableAutoReload(false);
+        enableAutoReload(null);
         alert(
           resources.messageFailedToSetInterval
             .replace("%0", minimalIntervalMin)
