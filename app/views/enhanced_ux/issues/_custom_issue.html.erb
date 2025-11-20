@@ -236,7 +236,7 @@
           (isEditable || isNewForm) &&
           (enableCorrectAttributesPositionInEditView ?? true);
         this.isDescriptionEditFieldOpenByDefault =
-          (isEditable || isNewForm) &&
+          isEditable && !isNewForm &&
           (isDescriptionEditFieldOpenByDefault ?? true);
         this.fixedIssueSubjectEnabled =
           isShowView && (enableFixedIssueSubject ?? true);
@@ -791,7 +791,7 @@
         $("#issue_description_and_toolbar").show();
         const descriptionDrawLink = $("label[for=issue_description]")
           .parent()
-          .find("a")
+          .children("a")
           .eq(0)
           .hide();
       }
