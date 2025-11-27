@@ -236,7 +236,8 @@
           (isEditable || isNewForm) &&
           (enableCorrectAttributesPositionInEditView ?? true);
         this.isDescriptionEditFieldOpenByDefault =
-          isEditable && !isNewForm &&
+          isEditable &&
+          !isNewForm &&
           (isDescriptionEditFieldOpenByDefault ?? true);
         this.fixedIssueSubjectEnabled =
           isShowView && (enableFixedIssueSubject ?? true);
@@ -767,6 +768,9 @@
 
         // Fix placement of "assign to me" button
         $("#issue_assigned_to_id").after($("<br>"));
+
+        // Add class for CSS adjustment
+        $("#all_attributes").addClass("corrected_attributes_position");
       }
 
       #setupShowDescriptionEditFieldOpenByDefault() {
@@ -3258,6 +3262,14 @@
       #issue-form.floating-submit-button-enabled
       :where(input[type="submit"], .save-draft-button):not(.fixed-position) {
       margin-top: -80px;
+    }
+
+    :is(&.action-new, &.action-create)
+      #all_attributes.corrected_attributes_position {
+      & > hr,
+      & > div > hr {
+        background-color: #eee;
+      }
     }
   }
 
