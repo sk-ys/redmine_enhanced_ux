@@ -4,7 +4,7 @@ Redmine::Plugin.register :redmine_enhanced_ux do
   name 'Redmine Enhanced UX plugin'
   author 'sk-ys'
   description 'This is a plugin for Redmine. This plugin improves various aspects of the user experience in Redmine.'
-  version '1.1.1'
+  version '1.1.2'
   url 'https://github.com/sk-ys/redmine_enhanced_ux'
   author_url 'https://github.com/sk-ys'
     settings default: {
