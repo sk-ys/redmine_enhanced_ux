@@ -534,7 +534,7 @@
   document.querySelectorAll('.feature-card').forEach(card => {
     card.addEventListener('click', function(e) {
       // Prevent double-toggle if checkbox itself was clicked
-      if (e.target.type === 'checkbox') {
+      if (e.target.nodeName === 'INPUT' || e.target.nodeName === 'LABEL') {
         return;
       }
       const checkbox = this.querySelector('.feature-checkbox');
