@@ -3119,27 +3119,27 @@
         &:hover {
           opacity: 1;
         }
-
-        &:nth-child(1 of input[type="submit"]) {
-          inset-inline-start: 0;
-        }
-
-        &:nth-child(2 of input[type="submit"]) {
-          inset-inline-start: var(--floating-button-spacing);
-        }
-
-        &:nth-child(3 of input[type="submit"]) {
-          inset-inline-start: calc(var(--floating-button-spacing) * 2);
-        }
-
-        &:nth-child(4 of input[type="submit"]) {
-          inset-inline-start: calc(var(--floating-button-spacing) * 3);
-        }
       }
 
       &:not(.fixed-position) {
         margin-top: -100px;
         box-shadow: none;
+      }
+
+      &:nth-child(1 of input[type="submit"]) {
+        inset-inline-start: 0;
+      }
+
+      &:nth-child(2 of input[type="submit"]) {
+        inset-inline-start: var(--floating-button-spacing);
+      }
+
+      &:nth-child(3 of input[type="submit"]) {
+        inset-inline-start: calc(var(--floating-button-spacing) * 2);
+      }
+
+      &:nth-child(4 of input[type="submit"]) {
+        inset-inline-start: calc(var(--floating-button-spacing) * 3);
       }
     }
 
