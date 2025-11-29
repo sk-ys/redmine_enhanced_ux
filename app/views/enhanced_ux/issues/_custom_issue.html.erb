@@ -2119,8 +2119,7 @@
         // Replace edit-notes link in history
         $("#history").on(
           "click",
-          ".journal-actions>a.icon-comment" +
-            ", .journal-actions>a.icon-quote",
+          ".journal-actions>a.icon-comment" + ", .journal-actions>a.icon-quote",
           () => {
             if (!$("#update").is(":visible")) {
               if (!$("#notes-dialog-content").dialog("isOpen")) {
@@ -2744,6 +2743,16 @@
           display: none !important;
         }
       }
+    }
+  }
+
+  /* Fix tab style in Redmine 5 */
+  #history:not(.journals) {
+    & > .tabs {
+      margin-bottom: 0;
+    }
+    & > .tab-content {
+      padding-top: 10px;
     }
   }
 
