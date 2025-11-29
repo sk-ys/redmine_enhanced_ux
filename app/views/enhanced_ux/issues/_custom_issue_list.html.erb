@@ -43,6 +43,8 @@
       .attr("href")
       .split("favicon.ico")[0];
 
+    let collapsedGroups = new Set();
+
     // Utils
     function getAbsUrl(url) {
       const a = document.createElement("a");
@@ -236,6 +238,10 @@
           .empty()
           .append($("table.list.issues", htmlString).children());
 
+        // Restore collapsed state of groups
+        restoreGroupCollapsedState();
+        stashGroupCollapsedState();
+
         // Restore scroll position
         setTimeout(() => {
           $(scrollTargetSelector)
@@ -416,13 +422,65 @@
       });
     }
 
-    // Invoke
-    setUpQueryForm();
-    setUpIssueListHeader();
-    displayDoneRatioText();
+    function replaceToggleRowGroupFunctions() {
+      // Backup original function for a single group
+      const originalToggleRowGroup = window.toggleRowGroup;
 
-    // Replace pagination anchor tag action
-    $("span.pagination").on("click", "a", (e) => replaceAnchorTagAction(e));
+      // Replace function
+      window.toggleRowGroup = function (elem) {
+        // Call original function
+        originalToggleRowGroup(elem);
+
+        // Update collapse state
+        const $tr = $(elem).closest("tr");
+        const groupName = $tr.find(".name").text();
+        if ($tr.hasClass("open")) {
+          collapsedGroups.delete(groupName);
+        } else {
+          collapsedGroups.add(groupName);
+        }
+      };
+
+      // Backup original function for all groups
+      const originalToggleAllRowGroups = window.toggleAllRowGroups;
+
+      // Replace function
+      window.toggleAllRowGroups = function (elem) {
+        originalToggleAllRowGroups(elem);
+        stashGroupCollapsedState();
+      };
+    }
+
+    function stashGroupCollapsedState() {
+      collapsedGroups = new Set(
+        $("table.list.issues > tbody > tr.group:not(.open)")
+          .map((_, e) => $(e).find(".name").text())
+          .get()
+      );
+    }
+
+    function restoreGroupCollapsedState() {
+      $("table.list.issues > tbody > tr.group").each((_, e) => {
+        const groupName = $(e).find(".name").text();
+        if (collapsedGroups.has(groupName) && $(e).hasClass("open")) {
+          // Collapse group
+          window.toggleRowGroup($(e).find(".expander")[0]);
+        }
+      });
+    }
+
+    function initialize() {
+      setUpQueryForm();
+      setUpIssueListHeader();
+      displayDoneRatioText();
+      stashGroupCollapsedState();
+      replaceToggleRowGroupFunctions();
+
+      // Replace pagination anchor tag action
+      $("span.pagination").on("click", "a", (e) => replaceAnchorTagAction(e));
+    }
+
+    initialize();
   });
 </script>
 <style>
