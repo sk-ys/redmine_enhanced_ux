@@ -3090,8 +3090,13 @@
     --floating-button-area-height: 120px;
     --floating-button-size: 70px;
     --floating-button-spacing: 80px;
+    --floating-button-offset: 16px;
     --floating-button-offset-with-draft-unfixed: 80px;
     --floating-button-offset-with-draft-fixed: 96px;
+  }
+
+  body.controller-issues.action-show {
+    --floating-button-offset: 0;
   }
 
   #issue-form.floating-submit-button-enabled {
@@ -3115,6 +3120,7 @@
         margin-top: 0;
         bottom: 60px;
         opacity: 0.5;
+        --floating-button-offset: 16px;
 
         &:hover {
           opacity: 1;
@@ -3127,19 +3133,25 @@
       }
 
       &:nth-child(1 of input[type="submit"]) {
-        inset-inline-start: 0;
+        inset-inline-start: var(--floating-button-offset);
       }
 
       &:nth-child(2 of input[type="submit"]) {
-        inset-inline-start: var(--floating-button-spacing);
+        inset-inline-start: calc(
+          var(--floating-button-offset) + var(--floating-button-spacing)
+        );
       }
 
       &:nth-child(3 of input[type="submit"]) {
-        inset-inline-start: calc(var(--floating-button-spacing) * 2);
+        inset-inline-start: calc(
+          var(--floating-button-offset) + var(--floating-button-spacing) * 2
+        );
       }
 
       &:nth-child(4 of input[type="submit"]) {
-        inset-inline-start: calc(var(--floating-button-spacing) * 3);
+        inset-inline-start: calc(
+          var(--floating-button-offset) + var(--floating-button-spacing) * 3
+        );
       }
     }
 
