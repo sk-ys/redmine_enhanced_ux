@@ -935,7 +935,7 @@
 
           // Add line break after issue title
           $headerTitle[0].insertAdjacentText("afterend", "\n");
-          
+
           // Add class for #main
           $("#main").addClass("fixed-issue-subject-enabled");
         }
@@ -2117,13 +2117,18 @@
         if (!this.quickNotes2 || !this.quickNotes2.initialized()) return;
 
         // Replace edit-notes link in history
-        $("#history").on("click", ".journal-actions>a.icon-comment", () => {
-          if (!$("#update").is(":visible")) {
-            if (!$("#notes-dialog-content").dialog("isOpen")) {
-              this.enableInlineNotes();
+        $("#history").on(
+          "click",
+          ".journal-actions>a.icon-comment" +
+            ", .journal-actions>a.icon-quote",
+          () => {
+            if (!$("#update").is(":visible")) {
+              if (!$("#notes-dialog-content").dialog("isOpen")) {
+                this.enableInlineNotes();
+              }
             }
           }
-        });
+        );
 
         // Replace quoted link
         $("#issue-container").on(
