@@ -954,10 +954,10 @@
 
         function handleScroll() {
           const scrollTop = $(window).scrollTop();
-          // 20px tolerance prevents fixed/unfixed state flickering
+          // 30px tolerance prevents fixed/unfixed state flickering
           // caused by #content-header height change
           // (padding: 10px adds ~20px when fixed)
-          const tolerance = 20;
+          const tolerance = 30;
 
           if (scrollTop > baseTop) {
             if ($contentHeader.hasClass("fixed")) return;
