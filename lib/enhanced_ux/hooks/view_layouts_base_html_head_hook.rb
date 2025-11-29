@@ -5,7 +5,9 @@ module EnhancedUx
         if context[:request]
           controller = context[:controller]
 
-          path = URI.parse(context[:request].instance_variable_get(:@fullpath)).path
+          uri = context[:request].fullpath
+          uri = context[:request].instance_variable_get(:@fullpath) if uri.nil?
+          path = URI.parse(uri).path
           tags = []
 
           if /\/my\/account$/.match?(path)
