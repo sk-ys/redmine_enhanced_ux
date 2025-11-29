@@ -433,7 +433,8 @@
 
         // Update collapse state
         const $tr = $(elem).closest("tr");
-        const groupName = $tr.find(".name").text();
+        const groupName =
+          $tr.find(".name a")?.attr("href") || $tr.find(".name").text();
         if ($tr.hasClass("open")) {
           collapsedGroups.delete(groupName);
         } else {
@@ -454,14 +455,18 @@
     function stashGroupCollapsedState() {
       collapsedGroups = new Set(
         $("table.list.issues > tbody > tr.group:not(.open)")
-          .map((_, e) => $(e).find(".name").text())
+          .map(
+            (_, e) =>
+              $(e).find(".name a")?.attr("href") || $(e).find(".name").text()
+          )
           .get()
       );
     }
 
     function restoreGroupCollapsedState() {
       $("table.list.issues > tbody > tr.group").each((_, e) => {
-        const groupName = $(e).find(".name").text();
+        const groupName =
+          $(e).find(".name a")?.attr("href") || $(e).find(".name").text();
         if (collapsedGroups.has(groupName) && $(e).hasClass("open")) {
           // Collapse group
           window.toggleRowGroup($(e).find(".expander")[0]);
