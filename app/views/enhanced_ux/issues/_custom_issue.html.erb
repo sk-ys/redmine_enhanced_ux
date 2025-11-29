@@ -1043,7 +1043,7 @@
         $(".subject-clone").remove();
 
         const $headerTitle = $("#content>h2:first, #content-header>h2:first");
-        const $subject = $("div.issue.details>.subject h3:last");
+        const $subject = $("div.issue.details .subject:first h3:last");
         const $subjectClone = $("<span>")
           .addClass("subject-clone")
           .text(": " + $subject.text().trim());
