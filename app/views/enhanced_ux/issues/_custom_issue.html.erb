@@ -604,11 +604,11 @@
         let isEditMode = false;
         if (e === undefined) {
           isEditMode = /tab=edit/.test(location.search);
-        } else if ($(e.target).length > 0) {
+        } else if ($(e.currentTarget).length > 0) {
           isEditMode =
-            $(e.target).attr("id") === "tab-issue-edit" ||
+            $(e.currentTarget).attr("id") === "tab-issue-edit" ||
             new RegExp(`/issues/${issueId}/edit`).test(
-              $(e.target).attr("href")
+              $(e.currentTarget).attr("href")
             );
         }
 
@@ -1810,7 +1810,7 @@
           .off("click.addChildIssueDialog", "#issue_tree>.contextual>a")
           .on("click.addChildIssueDialog", "#issue_tree>.contextual>a", (e) => {
             e.preventDefault();
-            this.addChildIssueDialog.open($(e.target).attr("href"));
+            this.addChildIssueDialog.open($(e.currentTarget).attr("href"));
           })
           .addClass("prevent-popup-anywhere");
       }
@@ -1831,8 +1831,8 @@
             (e) => {
               e.preventDefault();
               this.editAttachmentsDialog.open(
-                $(e.target).attr("href"),
-                $(e.target).text()
+                $(e.currentTarget).attr("href"),
+                $(e.currentTarget).text()
               );
             }
           )
@@ -1850,8 +1850,8 @@
           .on("click.timeEntryDialog", (e) => {
             e.preventDefault();
             this.timeEntryDialog.open(
-              $(e.target).attr("href"),
-              $(e.target).text()
+              $(e.currentTarget).attr("href"),
+              $(e.currentTarget).text()
             );
           })
           .addClass("prevent-popup-anywhere");
@@ -1862,8 +1862,8 @@
           .on("click.timeEntryDialog", '.contextual a[href$="/edit"]', (e) => {
             e.preventDefault();
             this.timeEntryDialog.open(
-              $(e.target).attr("href"),
-              $(e.target).text()
+              $(e.currentTarget).attr("href"),
+              $(e.currentTarget).text()
             );
           });
       }
@@ -2155,7 +2155,7 @@
           .on("click", (e) => {
             e.preventDefault();
             const isOpenedFromInlineNotes =
-              $(e.target).closest("#quick_notes2").length > 0;
+              $(e.currentTarget).closest("#quick_notes2").length > 0;
             issueLayoutManager.resetForm();
             this.enableDialogNotes(true, isOpenedFromInlineNotes);
           })
