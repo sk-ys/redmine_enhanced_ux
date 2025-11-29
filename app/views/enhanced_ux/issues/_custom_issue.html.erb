@@ -935,6 +935,9 @@
 
           // Add line break after issue title
           $headerTitle[0].insertAdjacentText("afterend", "\n");
+          
+          // Add class for #main
+          $("#main").addClass("fixed-issue-subject-enabled");
         }
 
         function calcBaseTop() {
@@ -3418,5 +3421,10 @@
   #add_notes .plugin_redmine_silencer {
     display: inline-block;
     margin: 0 1em;
+  }
+
+  /* Hide original sticky issue header */
+  #main.fixed-issue-subject-enabled #sticky-issue-header {
+    display: none;
   }
 </style>
