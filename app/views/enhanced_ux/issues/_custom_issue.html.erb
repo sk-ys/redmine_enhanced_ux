@@ -917,6 +917,7 @@
         function moveItemsToContentHeader() {
           const $issueTopMenu = $("#content>.contextual:first");
           const $issueTopMenuClone = $issueTopMenu.clone(true, true);
+          $issueTopMenu.addClass("top");
           const $headerTitle = $("#content>h2:first");
           const $headerBadge = $("#content>span.badge:first");
           const $sideBySideSwitchBox = $("#content>#side-by-side-switch-box");
@@ -3382,7 +3383,7 @@
     }
   }
 
-  #content:has(#content-header) > .contextual:first-child {
+  #content:has(#content-header) > .contextual.top {
     display: none;
 
     @media screen and (max-width: 899px) {
