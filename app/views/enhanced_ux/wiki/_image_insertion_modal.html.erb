@@ -17,7 +17,8 @@
         labelModalTitle: "Insert image",
         labelModalFilename: "File Name",
         labelModalImageTitle: "Title",
-        labelModalThumbnailSize: "Thumbnail size",
+        labelModalThumbnailSize: "Thumbnail Size",
+        labelModalOptions: "Options",
         labelModalDecode: "decode",
         labelModalTagPreview: "Preview",
         labelModalUploadFile: "Upload file",
@@ -31,6 +32,7 @@
         labelModalFilename: "ファイル名",
         labelModalImageTitle: "タイトル",
         labelModalThumbnailSize: "サムネイルサイズ",
+        labelModalOptions: "オプション",
         labelModalDecode: "デコード",
         labelModalTagPreview: "プレビュー",
         labelModalUploadFile: "ファイルのアップロード",
@@ -377,6 +379,16 @@
           prefix = "![" + imageTitle + "](";
           suffix = ")";
           break;
+        case "html":
+          prefix = '<img src="';
+          suffix =
+            '"' +
+            (imageTitle === "" ? "" : ' title="' + imageTitle + '"') +
+            (thumbnailSize === ""
+              ? ""
+              : ' style="width:' + thumbnailSize + 'px;"') +
+            ">";
+          break;
       }
 
       return [prefix, suffix];
@@ -469,6 +481,7 @@
       #$imageTitle;
       #$thumbSize;
       #$decodeEnabled;
+      #$htmlFormatting;
       #$tagPreview;
       #$uploadFile;
 
@@ -506,11 +519,16 @@
           .attr("type", "checkbox")
           .prop("checked", checkedDecodeDefault);
 
+        this.#$htmlFormatting = $("<input>")
+          .attr("id", "image_insertion_modal_html_formatting")
+          .attr("type", "checkbox");
+
         [
           this.#$fileName,
           this.#$imageTitle,
           this.#$thumbSize,
           this.#$decodeEnabled,
+          this.#$htmlFormatting,
         ].map((obj) => {
           obj.keydown((e) => {
             const key = e.which;
@@ -538,6 +556,16 @@
               .append(resources.labelModalDecode)
           )
           .append(this.#$decodeEnabled);
+
+        const $modalHtmlFormattingBox = $("<span>")
+          .attr("id", "image_insertion_modal_html_formatting_box")
+          .css("margin-left", "10px")
+          .append(
+            $("<label>")
+              .attr("for", "image_insertion_modal_html_formatting")
+              .append("HTML formatting")
+          )
+          .append(this.#$htmlFormatting);
 
         const $modalUploadFileButton = $("<button>")
           .attr("id", "image_insertion_modal_upload_file_button")
@@ -567,7 +595,6 @@
             $("<p>")
               .append(resources.labelModalFilename + ":")
               .append(this.#$fileName)
-              .append($modalDecodeBox)
           )
           .append(
             $("<p>")
@@ -578,6 +605,16 @@
             $("<p>")
               .append(resources.labelModalThumbnailSize + ":")
               .append(this.#$thumbSize)
+          )
+          .append(
+            $("<p>")
+              .append(resources.labelModalOptions + ":")
+              .append(
+                $("<div>")
+                  .addClass("image-insertion-modal-options")
+                  .append($modalDecodeBox)
+                  .append($modalHtmlFormattingBox)
+              )
           )
           .append(
             $("<p>")
@@ -717,10 +754,11 @@
           this.#textFormatting === "textile"
             ? findTextileImageTags(`!${this.fileName}!`, false, true)
             : undefined;
-        const tagFormatting =
-          textilePreview?.textileStyleWithBracket || this.thumbSize === ""
-            ? this.#textFormatting
-            : "thumbnail";
+        const tagFormatting = this.htmlFormattingEnabled
+          ? "html"
+          : textilePreview?.textileStyleWithBracket || this.thumbSize === ""
+          ? this.#textFormatting
+          : "thumbnail";
         const [prefix, suffix] = generateDecorator(
           tagFormatting,
           this.thumbSize,
@@ -826,6 +864,9 @@
       get decodeEnabled() {
         return this.#$decodeEnabled.prop("checked");
       }
+      get htmlFormattingEnabled() {
+        return this.#$htmlFormatting.prop("checked");
+      }
     }
 
     $(() => {
@@ -890,6 +931,10 @@
   #image_insertion_modal input:not([type="checkbox"]) {
     width: 100%;
   }
+  
+  #image_insertion_modal .image-insertion-modal-options {
+    padding-left: 2rem;
+  }
 
   #image_insertion_modal_tag_preview {
     width: 100%;
@@ -904,13 +949,6 @@
 
   #image_insertion_modal_decode {
     height: auto;
-  }
-
-  #image_insertion_modal_decode_box {
-    position: absolute;
-    right: 0;
-    top: 0;
-    font-size: 80%;
   }
 
   #image_insertion_modal_upload_file_button {
