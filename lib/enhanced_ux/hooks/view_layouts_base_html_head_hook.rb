@@ -86,8 +86,10 @@ module EnhancedUx
           end
 
           # Wiki
-          if Setting.plugin_redmine_enhanced_ux[:add_copy_button_to_the_pre_block] == '1'
-            tags << controller.render_to_string(partial: 'enhanced_ux/wiki/add_copy_button_to_the_pre_block')
+          unless (Redmine::VERSION::MAJOR > 6) || (Redmine::VERSION::MAJOR == 6 && Redmine::VERSION::MINOR >= 1)
+            if Setting.plugin_redmine_enhanced_ux[:add_copy_button_to_the_pre_block] == '1'
+              tags << controller.render_to_string(partial: 'enhanced_ux/wiki/add_copy_button_to_the_pre_block')
+            end
           end
           if Setting.plugin_redmine_enhanced_ux[:enhanced_list_button] == '1'
             tags << javascript_include_tag("wiki/enhanced_list_button", :plugin => "redmine_enhanced_ux")

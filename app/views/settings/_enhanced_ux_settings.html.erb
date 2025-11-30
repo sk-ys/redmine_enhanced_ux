@@ -319,6 +319,7 @@
       </div>
     </div>
     <div class="feature-grid">
+      <% unless (Redmine::VERSION::MAJOR > 6) || (Redmine::VERSION::MAJOR == 6 && Redmine::VERSION::MINOR >= 1) %>
       <div class="feature-card" data-feature="add_copy_button_to_the_pre_block">
         <div class="feature-header">
           <input type="hidden" name="settings[add_copy_button_to_the_pre_block]" value="0">
@@ -328,6 +329,7 @@
         <%= image_tag('features/add_copy_button_to_the_pre_block.png', plugin: 'redmine_enhanced_ux',
             class: "feature-image", alt: "Add copy button to the pre block preview") %>
       </div>
+      <% end %>
 
       <div class="feature-card" data-feature="enhanced_list_button">
         <div class="feature-header">
