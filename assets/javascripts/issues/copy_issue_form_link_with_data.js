@@ -18,13 +18,16 @@ $(() => {
     en: {
       label: "Copy link to the form",
       description: "Copy link to the form with current data to the clipboard.",
-      messageCopiedForNewIssue: "Link to the new issue form with data has been copied.",
+      messageCopiedForNewIssue:
+        "Link to the new issue form with data has been copied.",
       messageCopiedForCopiedIssue: `Link to the copy form for the issue #${copyFromId} with data has been copied.`,
     },
     ja: {
       label: "フォームのリンクをコピー",
-      description: "現在の入力内容を含むフォームのリンクをクリップボードにコピーします。",
-      messageCopiedForNewIssue: "現在の入力内容を含む新規チケットフォームのリンクをコピーしました。",
+      description:
+        "現在の入力内容を含むフォームのリンクをクリップボードにコピーします。",
+      messageCopiedForNewIssue:
+        "現在の入力内容を含む新規チケットフォームのリンクをコピーしました。",
       messageCopiedForCopiedIssue: `チケット#${copyFromId}の入力内容を含むコピー用フォームのリンクをコピーしました。`,
     },
   };
