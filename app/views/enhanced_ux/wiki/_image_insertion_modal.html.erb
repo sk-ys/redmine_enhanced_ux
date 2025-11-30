@@ -817,6 +817,29 @@
         };
         addFile.nextAttachmentId = addFileOrg.nextAttachmentId;
       }
+
+      // Replace getInlineAttachmentMarkup function for Redmine 6+
+      if (window.getInlineAttachmentMarkup) {
+        const getInlineAttachmentMarkupOrg = getInlineAttachmentMarkup;
+
+        window.getInlineAttachmentMarkup = async function (file) {
+          const textarea = handleFileDropEvent.target;
+          const beforeCursorPos = textarea.selectionStart;
+          return getInlineAttachmentMarkupOrg(file).then((imageMarkup) => {
+            setTimeout(() => {
+              const afterCursorPos = textarea.selectionStart;
+              // Manually select the inserted text
+              textarea.setSelectionRange(beforeCursorPos, afterCursorPos - 1);
+              const jsToolbarInstanceLike = {
+                textarea: textarea,
+                editor: $(textarea).closest(".jstEditor")[0],
+              };
+              addTask(jsToolbarInstanceLike);
+            });
+            return imageMarkup;
+          });
+        };
+      }
     });
   })();
 </script>
