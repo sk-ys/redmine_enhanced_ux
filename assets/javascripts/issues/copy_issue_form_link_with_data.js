@@ -45,8 +45,12 @@ $(() => {
       const url = new URL(urlBase + "?" + $form.serialize());
       url.searchParams.delete("utf8");
       url.searchParams.delete("authenticity_token");
-      $(this).attr("data-clipboard-text", url.href);
-      copyTextToClipboard(this);
+      if (window.copyTextToClipboard) {
+        $(this).attr("data-clipboard-text", url.href);
+        window.copyTextToClipboard(this);
+      } else {
+        window.copyToClipboard(url.href);
+      }
       const $copiedMessage = $("<span>")
         .css({
           display: "inlineBlock",
