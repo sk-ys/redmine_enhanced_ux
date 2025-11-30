@@ -17,7 +17,7 @@
         labelModalTitle: "Insert image",
         labelModalFilename: "File Name",
         labelModalImageTitle: "Title",
-        labelModalThumbnailSize: "Thumbnail Size",
+        labelModalSize: "Size",
         labelModalOptions: "Options",
         labelModalDecode: "decode",
         labelModalTagPreview: "Preview",
@@ -31,7 +31,7 @@
         labelModalTitle: "画像の挿入",
         labelModalFilename: "ファイル名",
         labelModalImageTitle: "タイトル",
-        labelModalThumbnailSize: "サムネイルサイズ",
+        labelModalSize: "サイズ",
         labelModalOptions: "オプション",
         labelModalDecode: "デコード",
         labelModalTagPreview: "プレビュー",
@@ -160,7 +160,7 @@
           text: match[0],
           imageTitle: match[4]?.trim(),
           path: match[1]?.trim(),
-          thumbSize: match[3] || match[5],
+          size: match[3] || match[5],
         });
         if (!global) break;
       }
@@ -177,7 +177,7 @@
           text: match[0],
           imageTitle: getHtmlImgTagTitleRegex().exec(match[1])?.[2]?.trim(),
           path: getHtmlImgTagSrcRegex().exec(match[1])?.[1]?.trim(),
-          thumbSize: getHtmlImgTagWidthRegex().exec(match[1])?.[1],
+          size: getHtmlImgTagWidthRegex().exec(match[1])?.[1],
         });
         if (!global) break;
       }
@@ -479,7 +479,7 @@
       #$modal;
       #$fileName;
       #$imageTitle;
-      #$thumbSize;
+      #$size;
       #$decodeEnabled;
       #$htmlFormatting;
       #$tagPreview;
@@ -509,7 +509,7 @@
           .attr("id", "image_insertion_modal_title")
           .attr("type", "text");
 
-        this.#$thumbSize = $("<input>")
+        this.#$size = $("<input>")
           .attr("id", "image_insertion_modal_size")
           .attr("type", "number")
           .attr("min", 0);
@@ -526,7 +526,7 @@
         [
           this.#$fileName,
           this.#$imageTitle,
-          this.#$thumbSize,
+          this.#$size,
           this.#$decodeEnabled,
           this.#$htmlFormatting,
         ].map((obj) => {
@@ -603,8 +603,8 @@
           )
           .append(
             $("<p>")
-              .append(resources.labelModalThumbnailSize + ":")
-              .append(this.#$thumbSize)
+              .append(resources.labelModalSize + ":")
+              .append(this.#$size)
           )
           .append(
             $("<p>")
@@ -661,7 +661,7 @@
             const parsedText = parseText(this.selectedText.text);
             this.fileName = parsedText.path;
             this.imageTitle = parsedText.imageTitle;
-            this.thumbSize = parsedText.thumbSize ?? "";
+            this.size = parsedText.size ?? "";
             this.previewFormattedText();
 
             if (this.fileName === "") {
@@ -723,7 +723,7 @@
 
       resetForm() {
         this.#$fileName.val("");
-        this.#$thumbSize.val("");
+        this.#$size.val("");
         this.#$imageTitle.val("");
         this.#$tagPreview.text("");
       }
@@ -756,12 +756,12 @@
             : undefined;
         const tagFormatting = this.htmlFormattingEnabled
           ? "html"
-          : textilePreview?.textileStyleWithBracket || this.thumbSize === ""
+          : textilePreview?.textileStyleWithBracket || this.size === ""
           ? this.#textFormatting
           : "thumbnail";
         const [prefix, suffix] = generateDecorator(
           tagFormatting,
-          this.thumbSize,
+          this.size,
           this.imageTitle
         );
 
@@ -849,11 +849,11 @@
       set fileName(value) {
         this.#$fileName.val(value);
       }
-      get thumbSize() {
-        return this.#$thumbSize.val();
+      get size() {
+        return this.#$size.val();
       }
-      set thumbSize(value) {
-        return this.#$thumbSize.val(value);
+      set size(value) {
+        return this.#$size.val(value);
       }
       get imageTitle() {
         return this.#$imageTitle.val();
