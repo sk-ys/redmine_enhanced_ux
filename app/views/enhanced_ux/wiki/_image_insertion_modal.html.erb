@@ -18,8 +18,12 @@
         labelModalFilenameOrPath: "File Name or Path",
         labelModalImageTitle: "Title",
         labelModalSize: "Size",
+        labelModalSizeUnit: "Size Unit",
+        messageModalHowToEnableSizeUnit:
+          "To enable size unit selection, use HTML formatting and input size.",
         labelModalOptions: "Options",
         labelModalDecode: "decode",
+        labelModalHtmlFormatting: "HTML formatting",
         labelModalTagPreview: "Preview",
         labelModalUploadFile: "Upload file",
         labelModalChooseFiles: "Choose Files",
@@ -32,8 +36,13 @@
         labelModalFilenameOrPath: "ファイル名またはパス",
         labelModalImageTitle: "タイトル",
         labelModalSize: "サイズ",
+        labelModalSizeUnit: "サイズ単位",
+        messageModalHowToEnableSizeUnit:
+          "サイズ単位の選択を有効にするには、HTMLフォーマットを使用し、" +
+          "サイズを入力してください。",
         labelModalOptions: "オプション",
         labelModalDecode: "デコード",
+        labelModalHtmlFormatting: "HTMLフォーマット",
         labelModalTagPreview: "プレビュー",
         labelModalUploadFile: "ファイルのアップロード",
         labelModalChooseFiles: "ファイル選択",
@@ -52,6 +61,7 @@
     let imageInsertionModal = null;
 
     const imageExtensions = ["jpg", "jpeg", "png", "gif", "bmp", "svg"];
+    const sizeUnits = ["px", "%", "em", "rem", "vw"];
 
     function getTextileImageTagRegex(global = true, strict = false) {
       return new RegExp(
@@ -98,8 +108,7 @@
       return /src\s*=\s*["']([^"']+)["']/i;
     }
     function getHtmlImgTagWidthRegex() {
-      // TODO: Support units like px, em, %
-      return /width\s*[=|:]\s*["']?(\d+)/i;
+      return /width\s*[=|:]\s*["']?(\d+)([a-z%]+)?["']?/i;
     }
     function getHtmlImgTagTitleRegex() {
       return /(title|alt)\s*=\s*["']([^"']*)["']/i;
@@ -165,6 +174,7 @@
           imageTitle: match[4]?.trim(),
           path: match[1]?.trim(),
           size: match[3] || match[5],
+          sizeUnit: "px",
         });
         if (!global) break;
       }
@@ -176,12 +186,14 @@
       const matches = [];
       let match;
       while ((match = htmlImgTagRegex.exec(text)) !== null) {
+        const matchWidth = getHtmlImgTagWidthRegex().exec(match[1]);
         matches.push({
           type: "HtmlImg",
           text: match[0],
           imageTitle: getHtmlImgTagTitleRegex().exec(match[1])?.[2]?.trim(),
           path: getHtmlImgTagSrcRegex().exec(match[1])?.[1]?.trim(),
-          size: getHtmlImgTagWidthRegex().exec(match[1])?.[1],
+          size: matchWidth?.[1],
+          sizeUnit: matchWidth?.[2],
         });
         if (!global) break;
       }
@@ -364,14 +376,19 @@
       return selectedTextsTemp;
     }
 
-    function generateDecorator(tagFormatting, thumbnailSize, imageTitle) {
+    function generateDecorator(
+      tagFormatting,
+      imageTitle,
+      size,
+      sizeUnit = "px"
+    ) {
       let prefix = "";
       let suffix = "";
       switch (tagFormatting) {
         case "thumbnail":
           prefix = "{{thumbnail(";
           suffix =
-            (thumbnailSize === "" ? "" : ", size=" + thumbnailSize) +
+            (size === "" ? "" : ", size=" + size) +
             (imageTitle === "" ? "" : ", title=" + imageTitle) +
             ")}}";
           break;
@@ -388,9 +405,7 @@
           suffix =
             '"' +
             (imageTitle === "" ? "" : ' title="' + imageTitle + '"') +
-            (thumbnailSize === ""
-              ? ""
-              : ' style="width:' + thumbnailSize + 'px;"') +
+            (size === "" ? "" : ' style="width:' + size + sizeUnit + ';"') +
             ">";
           break;
       }
@@ -484,6 +499,7 @@
       #$fileName;
       #$imageTitle;
       #$size;
+      #$sizeUnit;
       #$decodeEnabled;
       #$htmlFormatting;
       #$tagPreview;
@@ -518,6 +534,14 @@
           .attr("type", "number")
           .attr("min", 0);
 
+        this.#$sizeUnit = $("<select>")
+          .attr("id", "image_insertion_modal_size_unit")
+          .append(
+            sizeUnits.map((unit) =>
+              $("<option>").attr("value", unit).text(unit)
+            )
+          );
+
         this.#$decodeEnabled = $("<input>")
           .attr("id", "image_insertion_modal_decode")
           .attr("type", "checkbox")
@@ -531,6 +555,7 @@
           this.#$fileName,
           this.#$imageTitle,
           this.#$size,
+          this.#$sizeUnit,
           this.#$decodeEnabled,
           this.#$htmlFormatting,
         ].map((obj) => {
@@ -567,9 +592,19 @@
           .append(
             $("<label>")
               .attr("for", "image_insertion_modal_html_formatting")
-              .append("HTML formatting")
+              .append(resources.labelModalHtmlFormatting)
           )
           .append(this.#$htmlFormatting);
+
+        const $modalSizeUnitBox = $("<span>")
+          .attr("id", "image_insertion_modal_size_unit_box")
+          .css("margin-left", "10px")
+          .append(
+            $("<label>")
+              .attr("for", "image_insertion_modal_size_unit")
+              .append(resources.labelModalSizeUnit)
+          )
+          .append(this.#$sizeUnit);
 
         const $modalUploadFileButton = $("<button>")
           .attr("id", "image_insertion_modal_upload_file_button")
@@ -618,6 +653,7 @@
                   .addClass("image-insertion-modal-options")
                   .append($modalDecodeBox)
                   .append($modalHtmlFormattingBox)
+                  .append($modalSizeUnitBox)
               )
           )
           .append(
@@ -666,10 +702,13 @@
             this.fileName = parsedText.path;
             this.imageTitle = parsedText.imageTitle;
             this.size = parsedText.size ?? "";
-            this.#$htmlFormatting.prop(
-              "checked",
-              parsedText.type === "HtmlImg"
-            );
+            this.htmlFormattingEnabled = parsedText.type === "HtmlImg";
+            this.sizeUnit =
+              this.htmlFormattingEnabled &&
+              parsedText.sizeUnit &&
+              sizeUnits.includes(parsedText.sizeUnit)
+                ? parsedText.sizeUnit
+                : "px";
             this.previewFormattedText();
 
             if (this.fileName === "") {
@@ -726,10 +765,17 @@
         }
 
         if (isExternalImagePath(this.fileName) && this.#$size.val() !== "") {
-          this.#$htmlFormatting.prop("checked", true);
+          this.htmlFormattingEnabled = true;
           this.#$htmlFormatting.prop("disabled", true);
         } else {
           this.#$htmlFormatting.prop("disabled", false);
+        }
+        if (!this.htmlFormattingEnabled || this.#$size.val() === "") {
+          this.#$sizeUnit
+            .prop("disabled", true)
+            .attr("title", resources.messageModalHowToEnableSizeUnit);
+        } else {
+          this.#$sizeUnit.prop("disabled", false).removeAttr("title");
         }
       }
       previewFormattedTextDelay(delay = 100) {
@@ -776,8 +822,9 @@
           : "thumbnail";
         const [prefix, suffix] = generateDecorator(
           tagFormatting,
+          this.imageTitle,
           this.size,
-          this.imageTitle
+          this.htmlFormattingEnabled ? this.sizeUnit : "px"
         );
 
         const formattedText =
@@ -870,6 +917,13 @@
       set size(value) {
         return this.#$size.val(value);
       }
+      get sizeUnit() {
+        return this.#$sizeUnit.val();
+      }
+      set sizeUnit(value) {
+        if (!sizeUnits.includes(value)) return; // Invalid value
+        return this.#$sizeUnit.val(value);
+      }
       get imageTitle() {
         return this.#$imageTitle.val();
       }
@@ -881,6 +935,9 @@
       }
       get htmlFormattingEnabled() {
         return this.#$htmlFormatting.prop("checked");
+      }
+      set htmlFormattingEnabled(value) {
+        return this.#$htmlFormatting.prop("checked", value);
       }
     }
 
@@ -960,6 +1017,10 @@
     margin: 3px 0;
     display: inline-block;
     box-sizing: border-box;
+  }
+
+  #image_insertion_modal_size_unit {
+    margin: 0 4px;
   }
 
   #image_insertion_modal_decode {
