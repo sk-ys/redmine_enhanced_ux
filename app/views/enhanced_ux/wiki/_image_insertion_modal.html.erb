@@ -662,6 +662,10 @@
             this.fileName = parsedText.path;
             this.imageTitle = parsedText.imageTitle;
             this.size = parsedText.size ?? "";
+            this.#$htmlFormatting.prop(
+              "checked",
+              parsedText.type === "HtmlImg"
+            );
             this.previewFormattedText();
 
             if (this.fileName === "") {
@@ -931,7 +935,7 @@
   #image_insertion_modal input:not([type="checkbox"]) {
     width: 100%;
   }
-  
+
   #image_insertion_modal .image-insertion-modal-options {
     padding-left: 2rem;
   }
