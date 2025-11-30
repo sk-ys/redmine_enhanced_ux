@@ -12,9 +12,15 @@
     const widthOfWindowToForceSwitchToRowView = 1280;
     // ----- settings end -----
 
-    const homeUrl = $("link[href*='favicon.ico']")
-      .attr("href")
-      .split("favicon.ico")[0];
+    const homeUrl =
+      ["login", "logout"]
+        .map(
+          (key) =>
+            $("." + key)
+              .attr("href")
+              ?.split(key)[0]
+        )
+        .filter((i) => i)[0] || "/";
     const pageType = (() => {
       const key1 = location.pathname.split("/").slice(-1)[0];
       const key2 = location.pathname.split("/").slice(-2)[0];

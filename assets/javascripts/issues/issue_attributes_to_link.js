@@ -22,9 +22,15 @@ window.addEventListener("DOMContentLoaded", () => {
     },
   ];
 
-  const homeUrl = $("link[href*='favicon.ico']")
-    .attr("href")
-    .split("favicon.ico")[0];
+  const homeUrl =
+    ["login", "logout"]
+      .map(
+        (key) =>
+          $("." + key)
+            .attr("href")
+            ?.split(key)[0]
+      )
+      .filter((i) => i)[0] || "/";
 
   const projectIdentifier = $("body")
     .attr("class")
