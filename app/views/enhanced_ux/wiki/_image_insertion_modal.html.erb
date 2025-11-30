@@ -15,7 +15,7 @@
     const resourcesAll = {
       en: {
         labelModalTitle: "Insert image",
-        labelModalFilename: "File Name",
+        labelModalFilenameOrPath: "File Name or Path",
         labelModalImageTitle: "Title",
         labelModalSize: "Size",
         labelModalOptions: "Options",
@@ -29,7 +29,7 @@
       },
       ja: {
         labelModalTitle: "画像の挿入",
-        labelModalFilename: "ファイル名",
+        labelModalFilenameOrPath: "ファイル名またはパス",
         labelModalImageTitle: "タイトル",
         labelModalSize: "サイズ",
         labelModalOptions: "オプション",
@@ -108,6 +108,10 @@
     function isImageFile(fileName) {
       const extension = fileName.split(".").pop().toLowerCase();
       return imageExtensions.includes(extension);
+    }
+
+    function isExternalImagePath(path) {
+      return /^(https?:)?\/\//i.test(path);
     }
 
     function findTextileImageTags(text, global, strict) {
@@ -593,7 +597,7 @@
         this.#$modal
           .append(
             $("<p>")
-              .append(resources.labelModalFilename + ":")
+              .append(resources.labelModalFilenameOrPath + ":")
               .append(this.#$fileName)
           )
           .append(
@@ -719,6 +723,13 @@
             "disabled",
             !!(match && match[1])
           );
+        }
+
+        if (isExternalImagePath(this.fileName) && this.#$size.val() !== "") {
+          this.#$htmlFormatting.prop("checked", true);
+          this.#$htmlFormatting.prop("disabled", true);
+        } else {
+          this.#$htmlFormatting.prop("disabled", false);
         }
       }
       previewFormattedTextDelay(delay = 100) {
