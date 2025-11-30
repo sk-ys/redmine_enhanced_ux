@@ -85,6 +85,23 @@
         `${global ? "g" : ""}i`
       );
     }
+    function getHtmlImgTagBaseRegex(global = true, strict = false) {
+      return new RegExp(
+        (strict ? "^" : "") + "<img\\s+([^>]*)>" + (strict ? "$" : ""),
+        `${global ? "g" : ""}i`
+      );
+    }
+    function getHtmlImgTagSrcRegex() {
+      // Note: This regex does not validate the file extension
+      return /src\s*=\s*["']([^"']+)["']/i;
+    }
+    function getHtmlImgTagWidthRegex() {
+      // TODO: Support units like px, em, %
+      return /width\s*[=|:]\s*["']?(\d+)/i;
+    }
+    function getHtmlImgTagTitleRegex() {
+      return /(title|alt)\s*=\s*["']([^"']*)["']/i;
+    }
 
     function isImageFile(fileName) {
       const extension = fileName.split(".").pop().toLowerCase();
@@ -148,11 +165,29 @@
       return global ? matches : matches[0];
     }
 
+    function findHtmlImgTags(text, global, strict) {
+      const htmlImgTagRegex = getHtmlImgTagBaseRegex(global, strict);
+      const matches = [];
+      let match;
+      while ((match = htmlImgTagRegex.exec(text)) !== null) {
+        matches.push({
+          type: "HtmlImg",
+          text: match[0],
+          imageTitle: getHtmlImgTagTitleRegex().exec(match[1])?.[2]?.trim(),
+          path: getHtmlImgTagSrcRegex().exec(match[1])?.[1]?.trim(),
+          thumbSize: getHtmlImgTagWidthRegex().exec(match[1])?.[1],
+        });
+        if (!global) break;
+      }
+      return global ? matches : matches[0];
+    }
+
     function findImageTags(text) {
       return [
         ...findTextileImageTags(text, true, false),
         ...findMarkdownImageTags(text, true, false),
         ...findThumbnailMacro(text, true, false),
+        ...findHtmlImgTags(text, true, false),
       ];
     }
 
@@ -161,6 +196,8 @@
       if ((match = findThumbnailMacro(text, false, true))) {
         return match;
       } else if ((match = findMarkdownImageTags(text, false, true))) {
+        return match;
+      } else if ((match = findHtmlImgTags(text, false, true))) {
         return match;
       } else if ((match = findTextileImageTags(text, false, true))) {
         return match;
@@ -824,12 +861,11 @@
 
         window.getInlineAttachmentMarkup = async function (file) {
           const textarea = handleFileDropEvent.target;
-          const beforeCursorPos = textarea.selectionStart;
           return getInlineAttachmentMarkupOrg(file).then((imageMarkup) => {
             setTimeout(() => {
-              const afterCursorPos = textarea.selectionStart;
-              // Manually select the inserted text
-              textarea.setSelectionRange(beforeCursorPos, afterCursorPos - 1);
+              const cursorPos = textarea.selectionStart;
+              // Manually select the before line break
+              textarea.setSelectionRange(cursorPos - 1, cursorPos - 1);
               const jsToolbarInstanceLike = {
                 textarea: textarea,
                 editor: $(textarea).closest(".jstEditor")[0],
