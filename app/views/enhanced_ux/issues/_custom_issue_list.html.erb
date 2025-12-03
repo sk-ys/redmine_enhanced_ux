@@ -52,15 +52,21 @@
     const isRedmine6 = $("#sidebar-wrapper").length > 0;
 
     const svgIcons = new (class SVGIcons {
-      #generateIcon(href) {
+      get basePath() {
+        return homeUrl + "assets/icons-64cb2f36.svg#";
+      }
+      generateSvgIcon(key) {
         return $(
           `<svg class="s18 icon-svg" aria-hidden="true">` +
-            `<use href="${homeUrl + href}"></use>` +
+            `<use href="${this.basePath}${key}"></use>` +
             `</svg>`
         );
       }
       get magnifier() {
-        return this.#generateIcon("assets/icons-64cb2f36.svg#icon--search");
+        return this.generateSvgIcon("icon--search");
+      }
+      get close() {
+        return this.generateSvgIcon("icon--close");
       }
     })();
 
@@ -364,15 +370,21 @@
 
     function setUpQueryFormButtons() {
       // Add cancel button to query form.
-      $("#query_form_with_buttons>.buttons").append(
-        $("<a>")
-          .text(resources.labelCancel)
-          .addClass("icon icon-close query_form_cancel")
-          .css("cursor", "pointer")
-          .on("click", () => {
-            $("#query_form").hide();
-          })
-      );
+      const $cancelButton = $("<a>")
+        .text(resources.labelCancel)
+        .addClass("icon query_form_cancel")
+        .css("cursor", "pointer")
+        .on("click", () => {
+          $("#query_form").hide();
+        });
+
+      if (isRedmine6) {
+        $cancelButton.prepend(svgIcons.close);
+      } else {
+        $cancelButton.addClass("icon-cancel");
+      }
+
+      $("#query_form_with_buttons>.buttons").append($cancelButton);
 
       // Add label for display settings
       $("<label>")
