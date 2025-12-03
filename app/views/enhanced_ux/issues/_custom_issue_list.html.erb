@@ -49,6 +49,21 @@
         )
         .filter((i) => i)[0] || "/";
 
+    const isRedmine6 = $("#sidebar-wrapper").length > 0;
+
+    const svgIcons = new (class SVGIcons {
+      #generateIcon(href) {
+        return $(
+          `<svg class="s18 icon-svg" aria-hidden="true">` +
+            `<use href="${homeUrl + href}"></use>` +
+            `</svg>`
+        );
+      }
+      get magnifier() {
+        return this.#generateIcon("assets/icons-64cb2f36.svg#icon--search");
+      }
+    })();
+
     let collapsedGroups = new Set();
 
     // Utils
@@ -313,7 +328,6 @@
         .attr("id", "query_form_open_button")
         .addClass("icon")
         .text(resources.labelCriteria)
-        .css({ backgroundImage: `url(${homeUrl}images/magnifier.png)` })
         .on("click", (e) => {
           e.preventDefault();
           $("#query_form").show();
@@ -322,6 +336,12 @@
           $("#query_form").show();
         })
         .appendTo("#content>h2:first");
+
+      if (isRedmine6) {
+        $queryFormOpenButton.prepend(svgIcons.magnifier);
+      } else {
+        $queryFormOpenButton.addClass("icon-magnifier");
+      }
 
       // Close the query form when the outside of the form is clicked
       $(document).click((e) => {
