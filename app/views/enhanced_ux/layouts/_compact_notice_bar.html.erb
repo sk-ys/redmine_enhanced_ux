@@ -128,7 +128,7 @@
 <style>
   #flash_notice {
     opacity: 90%;
-    padding-right: 30px;
+    padding-inline-end: 30px;
     .flash_notice_close_button {
       display: block;
       margin: 0;
@@ -137,7 +137,8 @@
       height: 16px;
       position: absolute;
       height: 100%;
-      right: 5px;
+      inset-inline-end: 5px;
+      inset-inline-start: auto;
       top: 0;
       cursor: pointer;
     }
@@ -173,7 +174,8 @@
     #flash_notice {
       position: fixed;
       max-width: calc(100vw - 40px);
-      left: 20px;
+      inset-inline-start: 20px;
+      inset-inline-end: auto;
       box-sizing: border-box;
       z-index: 300;
       cursor: grab;
@@ -183,27 +185,10 @@
       }
     }
   }
-  
+
   @media (max-width: 899px) {
     #flash_notice {
       position: relative;
-    }
-  }
-
-  /* Support RTL */
-  html[dir="rtl"],
-  html:has(head link[rel="stylesheet"][href*="/rtl"]) {
-    div.flash.notice {
-      background-color: #dfffdf;
-    }
-    .flash_notice_close_button {
-      float: left;
-    }
-    @media (min-width: 900px) {
-      #flash_notice {
-        left: auto;
-        right: 20px;
-      }
     }
   }
 </style>
