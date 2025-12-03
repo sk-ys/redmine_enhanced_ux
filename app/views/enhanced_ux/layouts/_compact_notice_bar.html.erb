@@ -128,15 +128,19 @@
 <style>
   #flash_notice {
     opacity: 90%;
-  }
-  .flash_notice_close_button {
-    padding: 0;
-    float: right;
-    cursor: pointer;
-    margin-left: 0.5em;
-    margin-right: 0.5em;
-    width: 16px;
-    height: 16px;
+    padding-right: 30px;
+    .flash_notice_close_button {
+      display: block;
+      margin: 0;
+      padding: 0;
+      width: 16px;
+      height: 16px;
+      position: absolute;
+      height: 100%;
+      right: 5px;
+      top: 0;
+      cursor: pointer;
+    }
   }
   #flash_notice.notice.fadeout_notice {
     animation-name: fade_out_notice;
@@ -177,6 +181,12 @@
       &:active {
         cursor: grabbing;
       }
+    }
+  }
+  
+  @media (max-width: 899px) {
+    #flash_notice {
+      position: relative;
     }
   }
 
