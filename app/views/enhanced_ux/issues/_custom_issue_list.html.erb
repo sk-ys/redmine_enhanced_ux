@@ -49,6 +49,34 @@
         )
         .filter((i) => i)[0] || "/";
 
+    const svgIcons = new (class SVGIcons {
+      constructor() {
+        const extractedPath = this.#extractIconPath();
+        this.basePath = extractedPath ? homeUrl + extractedPath : null;
+      }
+      #extractIconPath() {
+        const $elem = $("use[href*='/assets/icons-'][href*='.svg#']").first();
+        const match = $elem
+          .attr("href")
+          ?.match(/\/(assets\/icons-[a-f0-9]+\.svg)#/);
+        return match ? match[1] : null;
+      }
+      generateSvgIcon(key) {
+        if (!this.basePath) return null;
+        return $(
+          `<svg class="s18 icon-svg" aria-hidden="true">` +
+            `<use href="${this.basePath}#${key}"></use>` +
+            `</svg>`
+        );
+      }
+      get magnifier() {
+        return this.generateSvgIcon("icon--search");
+      }
+      get close() {
+        return this.generateSvgIcon("icon--close");
+      }
+    })();
+
     let collapsedGroups = new Set();
 
     // Utils
@@ -313,7 +341,6 @@
         .attr("id", "query_form_open_button")
         .addClass("icon")
         .text(resources.labelCriteria)
-        .css({ backgroundImage: `url(${homeUrl}images/magnifier.png)` })
         .on("click", (e) => {
           e.preventDefault();
           $("#query_form").show();
@@ -322,6 +349,12 @@
           $("#query_form").show();
         })
         .appendTo("#content>h2:first");
+
+      if (svgIcons.magnifier) {
+        $queryFormOpenButton.prepend(svgIcons.magnifier);
+      } else {
+        $queryFormOpenButton.addClass("icon-magnifier");
+      }
 
       // Close the query form when the outside of the form is clicked
       $(document).click((e) => {
@@ -344,15 +377,21 @@
 
     function setUpQueryFormButtons() {
       // Add cancel button to query form.
-      $("#query_form_with_buttons>.buttons").append(
-        $("<a>")
-          .text(resources.labelCancel)
-          .addClass("icon icon-close query_form_cancel")
-          .css("cursor", "pointer")
-          .on("click", () => {
-            $("#query_form").hide();
-          })
-      );
+      const $cancelButton = $("<a>")
+        .text(resources.labelCancel)
+        .addClass("icon query_form_cancel")
+        .css("cursor", "pointer")
+        .on("click", () => {
+          $("#query_form").hide();
+        });
+
+      if (svgIcons.close) {
+        $cancelButton.prepend(svgIcons.close);
+      } else {
+        $cancelButton.addClass("icon-close");
+      }
+
+      $("#query_form_with_buttons>.buttons").append($cancelButton);
 
       // Add label for display settings
       $("<label>")
@@ -612,7 +651,7 @@
       margin: 15px 0 0;
       display: flex;
       justify-content: flex-end;
-      align-items: baseline;
+      align-items: center;
     }
 
     #query_form_content fieldset {
@@ -727,24 +766,18 @@
 
   /* Display fixed width indicator */
   table.list tr:hover th[style*="width"]:not(.buttons)::after {
-    width: 16px;
-    height: 16px;
     display: block;
     position: absolute;
-    top: 0;
-    opacity: 30%;
-    left: 5px;
-    transform: rotate(90deg);
-    filter: hue-rotate(180deg);
-    filter: grayscale(1);
+    font-size: 12px;
+    top: -3px;
+    left: 8px;
+    content: "⬄";
+    opacity: 50%;
   }
-  body[class*="project-"] table.list tr:hover th::after {
-    background-image: url(../../images/reorder.png);
-    content: "";
-  }
-  body:not([class*="project-"]) table.list tr:hover th::after {
-    background-image: url(../images/reorder.png);
-    content: "";
+
+  /* Fix context menu position */
+  div#context-menu {
+    position: fixed;
   }
 
   /* Support for Redmine theme "farend bleuclair" */
