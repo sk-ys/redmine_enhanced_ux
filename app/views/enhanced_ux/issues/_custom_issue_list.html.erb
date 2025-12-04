@@ -49,16 +49,23 @@
         )
         .filter((i) => i)[0] || "/";
 
-    const isRedmine6 = $("#sidebar-wrapper").length > 0;
-
     const svgIcons = new (class SVGIcons {
-      get basePath() {
-        return homeUrl + "assets/icons-64cb2f36.svg#";
+      constructor() {
+        const extractedPath = this.#extractIconPath();
+        this.basePath = extractedPath ? homeUrl + extractedPath : null;
+      }
+      #extractIconPath() {
+        const $elem = $("use[href*='/assets/icons-'][href*='.svg#']").first();
+        const match = $elem
+          .attr("href")
+          ?.match(/\/(assets\/icons-[a-f0-9]+\.svg)#/);
+        return match ? match[1] : null;
       }
       generateSvgIcon(key) {
+        if (!this.basePath) return null;
         return $(
           `<svg class="s18 icon-svg" aria-hidden="true">` +
-            `<use href="${this.basePath}${key}"></use>` +
+            `<use href="${this.basePath}#${key}"></use>` +
             `</svg>`
         );
       }
@@ -343,7 +350,7 @@
         })
         .appendTo("#content>h2:first");
 
-      if (isRedmine6) {
+      if (svgIcons.magnifier) {
         $queryFormOpenButton.prepend(svgIcons.magnifier);
       } else {
         $queryFormOpenButton.addClass("icon-magnifier");
@@ -378,7 +385,7 @@
           $("#query_form").hide();
         });
 
-      if (isRedmine6) {
+      if (svgIcons.close) {
         $cancelButton.prepend(svgIcons.close);
       } else {
         $cancelButton.addClass("icon-cancel");
