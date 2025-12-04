@@ -766,24 +766,13 @@
 
   /* Display fixed width indicator */
   table.list tr:hover th[style*="width"]:not(.buttons)::after {
-    width: 16px;
-    height: 16px;
     display: block;
     position: absolute;
-    top: 0;
-    opacity: 30%;
-    left: 5px;
-    transform: rotate(90deg);
-    filter: hue-rotate(180deg);
-    filter: grayscale(1);
-  }
-  body[class*="project-"] table.list tr:hover th::after {
-    background-image: url(../../images/reorder.png);
-    content: "";
-  }
-  body:not([class*="project-"]) table.list tr:hover th::after {
-    background-image: url(../images/reorder.png);
-    content: "";
+    font-size: 12px;
+    top: -3px;
+    left: 8px;
+    content: "⬄";
+    opacity: 50%;
   }
 
   /* Support for Redmine theme "farend bleuclair" */
