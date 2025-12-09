@@ -43,6 +43,34 @@
         )
         .filter((i) => i)[0] || "/";
 
+    const svgIcons = new (class SVGIcons {
+      constructor() {
+        const extractedPath = this.#extractIconPath();
+        this.basePath = extractedPath ? homeUrl + extractedPath : null;
+      }
+      #extractIconPath() {
+        const $elem = $("use[href*='/assets/icons-'][href*='.svg#']").first();
+        const match = $elem
+          .attr("href")
+          ?.match(/\/(assets\/icons-[a-f0-9]+\.svg)#/);
+        return match ? match[1] : null;
+      }
+      generateSvgIcon(key) {
+        if (!this.basePath) return null;
+        return $(
+          `<svg class="s18 icon-svg" aria-hidden="true">` +
+            `<use href="${this.basePath}#${key}"></use>` +
+            `</svg>`
+        );
+      }
+      get magnifier() {
+        return this.generateSvgIcon("icon--search");
+      }
+      get close() {
+        return this.generateSvgIcon("icon--close");
+      }
+    })();
+
     const projectName = (() => {
       const res = /\/projects\/(.+)\/issues\/gantt/.exec(location.pathname);
       return res ? res[1] : null;
@@ -84,8 +112,8 @@
       // Create query form open button and append it to h2 tag.
       const $queryFormOpenButton = $("<a/>")
         .attr("id", "query_form_open_button")
+        .addClass("icon")
         .text(resources.labelCriteria)
-        .css({ backgroundImage: `url(${homeUrl}images/magnifier.png)` })
         .on("click", (e) => {
           e.preventDefault();
           $("#query_form").show();
@@ -94,6 +122,12 @@
           $("#query_form").show();
         })
         .appendTo("#content>h2:first");
+
+      if (svgIcons.magnifier) {
+        $queryFormOpenButton.prepend(svgIcons.magnifier);
+      } else {
+        $queryFormOpenButton.addClass("icon-magnifier");
+      }
 
       // Close the query form when the outside of the form is clicked.
       $(document).click((e) => {
@@ -116,15 +150,21 @@
 
     function setUpQueryFormButtons() {
       // Add cancel button to query form.
-      $("#query_form_with_buttons>.buttons").append(
-        $("<a/>")
-          .text(resources.labelCancel)
-          .addClass("icon icon-close query_form_cancel")
-          .css("cursor", "pointer")
-          .on("click", () => {
-            $("#query_form").hide();
-          })
-      );
+      const $cancelButton = $("<a>")
+        .text(resources.labelCancel)
+        .addClass("icon query_form_cancel")
+        .css("cursor", "pointer")
+        .on("click", () => {
+          $("#query_form").hide();
+        });
+
+      if (svgIcons.close) {
+        $cancelButton.prepend(svgIcons.close);
+      } else {
+        $cancelButton.addClass("icon-close");
+      }
+
+      $("#query_form_with_buttons>.buttons").append($cancelButton);
 
       // Replace apply button with Ajax update
       $("#query_form_with_buttons p.buttons>a.icon-checked:first")
@@ -723,9 +763,6 @@
     #query_form_open_button {
       display: inline;
       font-size: 0.6em;
-      background-position: left;
-      background-repeat: no-repeat;
-      padding-left: 20px;
       cursor: pointer;
       margin: 0 10px;
       font-weight: normal;
@@ -760,7 +797,7 @@
         margin: 0;
         display: flex;
         justify-content: space-between;
-        align-items: baseline;
+        align-items: center;
         width: calc(100% - 10px);
         border-top: 1px solid #ccc;
         padding-top: 10px;
