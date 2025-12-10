@@ -387,6 +387,26 @@
         items: "div.issue, span.icon-package",
         cursor: "grabbing",
         containment: "ul.cal",
+        placeholder: {
+          element: function (currentItem) {
+            const placeholder = $(currentItem)
+              .clone()
+              .addClass("ui-sortable-placeholder");
+
+            if ($(currentItem).hasClass("icon-package")) {
+              // Version placeholder compatible with Redmine 6 and later
+              placeholder.find("a").remove();
+              placeholder.contents().each(function () {
+                if (this.nodeType === 3) this.textContent = "";
+              });
+              return placeholder;
+            }
+
+            // Other placeholders
+            return placeholder.empty();
+          },
+          update: function () {},
+        },
         start: function (e, ui) {
           $("#content").addClass("issue-dragging");
           const instance = $sortable.sortable("instance");
