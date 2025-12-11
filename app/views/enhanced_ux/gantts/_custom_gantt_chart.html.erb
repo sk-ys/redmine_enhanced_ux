@@ -71,6 +71,9 @@
       get close() {
         return this.generateSvgIcon("icon--close");
       }
+      get add() {
+        return this.generateSvgIcon("icon--add");
+      }
     })();
 
     const projectName = (() => {
@@ -956,11 +959,21 @@
         "issues/new";
       // Check access to the new issue page
       $.ajax(newIssueUrl).done(() => {
-        $("<a>")
+        const $newIssueLink = $("<a>")
           .addClass("icon icon-add new-issue")
-          .attr("href", newIssueUrl)
-          .text(resources.labelIssueNew)
-          .prependTo("#content > .contextual");
+          .attr("href", newIssueUrl);
+
+        if (svgIcons.add) {
+          $newIssueLink
+            .append(svgIcons.add)
+            .append(
+              $("<span>").addClass("icon-label").text(resources.labelIssueNew)
+            );
+        } else {
+          $newIssueLink.text(resources.labelIssueNew);
+        }
+
+        $newIssueLink.prependTo("#content > .contextual");
       });
     }
 
