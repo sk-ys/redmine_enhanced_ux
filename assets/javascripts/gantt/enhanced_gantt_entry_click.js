@@ -194,7 +194,10 @@
     mutationList.forEach((mutation) => {
       mutation.addedNodes.forEach((addedNode) => {
         if (addedNode.nodeName === "SCRIPT") {
-          if (addedNode.src.includes("/javascripts/gantt.js")) {
+          if (
+            /\/assets\/gantt-.*.js$/.test(addedNode.src) || // Redmine 6+
+            /\/javascripts\/gantt.js\?\d+$/.test(addedNode.src) // Redmine 5
+          ) {
             addedNode.onload = () => {
               replaceGanttEntryClick();
             };
