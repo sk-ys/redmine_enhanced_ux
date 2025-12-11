@@ -75,12 +75,12 @@
             toggleClass(this.iconExpander, "icon-collapsed", "icon-expanded");
             this.elem.classList.add("open");
             if (svgIcon.length === 1 && window.updateSVGIcon) {
-              updateSVGIcon(this.iconExpander, 'angle-down');
+              updateSVGIcon(this.iconExpander, "angle-down");
             }
           } else {
             toggleClass(this.iconExpander, "icon-expanded", "icon-collapsed");
             if (svgIcon.length === 1 && window.updateSVGIcon) {
-              updateSVGIcon(this.iconExpander, 'angle-right');
+              updateSVGIcon(this.iconExpander, "angle-right");
             }
           }
 
@@ -218,7 +218,7 @@
     if (!ganttEntryClickReplaced) {
       console.warn(
         "Failed to replace ganttEntryClick function, " +
-        "so the process was aborted."
+          "so the process was aborted."
       );
       scriptTagAddedObserver.disconnect();
       return;
