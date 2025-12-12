@@ -828,13 +828,16 @@
         // Prevent Ajax updating when clicking with the Ctrl key
         if (e.ctrlKey) return;
 
-        const url = location.origin + $(e.target).attr("href");
+        const url = location.origin + $(e.currentTarget).attr("href");
 
         // Prevent Ajax updating if location pathname is different
         if (location.pathname !== new URL(url).pathname) return;
 
         e.preventDefault();
-        ajaxUpdateIssueList({ search: extractSearch(url), target: e.target });
+        ajaxUpdateIssueList({
+          search: extractSearch(url),
+          target: e.currentTarget,
+        });
       });
 
       // Prevent popup-anywhere
