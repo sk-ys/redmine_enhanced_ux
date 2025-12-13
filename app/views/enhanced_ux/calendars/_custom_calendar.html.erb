@@ -16,12 +16,10 @@
       en: {
         labelCancel: "Cancel",
         labelCriteria: "Criteria",
-        labelIssueNew: "New Issue",
       },
       ja: {
         labelCancel: "キャンセル",
         labelCriteria: "抽出条件",
-        labelIssueNew: "新しいチケット",
       },
     };
     const resources = {
@@ -68,6 +66,9 @@
       }
       get close() {
         return this.generateSvgIcon("icon--close");
+      }
+      get add() {
+        return this.generateSvgIcon("icon--add");
       }
     })();
 
@@ -566,19 +567,31 @@
 
       // Add adding new issue link
       if ($("#content > .contextual a.new-issue").length === 0) {
-        const newIssueUrl =
-          `${homeUrl}` +
-          (projectName === null ? "" : `projects/${projectName}/`) +
-          "issues/new";
+        const $newIssueLinkInMenu = $(
+          "#main-menu a[href$='/issues/new']:first"
+        );
+
         // Check access to the new issue page
-        $.ajax(newIssueUrl).done(() => {
-          $("<a>")
+        if ($newIssueLinkInMenu.length > 0) {
+          const $newIssueLink = $("<a>")
             .addClass("icon icon-add new-issue")
-            .attr("href", newIssueUrl)
-            .text(resources.labelIssueNew)
             .css({ marginTop: 5, display: "inline-block" })
-            .prependTo("#content > .contextual");
-        });
+            .attr("href", $newIssueLinkInMenu.attr("href"));
+
+          if (svgIcons.add) {
+            $newIssueLink
+              .append(svgIcons.add)
+              .append(
+                $("<span>")
+                  .addClass("icon-label")
+                  .text($newIssueLinkInMenu.text())
+              );
+          } else {
+            $newIssueLink.text($newIssueLinkInMenu.text());
+          }
+
+          $newIssueLink.prependTo("#content > .contextual");
+        }
       }
     }
 
