@@ -14,8 +14,14 @@
 
     const homeUrl =
       window.location.origin +
-      ($("#top-menu a.home").attr("href") ||
-        $("link[href*='/favicon.ico']").attr("href").split("/favicon.ico")[0]);
+      (["login", "logout"]
+        .map(
+          (key) =>
+            $("." + key)
+              .attr("href")
+              ?.split(key)[0]
+        )
+        .filter((i) => i)[0] || "/");
     const pageType = /\/roadmap/.test(location.pathname)
       ? "roadmap"
       : /\/versions\/[0-9]+$/.test(location.pathname)

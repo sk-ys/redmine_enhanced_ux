@@ -128,15 +128,21 @@
 <style>
   #flash_notice {
     opacity: 90%;
-  }
-  .flash_notice_close_button {
-    padding: 0;
-    float: right;
-    cursor: pointer;
-    margin-left: 0.5em;
-    margin-right: 0.5em;
-    width: 16px;
-    height: 16px;
+    padding-inline-end: 30px;
+    .flash_notice_close_button {
+      display: flex;
+      align-items: center;
+      margin: 0;
+      padding: 0;
+      width: 16px;
+      height: 16px;
+      position: absolute;
+      height: 100%;
+      inset-inline-end: 5px;
+      inset-inline-start: auto;
+      top: 0;
+      cursor: pointer;
+    }
   }
   #flash_notice.notice.fadeout_notice {
     animation-name: fade_out_notice;
@@ -169,7 +175,8 @@
     #flash_notice {
       position: fixed;
       max-width: calc(100vw - 40px);
-      left: 20px;
+      inset-inline-start: 20px;
+      inset-inline-end: auto;
       box-sizing: border-box;
       z-index: 300;
       cursor: grab;
@@ -180,20 +187,9 @@
     }
   }
 
-  /* Support RTL */
-  html[dir="rtl"],
-  html:has(head link[rel="stylesheet"][href*="/rtl"]) {
-    div.flash.notice {
-      background-color: #dfffdf;
-    }
-    .flash_notice_close_button {
-      float: left;
-    }
-    @media (min-width: 900px) {
-      #flash_notice {
-        left: auto;
-        right: 20px;
-      }
+  @media (max-width: 899px) {
+    #flash_notice {
+      position: relative;
     }
   }
 </style>
