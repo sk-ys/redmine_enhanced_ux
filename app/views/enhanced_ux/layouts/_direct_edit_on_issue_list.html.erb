@@ -194,7 +194,8 @@
 
       #generateUrl(form, key, value) {
         const $form = $(form);
-        const backUrl = $form.find("input[name=back_url]").val();
+        const backUrl =
+          $form.find("input[name=back_url]").val() || location.href;
         const $selectedIssueIds = $form.find('input[name="ids[]"]:checked');
         const issueIdsParams = $selectedIssueIds.serialize();
 
