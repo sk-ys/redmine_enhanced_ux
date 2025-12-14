@@ -186,6 +186,39 @@
     const $history = $("#history");
     const enableRedmineRT = $("#quick_notes").length > 0;
     const isInIframe = window.self !== window.top;
+    const homeUrl =
+      ["login", "logout"]
+        .map(
+          (key) =>
+            $("." + key)
+              .attr("href")
+              ?.split(key)[0]
+        )
+        .filter((i) => i)[0] || "/";
+    const svgIcons = new (class SVGIcons {
+      constructor() {
+        const extractedPath = this.#extractIconPath();
+        this.basePath = extractedPath ? homeUrl + extractedPath : null;
+      }
+      #extractIconPath() {
+        const $elem = $("use[href*='/assets/icons-'][href*='.svg#']").first();
+        const match = $elem
+          .attr("href")
+          ?.match(/\/(assets\/icons-[a-f0-9]+\.svg)#/);
+        return match ? match[1] : null;
+      }
+      generateSvgIconTag(key) {
+        if (!this.basePath) return null;
+        return $(
+          `<svg class="s18 icon-svg" aria-hidden="true">` +
+            `<use href="${this.basePath}#${key}"></use>` +
+            `</svg>`
+        );
+      }
+      get settings() {
+        return this.generateSvgIconTag("icon--settings");
+      }
+    })();
     let notesManager = null;
     let issueLayoutManager = null;
 
@@ -604,11 +637,11 @@
         let isEditMode = false;
         if (e === undefined) {
           isEditMode = /tab=edit/.test(location.search);
-        } else if ($(e.target).length > 0) {
+        } else if ($(e.currentTarget).length > 0) {
           isEditMode =
-            $(e.target).attr("id") === "tab-issue-edit" ||
+            $(e.currentTarget).attr("id") === "tab-issue-edit" ||
             new RegExp(`/issues/${issueId}/edit`).test(
-              $(e.target).attr("href")
+              $(e.currentTarget).attr("href")
             );
         }
 
@@ -923,7 +956,7 @@
           const $sideBySideSwitchBox = $("#content>#side-by-side-switch-box");
 
           // Support for Theme Bleuclair
-          const $sidebarSwitchPanel = $("#sidebar-switch-panel");
+          const $sidebarSwitchPanel = $("#content>#sidebar-switch-panel");
 
           $contentHeader
             .insertAfter($issueTopMenu)
@@ -935,6 +968,9 @@
 
           // Add line break after issue title
           $headerTitle[0].insertAdjacentText("afterend", "\n");
+
+          // Add class for #main
+          $("#main").addClass("fixed-issue-subject-enabled");
         }
 
         function calcBaseTop() {
@@ -951,10 +987,11 @@
 
         function handleScroll() {
           const scrollTop = $(window).scrollTop();
-          // 20px tolerance prevents fixed/unfixed state flickering
-          // caused by #content-header height change
-          // (padding: 10px adds ~20px when fixed)
-          const tolerance = 20;
+          // Add px tolerance to prevent flickering between fixed/unfixed states
+          // due to changes in body scrollHeight
+          // (Note: 10px padding increases #content-header height by ~20px when
+          //        fixed)
+          const tolerance = $("#content-header").height() + 20;
 
           if (scrollTop > baseTop) {
             if ($contentHeader.hasClass("fixed")) return;
@@ -1040,7 +1077,7 @@
         $(".subject-clone").remove();
 
         const $headerTitle = $("#content>h2:first, #content-header>h2:first");
-        const $subject = $("div.issue.details>.subject h3:last");
+        const $subject = $("div.issue.details .subject:first h3:last");
         const $subjectClone = $("<span>")
           .addClass("subject-clone")
           .text(": " + $subject.text().trim());
@@ -1807,7 +1844,7 @@
           .off("click.addChildIssueDialog", "#issue_tree>.contextual>a")
           .on("click.addChildIssueDialog", "#issue_tree>.contextual>a", (e) => {
             e.preventDefault();
-            this.addChildIssueDialog.open($(e.target).attr("href"));
+            this.addChildIssueDialog.open($(e.currentTarget).attr("href"));
           })
           .addClass("prevent-popup-anywhere");
       }
@@ -1828,8 +1865,8 @@
             (e) => {
               e.preventDefault();
               this.editAttachmentsDialog.open(
-                $(e.target).attr("href"),
-                $(e.target).text()
+                $(e.currentTarget).attr("href"),
+                $(e.currentTarget).text()
               );
             }
           )
@@ -1847,8 +1884,8 @@
           .on("click.timeEntryDialog", (e) => {
             e.preventDefault();
             this.timeEntryDialog.open(
-              $(e.target).attr("href"),
-              $(e.target).text()
+              $(e.currentTarget).attr("href"),
+              $(e.currentTarget).text()
             );
           })
           .addClass("prevent-popup-anywhere");
@@ -1859,8 +1896,8 @@
           .on("click.timeEntryDialog", '.contextual a[href$="/edit"]', (e) => {
             e.preventDefault();
             this.timeEntryDialog.open(
-              $(e.target).attr("href"),
-              $(e.target).text()
+              $(e.currentTarget).attr("href"),
+              $(e.currentTarget).text()
             );
           });
       }
@@ -2114,13 +2151,17 @@
         if (!this.quickNotes2 || !this.quickNotes2.initialized()) return;
 
         // Replace edit-notes link in history
-        $("#history").on("click", ".journal-actions>a.icon-comment", () => {
-          if (!$("#update").is(":visible")) {
-            if (!$("#notes-dialog-content").dialog("isOpen")) {
-              this.enableInlineNotes();
+        $("#history").on(
+          "click",
+          ".journal-actions>a.icon-comment" + ", .journal-actions>a.icon-quote",
+          () => {
+            if (!$("#update").is(":visible")) {
+              if (!$("#notes-dialog-content").dialog("isOpen")) {
+                this.enableInlineNotes();
+              }
             }
           }
-        });
+        );
 
         // Replace quoted link
         $("#issue-container").on(
@@ -2152,7 +2193,7 @@
           .on("click", (e) => {
             e.preventDefault();
             const isOpenedFromInlineNotes =
-              $(e.target).closest("#quick_notes2").length > 0;
+              $(e.currentTarget).closest("#quick_notes2").length > 0;
             issueLayoutManager.resetForm();
             this.enableDialogNotes(true, isOpenedFromInlineNotes);
           })
@@ -2230,6 +2271,11 @@
             cursor: "pointer",
           })
           .appendTo("#content>.contextual .drdn-items");
+          
+        if (svgIcons.settings) {
+          $settingsMenuItem
+            .prepend(svgIcons.settings);
+        }
       }
 
       setupDialog() {
@@ -2686,6 +2732,9 @@
             overflow: auto;
             margin: 0;
             padding: 10px;
+            border-width: 0 1px 1px;
+            border-color: #ddd;
+            border-style: solid;
           }
         }
 
@@ -2733,6 +2782,16 @@
           display: none !important;
         }
       }
+    }
+  }
+
+  /* Fix tab style in Redmine 5 */
+  #history:not(.journals) {
+    & > .tabs {
+      margin-bottom: 0;
+    }
+    & > .tab-content {
+      padding-top: 10px;
     }
   }
 
@@ -3418,5 +3477,10 @@
   #add_notes .plugin_redmine_silencer {
     display: inline-block;
     margin: 0 1em;
+  }
+
+  /* Hide original sticky issue header */
+  #main.fixed-issue-subject-enabled #sticky-issue-header {
+    display: none;
   }
 </style>

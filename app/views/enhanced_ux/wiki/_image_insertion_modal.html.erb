@@ -15,10 +15,15 @@
     const resourcesAll = {
       en: {
         labelModalTitle: "Insert image",
-        labelModalFilename: "File Name",
+        labelModalFilenameOrPath: "File Name or Path",
         labelModalImageTitle: "Title",
-        labelModalThumbnailSize: "Thumbnail size",
+        labelModalSize: "Size",
+        labelModalSizeUnit: "Size Unit",
+        messageModalHowToEnableSizeUnit:
+          "To enable size unit selection, use HTML formatting and input size.",
+        labelModalOptions: "Options",
         labelModalDecode: "decode",
+        labelModalHtmlFormatting: "HTML formatting",
         labelModalTagPreview: "Preview",
         labelModalUploadFile: "Upload file",
         labelModalChooseFiles: "Choose Files",
@@ -28,10 +33,16 @@
       },
       ja: {
         labelModalTitle: "画像の挿入",
-        labelModalFilename: "ファイル名",
+        labelModalFilenameOrPath: "ファイル名またはパス",
         labelModalImageTitle: "タイトル",
-        labelModalThumbnailSize: "サムネイルサイズ",
+        labelModalSize: "サイズ",
+        labelModalSizeUnit: "サイズ単位",
+        messageModalHowToEnableSizeUnit:
+          "サイズ単位の選択を有効にするには、HTMLフォーマットを使用し、" +
+          "サイズを入力してください。",
+        labelModalOptions: "オプション",
         labelModalDecode: "デコード",
+        labelModalHtmlFormatting: "HTMLフォーマット",
         labelModalTagPreview: "プレビュー",
         labelModalUploadFile: "ファイルのアップロード",
         labelModalChooseFiles: "ファイル選択",
@@ -50,6 +61,7 @@
     let imageInsertionModal = null;
 
     const imageExtensions = ["jpg", "jpeg", "png", "gif", "bmp", "svg"];
+    const sizeUnits = ["px", "%", "em", "rem", "vw"];
 
     function getTextileImageTagRegex(global = true, strict = false) {
       return new RegExp(
@@ -85,10 +97,30 @@
         `${global ? "g" : ""}i`
       );
     }
+    function getHtmlImgTagBaseRegex(global = true, strict = false) {
+      return new RegExp(
+        (strict ? "^" : "") + "<img\\s+([^>]*)>" + (strict ? "$" : ""),
+        `${global ? "g" : ""}i`
+      );
+    }
+    function getHtmlImgTagSrcRegex() {
+      // Note: This regex does not validate the file extension
+      return /src\s*=\s*["']([^"']+)["']/i;
+    }
+    function getHtmlImgTagWidthRegex() {
+      return /width\s*[=|:]\s*["']?(\d+)([a-z%]+)?["']?/i;
+    }
+    function getHtmlImgTagTitleRegex() {
+      return /(title|alt)\s*=\s*["']([^"']*)["']/i;
+    }
 
     function isImageFile(fileName) {
       const extension = fileName.split(".").pop().toLowerCase();
       return imageExtensions.includes(extension);
+    }
+
+    function isExternalImagePath(path) {
+      return /^(https?:)?\/\//i.test(path);
     }
 
     function findTextileImageTags(text, global, strict) {
@@ -141,7 +173,27 @@
           text: match[0],
           imageTitle: match[4]?.trim(),
           path: match[1]?.trim(),
-          thumbSize: match[3] || match[5],
+          size: match[3] || match[5],
+          sizeUnit: "px",
+        });
+        if (!global) break;
+      }
+      return global ? matches : matches[0];
+    }
+
+    function findHtmlImgTags(text, global, strict) {
+      const htmlImgTagRegex = getHtmlImgTagBaseRegex(global, strict);
+      const matches = [];
+      let match;
+      while ((match = htmlImgTagRegex.exec(text)) !== null) {
+        const matchWidth = getHtmlImgTagWidthRegex().exec(match[1]);
+        matches.push({
+          type: "HtmlImg",
+          text: match[0],
+          imageTitle: getHtmlImgTagTitleRegex().exec(match[1])?.[2]?.trim(),
+          path: getHtmlImgTagSrcRegex().exec(match[1])?.[1]?.trim(),
+          size: matchWidth?.[1],
+          sizeUnit: matchWidth?.[2],
         });
         if (!global) break;
       }
@@ -153,6 +205,7 @@
         ...findTextileImageTags(text, true, false),
         ...findMarkdownImageTags(text, true, false),
         ...findThumbnailMacro(text, true, false),
+        ...findHtmlImgTags(text, true, false),
       ];
     }
 
@@ -161,6 +214,8 @@
       if ((match = findThumbnailMacro(text, false, true))) {
         return match;
       } else if ((match = findMarkdownImageTags(text, false, true))) {
+        return match;
+      } else if ((match = findHtmlImgTags(text, false, true))) {
         return match;
       } else if ((match = findTextileImageTags(text, false, true))) {
         return match;
@@ -321,14 +376,19 @@
       return selectedTextsTemp;
     }
 
-    function generateDecorator(tagFormatting, thumbnailSize, imageTitle) {
+    function generateDecorator(
+      tagFormatting,
+      imageTitle,
+      size,
+      sizeUnit = "px"
+    ) {
       let prefix = "";
       let suffix = "";
       switch (tagFormatting) {
         case "thumbnail":
           prefix = "{{thumbnail(";
           suffix =
-            (thumbnailSize === "" ? "" : ", size=" + thumbnailSize) +
+            (size === "" ? "" : ", size=" + size) +
             (imageTitle === "" ? "" : ", title=" + imageTitle) +
             ")}}";
           break;
@@ -339,6 +399,14 @@
         case "markdown":
           prefix = "![" + imageTitle + "](";
           suffix = ")";
+          break;
+        case "html":
+          prefix = '<img src="';
+          suffix =
+            '"' +
+            (imageTitle === "" ? "" : ' title="' + imageTitle + '"') +
+            (size === "" ? "" : ' style="width:' + size + sizeUnit + ';"') +
+            ">";
           break;
       }
 
@@ -430,8 +498,10 @@
       #$modal;
       #$fileName;
       #$imageTitle;
-      #$thumbSize;
+      #$size;
+      #$sizeUnit;
       #$decodeEnabled;
+      #$htmlFormatting;
       #$tagPreview;
       #$uploadFile;
 
@@ -459,21 +529,35 @@
           .attr("id", "image_insertion_modal_title")
           .attr("type", "text");
 
-        this.#$thumbSize = $("<input>")
+        this.#$size = $("<input>")
           .attr("id", "image_insertion_modal_size")
           .attr("type", "number")
           .attr("min", 0);
+
+        this.#$sizeUnit = $("<select>")
+          .attr("id", "image_insertion_modal_size_unit")
+          .append(
+            sizeUnits.map((unit) =>
+              $("<option>").attr("value", unit).text(unit)
+            )
+          );
 
         this.#$decodeEnabled = $("<input>")
           .attr("id", "image_insertion_modal_decode")
           .attr("type", "checkbox")
           .prop("checked", checkedDecodeDefault);
 
+        this.#$htmlFormatting = $("<input>")
+          .attr("id", "image_insertion_modal_html_formatting")
+          .attr("type", "checkbox");
+
         [
           this.#$fileName,
           this.#$imageTitle,
-          this.#$thumbSize,
+          this.#$size,
+          this.#$sizeUnit,
           this.#$decodeEnabled,
+          this.#$htmlFormatting,
         ].map((obj) => {
           obj.keydown((e) => {
             const key = e.which;
@@ -502,6 +586,26 @@
           )
           .append(this.#$decodeEnabled);
 
+        const $modalHtmlFormattingBox = $("<span>")
+          .attr("id", "image_insertion_modal_html_formatting_box")
+          .css("margin-left", "10px")
+          .append(
+            $("<label>")
+              .attr("for", "image_insertion_modal_html_formatting")
+              .append(resources.labelModalHtmlFormatting)
+          )
+          .append(this.#$htmlFormatting);
+
+        const $modalSizeUnitBox = $("<span>")
+          .attr("id", "image_insertion_modal_size_unit_box")
+          .css("margin-left", "10px")
+          .append(
+            $("<label>")
+              .attr("for", "image_insertion_modal_size_unit")
+              .append(resources.labelModalSizeUnit)
+          )
+          .append(this.#$sizeUnit);
+
         const $modalUploadFileButton = $("<button>")
           .attr("id", "image_insertion_modal_upload_file_button")
           .text(resources.labelModalChooseFiles)
@@ -528,9 +632,8 @@
         this.#$modal
           .append(
             $("<p>")
-              .append(resources.labelModalFilename + ":")
+              .append(resources.labelModalFilenameOrPath + ":")
               .append(this.#$fileName)
-              .append($modalDecodeBox)
           )
           .append(
             $("<p>")
@@ -539,8 +642,19 @@
           )
           .append(
             $("<p>")
-              .append(resources.labelModalThumbnailSize + ":")
-              .append(this.#$thumbSize)
+              .append(resources.labelModalSize + ":")
+              .append(this.#$size)
+          )
+          .append(
+            $("<p>")
+              .append(resources.labelModalOptions + ":")
+              .append(
+                $("<div>")
+                  .addClass("image-insertion-modal-options")
+                  .append($modalDecodeBox)
+                  .append($modalHtmlFormattingBox)
+                  .append($modalSizeUnitBox)
+              )
           )
           .append(
             $("<p>")
@@ -587,7 +701,14 @@
             const parsedText = parseText(this.selectedText.text);
             this.fileName = parsedText.path;
             this.imageTitle = parsedText.imageTitle;
-            this.thumbSize = parsedText.thumbSize ?? "";
+            this.size = parsedText.size ?? "";
+            this.htmlFormattingEnabled = parsedText.type === "HtmlImg";
+            this.sizeUnit =
+              this.htmlFormattingEnabled &&
+              parsedText.sizeUnit &&
+              sizeUnits.includes(parsedText.sizeUnit)
+                ? parsedText.sizeUnit
+                : "px";
             this.previewFormattedText();
 
             if (this.fileName === "") {
@@ -642,6 +763,20 @@
             !!(match && match[1])
           );
         }
+
+        if (isExternalImagePath(this.fileName) && this.#$size.val() !== "") {
+          this.htmlFormattingEnabled = true;
+          this.#$htmlFormatting.prop("disabled", true);
+        } else {
+          this.#$htmlFormatting.prop("disabled", false);
+        }
+        if (!this.htmlFormattingEnabled || this.#$size.val() === "") {
+          this.#$sizeUnit
+            .prop("disabled", true)
+            .attr("title", resources.messageModalHowToEnableSizeUnit);
+        } else {
+          this.#$sizeUnit.prop("disabled", false).removeAttr("title");
+        }
       }
       previewFormattedTextDelay(delay = 100) {
         setTimeout(() => this.previewFormattedText(), delay);
@@ -649,7 +784,7 @@
 
       resetForm() {
         this.#$fileName.val("");
-        this.#$thumbSize.val("");
+        this.#$size.val("");
         this.#$imageTitle.val("");
         this.#$tagPreview.text("");
       }
@@ -680,14 +815,16 @@
           this.#textFormatting === "textile"
             ? findTextileImageTags(`!${this.fileName}!`, false, true)
             : undefined;
-        const tagFormatting =
-          textilePreview?.textileStyleWithBracket || this.thumbSize === ""
-            ? this.#textFormatting
-            : "thumbnail";
+        const tagFormatting = this.htmlFormattingEnabled
+          ? "html"
+          : textilePreview?.textileStyleWithBracket || this.size === ""
+          ? this.#textFormatting
+          : "thumbnail";
         const [prefix, suffix] = generateDecorator(
           tagFormatting,
-          this.thumbSize,
-          this.imageTitle
+          this.imageTitle,
+          this.size,
+          this.htmlFormattingEnabled ? this.sizeUnit : "px"
         );
 
         const formattedText =
@@ -774,11 +911,18 @@
       set fileName(value) {
         this.#$fileName.val(value);
       }
-      get thumbSize() {
-        return this.#$thumbSize.val();
+      get size() {
+        return this.#$size.val();
       }
-      set thumbSize(value) {
-        return this.#$thumbSize.val(value);
+      set size(value) {
+        return this.#$size.val(value);
+      }
+      get sizeUnit() {
+        return this.#$sizeUnit.val();
+      }
+      set sizeUnit(value) {
+        if (!sizeUnits.includes(value)) return; // Invalid value
+        return this.#$sizeUnit.val(value);
       }
       get imageTitle() {
         return this.#$imageTitle.val();
@@ -788,6 +932,12 @@
       }
       get decodeEnabled() {
         return this.#$decodeEnabled.prop("checked");
+      }
+      get htmlFormattingEnabled() {
+        return this.#$htmlFormatting.prop("checked");
+      }
+      set htmlFormattingEnabled(value) {
+        return this.#$htmlFormatting.prop("checked", value);
       }
     }
 
@@ -817,6 +967,28 @@
         };
         addFile.nextAttachmentId = addFileOrg.nextAttachmentId;
       }
+
+      // Replace getInlineAttachmentMarkup function for Redmine 6+
+      if (window.getInlineAttachmentMarkup) {
+        const getInlineAttachmentMarkupOrg = getInlineAttachmentMarkup;
+
+        window.getInlineAttachmentMarkup = async function (file) {
+          const textarea = handleFileDropEvent.target;
+          return getInlineAttachmentMarkupOrg(file).then((imageMarkup) => {
+            setTimeout(() => {
+              const cursorPos = textarea.selectionStart;
+              // Manually select the before line break
+              textarea.setSelectionRange(cursorPos - 1, cursorPos - 1);
+              const jsToolbarInstanceLike = {
+                textarea: textarea,
+                editor: $(textarea).closest(".jstEditor")[0],
+              };
+              addTask(jsToolbarInstanceLike);
+            });
+            return imageMarkup;
+          });
+        };
+      }
     });
   })();
 </script>
@@ -832,6 +1004,10 @@
     width: 100%;
   }
 
+  #image_insertion_modal .image-insertion-modal-options {
+    padding-left: 2rem;
+  }
+
   #image_insertion_modal_tag_preview {
     width: 100%;
     word-break: break-all;
@@ -843,15 +1019,12 @@
     box-sizing: border-box;
   }
 
-  #image_insertion_modal_decode {
-    height: auto;
+  #image_insertion_modal_size_unit {
+    margin: 0 4px;
   }
 
-  #image_insertion_modal_decode_box {
-    position: absolute;
-    right: 0;
-    top: 0;
-    font-size: 80%;
+  #image_insertion_modal_decode {
+    height: auto;
   }
 
   #image_insertion_modal_upload_file_button {

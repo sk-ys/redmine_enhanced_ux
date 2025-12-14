@@ -75,12 +75,12 @@
             toggleClass(this.iconExpander, "icon-collapsed", "icon-expanded");
             this.elem.classList.add("open");
             if (svgIcon.length === 1 && window.updateSVGIcon) {
-              updateSVGIcon(this.iconExpander, 'angle-down');
+              updateSVGIcon(this.iconExpander, "angle-down");
             }
           } else {
             toggleClass(this.iconExpander, "icon-expanded", "icon-collapsed");
             if (svgIcon.length === 1 && window.updateSVGIcon) {
-              updateSVGIcon(this.iconExpander, 'angle-right');
+              updateSVGIcon(this.iconExpander, "angle-right");
             }
           }
 
@@ -194,7 +194,10 @@
     mutationList.forEach((mutation) => {
       mutation.addedNodes.forEach((addedNode) => {
         if (addedNode.nodeName === "SCRIPT") {
-          if (addedNode.src.includes("/javascripts/gantt.js")) {
+          if (
+            /\/assets\/gantt-.*.js$/.test(addedNode.src) || // Redmine 6+
+            /\/javascripts\/gantt.js\?\d+$/.test(addedNode.src) // Redmine 5
+          ) {
             addedNode.onload = () => {
               replaceGanttEntryClick();
             };
@@ -215,7 +218,7 @@
     if (!ganttEntryClickReplaced) {
       console.warn(
         "Failed to replace ganttEntryClick function, " +
-        "so the process was aborted."
+          "so the process was aborted."
       );
       scriptTagAddedObserver.disconnect();
       return;

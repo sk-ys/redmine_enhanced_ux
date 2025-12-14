@@ -20,14 +20,12 @@
         labelCriteria: "Criteria",
         labelDisplayPeriod: "Display Period",
         labelDisplayStartMonth: "Display start month",
-        labelIssueNew: "New Issue",
       },
       ja: {
         labelCancel: "キャンセル",
         labelCriteria: "抽出条件",
         labelDisplayPeriod: "表示期間",
         labelDisplayStartMonth: "表示開始年月",
-        labelIssueNew: "新しいチケット",
       },
     };
     const resources = {
@@ -35,9 +33,46 @@
       ...(resourcesAll[document.documentElement.lang] || {}),
     };
 
-    const homeUrl = $("link[href*='favicon.ico']")
-      .attr("href")
-      .split("favicon.ico")[0];
+    const homeUrl =
+      ["login", "logout"]
+        .map(
+          (key) =>
+            $("." + key)
+              .attr("href")
+              ?.split(key)[0]
+        )
+        .filter((i) => i)[0] || "/";
+
+    const svgIcons = new (class SVGIcons {
+      constructor() {
+        const extractedPath = this.#extractIconPath();
+        this.basePath = extractedPath ? homeUrl + extractedPath : null;
+      }
+      #extractIconPath() {
+        const $elem = $("use[href*='/assets/icons-'][href*='.svg#']").first();
+        const match = $elem
+          .attr("href")
+          ?.match(/\/(assets\/icons-[a-f0-9]+\.svg)#/);
+        return match ? match[1] : null;
+      }
+      generateSvgIconTag(key) {
+        if (!this.basePath) return null;
+        return $(
+          `<svg class="s18 icon-svg" aria-hidden="true">` +
+            `<use href="${this.basePath}#${key}"></use>` +
+            `</svg>`
+        );
+      }
+      get magnifier() {
+        return this.generateSvgIconTag("icon--search");
+      }
+      get close() {
+        return this.generateSvgIconTag("icon--close");
+      }
+      get add() {
+        return this.generateSvgIconTag("icon--add");
+      }
+    })();
 
     const projectName = (() => {
       const res = /\/projects\/(.+)\/issues\/gantt/.exec(location.pathname);
@@ -673,7 +708,6 @@
         .attr("id", "query_form_open_button")
         .addClass("icon")
         .text(resources.labelCriteria)
-        .css({ backgroundImage: `url(${homeUrl}images/magnifier.png)` })
         .on("click", (e) => {
           e.preventDefault();
           $("#query_form").show();
@@ -682,6 +716,12 @@
           $("#query_form").show();
         })
         .appendTo("#content>h2:first");
+
+      if (svgIcons.magnifier) {
+        $queryFormOpenButton.prepend(svgIcons.magnifier);
+      } else {
+        $queryFormOpenButton.addClass("icon-magnifier");
+      }
 
       // Close the query form when the outside of the form is clicked.
       $(document).click((e) => {
@@ -704,15 +744,21 @@
 
     function setUpQueryFormButtons() {
       // Add cancel button to query form.
-      $("#query_form_with_buttons>.buttons").append(
-        $("<a>")
-          .text(resources.labelCancel)
-          .addClass("icon icon-close query_form_cancel")
-          .css("cursor", "pointer")
-          .on("click", () => {
-            $("#query_form").hide();
-          })
-      );
+      const $cancelButton = $("<a>")
+        .text(resources.labelCancel)
+        .addClass("icon query_form_cancel")
+        .css("cursor", "pointer")
+        .on("click", () => {
+          $("#query_form").hide();
+        });
+
+      if (svgIcons.close) {
+        $cancelButton.prepend(svgIcons.close);
+      } else {
+        $cancelButton.addClass("icon-close");
+      }
+
+      $("#query_form_with_buttons>.buttons").append($cancelButton);
 
       // Add label for display settings
       if (SHOW_DISPLAY_PERIOD_LABEL) {
@@ -782,13 +828,16 @@
         // Prevent Ajax updating when clicking with the Ctrl key
         if (e.ctrlKey) return;
 
-        const url = location.origin + $(e.target).attr("href");
+        const url = location.origin + $(e.currentTarget).attr("href");
 
         // Prevent Ajax updating if location pathname is different
         if (location.pathname !== new URL(url).pathname) return;
 
         e.preventDefault();
-        ajaxUpdateIssueList({ search: extractSearch(url), target: e.target });
+        ajaxUpdateIssueList({
+          search: extractSearch(url),
+          target: e.currentTarget,
+        });
       });
 
       // Prevent popup-anywhere
@@ -905,18 +954,28 @@
 
     // Add adding new issue link
     if ($("#content > .contextual a.new-issue").length === 0) {
-      const newIssueUrl =
-        `${homeUrl}` +
-        (projectName === null ? "" : `projects/${projectName}/`) +
-        "issues/new";
+      const $newIssueLinkInMenu = $("#main-menu a[href$='/issues/new']:first");
+
       // Check access to the new issue page
-      $.ajax(newIssueUrl).done(() => {
-        $("<a>")
+      if ($newIssueLinkInMenu.length > 0) {
+        const $newIssueLink = $("<a>")
           .addClass("icon icon-add new-issue")
-          .attr("href", newIssueUrl)
-          .text(resources.labelIssueNew)
-          .prependTo("#content > .contextual");
-      });
+          .attr("href", $newIssueLinkInMenu.attr("href"));
+
+        if (svgIcons.add) {
+          $newIssueLink
+            .append(svgIcons.add)
+            .append(
+              $("<span>")
+                .addClass("icon-label")
+                .text($newIssueLinkInMenu.text())
+            );
+        } else {
+          $newIssueLink.text($newIssueLinkInMenu.text());
+        }
+
+        $newIssueLink.prependTo("#content > .contextual");
+      }
     }
 
     setUpQueryForm();
@@ -1031,7 +1090,6 @@
       display: inline;
       font-size: 0.6em;
       margin: 0 10px;
-      background-repeat: no-repeat;
       cursor: pointer;
     }
     #query_form {
@@ -1064,7 +1122,7 @@
         margin: 0;
         display: flex;
         justify-content: space-between;
-        align-items: baseline;
+        align-items: center;
         width: calc(100% - 10px);
         border-top: 1px solid #ccc;
         padding-top: 10px;

@@ -5,7 +5,9 @@ module EnhancedUx
         if context[:request]
           controller = context[:controller]
 
-          path = URI.parse(context[:request].instance_variable_get(:@fullpath)).path
+          uri = context[:request].fullpath
+          uri = context[:request].instance_variable_get(:@fullpath) if uri.nil?
+          path = URI.parse(uri).path
           tags = []
 
           if /\/my\/account$/.match?(path)
@@ -84,8 +86,10 @@ module EnhancedUx
           end
 
           # Wiki
-          if Setting.plugin_redmine_enhanced_ux[:add_copy_button_to_the_pre_block] == '1'
-            tags << controller.render_to_string(partial: 'enhanced_ux/wiki/add_copy_button_to_the_pre_block')
+          unless (Redmine::VERSION::MAJOR > 6) || (Redmine::VERSION::MAJOR == 6 && Redmine::VERSION::MINOR >= 1)
+            if Setting.plugin_redmine_enhanced_ux[:add_copy_button_to_the_pre_block] == '1'
+              tags << controller.render_to_string(partial: 'enhanced_ux/wiki/add_copy_button_to_the_pre_block')
+            end
           end
           if Setting.plugin_redmine_enhanced_ux[:enhanced_list_button] == '1'
             tags << javascript_include_tag("wiki/enhanced_list_button", :plugin => "redmine_enhanced_ux")
