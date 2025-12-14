@@ -98,4 +98,9 @@ html:has(head link[rel="stylesheet"][href*="/rtl"]) {
     padding-inline-start: 20px;
     padding-inline-end: 0;
   }
+
+  /* Support for Redmine 6+ */
+  #ajax-indicator span:has(svg) {
+    background-image: none !important;
+  }
 }
