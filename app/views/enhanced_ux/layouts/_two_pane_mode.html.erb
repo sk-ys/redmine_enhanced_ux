@@ -94,6 +94,31 @@
 
     const isRtl = $('head link[rel="stylesheet"][href*="/rtl"]').length > 0;
 
+    const svgIcons = new (class SVGIcons {
+      constructor() {
+        const extractedPath = this.#extractIconPath();
+        this.basePath = extractedPath ? homeUrl + extractedPath : null;
+      }
+      #extractIconPath() {
+        const $elem = $("use[href*='/assets/icons-'][href*='.svg#']").first();
+        const match = $elem
+          .attr("href")
+          ?.match(/\/(assets\/icons-[a-f0-9]+\.svg)#/);
+        return match ? match[1] : null;
+      }
+      generateSvgIcon(key) {
+        if (!this.basePath) return null;
+        return $(
+          `<svg class="s18 icon-svg" aria-hidden="true">` +
+            `<use href="${this.basePath}#${key}"></use>` +
+            `</svg>`
+        );
+      }
+      get loader() {
+        return this.generateSvgIcon("icon--loader");
+      }
+    })();
+
     // Do not enable 2-pane mode in the new issue form.
     if ($("#issue-form.new_issue").length > 0) return;
 
@@ -843,7 +868,6 @@
         this.$base = $("<div>")
           .attr("id", "issue-pane")
           .css({
-            backgroundImage: `url(${homeUrl}images/loading.gif)`,
             backgroundColor: $("#content").css("backgroundColor"),
           })
           .resizable({
@@ -890,6 +914,18 @@
           .append(this.$emptyPane)
           .append(this.$overlay)
           .append(this.$toggleMinimize);
+
+        if (svgIcons.loader) {
+          this.$base.prepend(
+            $("<div>")
+              .addClass("issue-pane-loading-icon")
+              .append(svgIcons.loader)
+          );
+        } else {
+          this.$base.css({
+            backgroundImage: `url(${homeUrl}images/loading.gif)`,
+          });
+        }
       }
 
       #handleOnLoad() {
@@ -1495,6 +1531,7 @@
       flex: 1 1 auto;
       border: none;
       border-top: 1px solid #ddd;
+      z-index: 1;
     }
 
     & > :is(iframe[src=""], iframe:not([src])) {
@@ -1544,6 +1581,28 @@
 
     &:not(.maximize) .buttons > button.restore {
       display: none;
+    }
+
+    .issue-pane-loading-icon {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      background-size: cover;
+      animation: spin 1s linear infinite;
+      transform-origin: center;
+      width: 18px;
+      height: 18px;
+
+      /* Fix rotation center */
+      svg {
+        display: block;
+        transform: translate(0, 0);
+      }
+
+      /* Stop animation when iframe is visible */
+      &:is(#issue-pane:not(:has(iframe[style*="visibility: hidden;"])) *) {
+        display: none;
+      }
     }
   }
 
