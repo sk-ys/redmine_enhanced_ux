@@ -872,6 +872,9 @@
               this.moveToTop();
             });
 
+            // Hide sticky issue header
+            $contents.find("#sticky-issue-header").css("display", "none");
+
             $(e.target).css("visibility", "");
           })
           .attr("src", this.options.src)
