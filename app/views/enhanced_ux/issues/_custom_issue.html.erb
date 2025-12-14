@@ -207,7 +207,7 @@
           ?.match(/\/(assets\/icons-[a-f0-9]+\.svg)#/);
         return match ? match[1] : null;
       }
-      generateSvgIcon(key) {
+      generateSvgIconTag(key) {
         if (!this.basePath) return null;
         return $(
           `<svg class="s18 icon-svg" aria-hidden="true">` +
@@ -216,7 +216,7 @@
         );
       }
       get settings() {
-        return this.generateSvgIcon("icon--settings");
+        return this.generateSvgIconTag("icon--settings");
       }
     })();
     let notesManager = null;

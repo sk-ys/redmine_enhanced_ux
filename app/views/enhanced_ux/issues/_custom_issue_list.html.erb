@@ -61,7 +61,7 @@
           ?.match(/\/(assets\/icons-[a-f0-9]+\.svg)#/);
         return match ? match[1] : null;
       }
-      generateSvgIcon(key) {
+      generateSvgIconTag(key) {
         if (!this.basePath) return null;
         return $(
           `<svg class="s18 icon-svg" aria-hidden="true">` +
@@ -70,10 +70,10 @@
         );
       }
       get magnifier() {
-        return this.generateSvgIcon("icon--search");
+        return this.generateSvgIconTag("icon--search");
       }
       get close() {
-        return this.generateSvgIcon("icon--close");
+        return this.generateSvgIconTag("icon--close");
       }
     })();
 
