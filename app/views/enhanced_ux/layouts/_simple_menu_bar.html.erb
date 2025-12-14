@@ -49,7 +49,15 @@
 
     const defaultTopMenuHeight = $topMenu.outerHeight();
     const defaultHeaderHeight = $header.outerHeight();
-    const homePath = $topMenu.find("ul li a.home:first").attr("href");
+    const homeUrl =
+      ["login", "logout"]
+        .map(
+          (key) =>
+            $("." + key)
+              .attr("href")
+              ?.split(key)[0]
+        )
+        .filter((i) => i)[0] || "/";
     const projectIdentifier = $("body")
       .attr("class")
       .split(" ")
@@ -61,6 +69,31 @@
     if ($adminMenu.length > 0) {
       $topMenu.addClass("has-admin-menu");
     }
+
+    const svgIcons = new (class SVGIcons {
+      constructor() {
+        const extractedPath = this.#extractIconPath();
+        this.basePath = extractedPath ? homeUrl + extractedPath : null;
+      }
+      #extractIconPath() {
+        const $elem = $("use[href*='/assets/icons-'][href*='.svg#']").first();
+        const match = $elem
+          .attr("href")
+          ?.match(/\/(assets\/icons-[a-f0-9]+\.svg)#/);
+        return match ? match[1] : null;
+      }
+      generateSvgIcon(key) {
+        if (!this.basePath) return null;
+        return $(
+          `<svg class="s18 icon-svg" aria-hidden="true">` +
+            `<use href="${this.basePath}#${key}"></use>` +
+            `</svg>`
+        );
+      }
+      get angleDown() {
+        return this.generateSvgIcon("icon--angle-down");
+      }
+    })();
 
     // ----- Common functions -----
     // Show or hide dropdown menu
@@ -384,9 +417,17 @@
         .attr("id", "hide-header-btn")
         .css({
           cursor: "pointer",
-          backgroundImage: "url(" + homePath + "images/arrow_down.png)",
         })
         .addClass("icon icon-only");
+
+      if (svgIcons.angleDown) {
+        $btn.append(svgIcons.angleDown.css({ stroke: "currentColor" }));
+      } else {
+        $btn.css({
+          backgroundImage: "url(" + homeUrl + "images/arrow_down.png)",
+        });
+      }
+
       $topMenu.children("ul").append($("<li />").append($btn));
 
       function setHeaderVisibility(state) {
