@@ -175,7 +175,7 @@
 
         const $container = $("<div>")
           .attr("id", "context-input-form")
-          .css({ position: "fixed" })
+          .css({ position: "absolute" })
           .append(this.$input)
           .append(this.$applyButton)
           .append(this.$cancelButton)
@@ -469,12 +469,7 @@
   });
 </script>
 <style>
-  div#context-menu {
-    position: fixed;
-  }
-
   #context-input-form {
-    /* position: fixed; */
     display: flex;
     flex-direction: row;
     background-color: #ddd;
@@ -497,6 +492,10 @@
       &.cancel {
         margin-left: 0;
       }
+    }
+
+    &:where(#content:has(table.list.issues.enhanced-ux-issue-list) *) {
+      position: fixed !important;
     }
   }
 </style>

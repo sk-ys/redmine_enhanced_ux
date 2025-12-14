@@ -483,6 +483,9 @@
 
       // Replace pagination anchor tag action
       $("span.pagination").on("click", "a", (e) => replaceAnchorTagAction(e));
+
+      // Add class for enhanced UX issue list
+      $("table.list.issues").addClass("enhanced-ux-issue-list");
     }
 
     initialize();
@@ -490,7 +493,7 @@
 </script>
 <style>
   #context-menu {
-    position: fixed;
+    position: fixed !important;
   }
 
   #query_form_open_button {
