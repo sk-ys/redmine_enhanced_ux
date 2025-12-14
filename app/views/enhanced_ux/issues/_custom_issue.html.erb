@@ -186,6 +186,39 @@
     const $history = $("#history");
     const enableRedmineRT = $("#quick_notes").length > 0;
     const isInIframe = window.self !== window.top;
+    const homeUrl =
+      ["login", "logout"]
+        .map(
+          (key) =>
+            $("." + key)
+              .attr("href")
+              ?.split(key)[0]
+        )
+        .filter((i) => i)[0] || "/";
+    const svgIcons = new (class SVGIcons {
+      constructor() {
+        const extractedPath = this.#extractIconPath();
+        this.basePath = extractedPath ? homeUrl + extractedPath : null;
+      }
+      #extractIconPath() {
+        const $elem = $("use[href*='/assets/icons-'][href*='.svg#']").first();
+        const match = $elem
+          .attr("href")
+          ?.match(/\/(assets\/icons-[a-f0-9]+\.svg)#/);
+        return match ? match[1] : null;
+      }
+      generateSvgIcon(key) {
+        if (!this.basePath) return null;
+        return $(
+          `<svg class="s18 icon-svg" aria-hidden="true">` +
+            `<use href="${this.basePath}#${key}"></use>` +
+            `</svg>`
+        );
+      }
+      get settings() {
+        return this.generateSvgIcon("icon--settings");
+      }
+    })();
     let notesManager = null;
     let issueLayoutManager = null;
 
@@ -2238,6 +2271,11 @@
             cursor: "pointer",
           })
           .appendTo("#content>.contextual .drdn-items");
+          
+        if (svgIcons.settings) {
+          $settingsMenuItem
+            .prepend(svgIcons.settings);
+        }
       }
 
       setupDialog() {
