@@ -454,9 +454,7 @@
             height: 0,
             minHeight: 0,
           });
-          $btn
-            // .attr("title", resources.showHeader) // Interferes with mouseover
-            .css({ transform: "" });
+          $btn.attr("title", resources.showHeader).css({ transform: "" });
 
           syncHeaderVisibilityItems.forEach((e) => {
             e.show();
