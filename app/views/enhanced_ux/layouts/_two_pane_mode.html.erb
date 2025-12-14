@@ -833,6 +833,9 @@
             $contents.find("#issue-form input[name=back_url]").remove();
           }
 
+          // Hide sticky issue header
+          $contents.find("#sticky-issue-header").css("display", "none");
+
           // Show iframe contents
           this.$iframe.css("visibility", "");
 
