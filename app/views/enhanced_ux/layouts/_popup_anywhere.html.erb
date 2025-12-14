@@ -92,6 +92,31 @@
       ...(resourcesAll[document.documentElement.lang] || {}),
     };
 
+    const svgIcons = new (class SVGIcons {
+      constructor() {
+        const extractedPath = this.#extractIconPath();
+        this.basePath = extractedPath ? homeUrl + extractedPath : null;
+      }
+      #extractIconPath() {
+        const $elem = $("use[href*='/assets/icons-'][href*='.svg#']").first();
+        const match = $elem
+          .attr("href")
+          ?.match(/\/(assets\/icons-[a-f0-9]+\.svg)#/);
+        return match ? match[1] : null;
+      }
+      generateSvgIcon(key) {
+        if (!this.basePath) return null;
+        return $(
+          `<svg class="s18 icon-svg" aria-hidden="true">` +
+            `<use href="${this.basePath}#${key}"></use>` +
+            `</svg>`
+        );
+      }
+      get loader() {
+        return this.generateSvgIcon("icon--loader");
+      }
+    })();
+
     const isRtl = $('head link[rel="stylesheet"][href*="/rtl"]').length > 0;
 
     const utils = {
@@ -847,6 +872,9 @@
               this.moveToTop();
             });
 
+            // Hide sticky issue header
+            $contents.find("#sticky-issue-header").css("display", "none");
+
             $(e.target).css("visibility", "");
           })
           .attr("src", this.options.src)
@@ -1052,13 +1080,22 @@
         this.$dialog = $("<div>")
           .attr("title", title)
           .addClass("popup-anywhere-container")
-          .css({
+          .data("height", this.height)
+          .data("width", this.width);
+
+        if (svgIcons.loader) {
+          this.$dialog.prepend(
+            $("<div>")
+              .addClass("popup-anywhere-container-loading-icon")
+              .append(svgIcons.loader)
+          );
+        } else {
+          this.$dialog.css({
             backgroundImage: `url(${homeUrl}images/loading.gif)`,
             backgroundPosition: "center center",
             backgroundRepeat: "no-repeat",
-          })
-          .data("height", this.height)
-          .data("width", this.width);
+          });
+        }
 
         this.$dialog.dialogPA({
           closeText: resources.labelClose,
@@ -1180,6 +1217,33 @@
     display: flex;
     overflow: hidden !important;
     padding: 0;
+
+    .popup-anywhere-container-loading-icon {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      background-size: cover;
+      animation: spin 1s linear infinite;
+      transform-origin: center;
+      width: 18px;
+      height: 18px;
+
+      /* Fix rotation center */
+      svg {
+        display: block;
+        transform: translate(0, 0);
+      }
+
+      /* Stop animation when iframe is visible */
+      &:is(
+          .ui-dialog-content.popup-anywhere-container:not(
+              :has(iframe[style*="visibility: hidden;"])
+            )
+            *
+        ) {
+        display: none;
+      }
+    }
   }
 
   .ui-dialog.popup-anywhere
@@ -1187,6 +1251,7 @@
     > iframe {
     flex-grow: 1;
     border: none;
+    z-index: 1;
   }
 
   .ui-dialog.popup-anywhere-maximize {
