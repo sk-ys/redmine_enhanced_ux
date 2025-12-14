@@ -99,6 +99,15 @@ html:has(head link[rel="stylesheet"][href*="/rtl"]) {
     padding-inline-end: 0;
   }
 
+  .splitcontent {
+    .splitcontentleft {
+      margin-inline-end: 5px;
+    }
+    .splitcontentright {
+      margin-inline-start: 5px;
+    }
+  }
+
   /* Support for Redmine 6+ */
   #ajax-indicator span:has(svg) {
     background-image: none !important;
