@@ -867,6 +867,9 @@
 
         this.$base = $("<div>")
           .attr("id", "issue-pane")
+          .css({
+            backgroundColor: $("#content").css("backgroundColor"),
+          })
           .resizable({
             handles: isRtl ? "e,n" : "w,n",
             create: (e) => {
@@ -921,7 +924,6 @@
         } else {
           this.$base.css({
             backgroundImage: `url(${homeUrl}images/loading.gif)`,
-            backgroundColor: $("#content").css("backgroundColor"),
           });
         }
       }
