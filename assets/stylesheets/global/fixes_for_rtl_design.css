@@ -28,6 +28,11 @@ html:has(head link[rel="stylesheet"][href*="/rtl"]) {
       padding-inline-start: 24px;
       padding-inline-end: 0;
       background-position-x: calc(100% - 4px);
+
+      /* Support for Redmine 6+ */
+      &:has(svg) {
+        padding-inline-start: 0;
+      }
     }
   }
   table.list.issues > tbody > tr > td:not(.checkbox) {
