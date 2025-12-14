@@ -7,8 +7,8 @@
 html[dir="rtl"],
 html:has(head link[rel="stylesheet"][href*="/rtl"]) {
   .icon-only {
-    padding-left: 0;
-    padding-right: 16px;
+    padding-inline-start: 16px;
+    padding-inline-end: 0;
   }
   a.sort {
     background-position: left 50%;
@@ -21,38 +21,38 @@ html:has(head link[rel="stylesheet"][href*="/rtl"]) {
     }
   }
   .contextual .drdn-content {
-    right: auto;
-    left: 0;
+    inset-inline-start: auto;
+    inset-inline-end: 0;
 
     a.icon {
-      padding-left: 0;
-      padding-right: 24px;
+      padding-inline-start: 24px;
+      padding-inline-end: 0;
       background-position-x: calc(100% - 4px);
     }
   }
   table.list.issues > tbody > tr > td:not(.checkbox) {
-    padding-left: 10px;
-    padding-right: 0;
+    padding-inline-start: 0;
+    padding-inline-end: 10px;
   }
 
   /* Issue view */
   body.avatars-on div.journal {
-    padding-left: 0;
-    padding-right: 32px;
+    padding-inline-start: 32px;
+    padding-inline-end: 0;
   }
   div.journal h4 img.gravatar {
-    margin-left: 0;
-    margin-right: -32px;
+    margin-inline-start: -32px;
+    margin-inline-end: 0;
   }
   table.list td.buttons a,
   div.buttons a {
-    margin-right: 0;
-    margin-left: 0.6em;
+    margin-inline-start: 0;
+    margin-inline-end: 0.6em;
   }
   #issue-form {
     input[type="submit"] {
-      margin-left: auto;
-      margin-right: 20px;
+      margin-inline-start: 20px;
+      margin-inline-end: auto;
     }
   }
   #issue_is_private_wrap {
@@ -62,12 +62,12 @@ html:has(head link[rel="stylesheet"][href*="/rtl"]) {
     /* tabular forms resets for mobile */
     .tabular p,
     .tabular.settings p {
-      padding-right: 0;
+      padding-inline-start: 0;
     }
     .tabular label,
     .tabular.settings label {
-      margin-left: 0;
-      margin-right: 0;
+      margin-inline-start: 0;
+      margin-inline-end: 0;
       text-align: right;
     }
     #header {
@@ -78,19 +78,19 @@ html:has(head link[rel="stylesheet"][href*="/rtl"]) {
     float: right;
   }
   .ui-dialog .ui-dialog-titlebar-close {
-    right: auto;
-    left: 0.3em;
+    inset-inline-start: auto;
+    inset-inline-end: 0.3em;
   }
   .contextual > *:not(:first-child),
   .buttons > .icon:not(:first-child),
   .contextual .journal-actions > *:not(:first-child) {
-    margin-left: 0;
-    margin-right: 5px;
+    margin-inline-start: 5px;
+    margin-inline-end: 0;
   }
 
   /* Roadmap view */
   div#roadmap h3.version {
-    padding-left: 0px;
-    padding-right: 20px;
+    padding-inline-start: 20px;
+    padding-inline-end: 0;
   }
 }
