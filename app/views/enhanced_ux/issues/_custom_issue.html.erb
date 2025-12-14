@@ -1,5 +1,5 @@
 <!-- 
-// Path pattern:       (/issues/[0-9]+$|/issues/new|/issues/[0-9]+/copy|/issues/[0-9]+/edit)
+// Path pattern:       (/issues(/([0-9]+|new|[0-9]+/copy|[0-9]+/edit))?/?$)
 // Insertion position: Head of all pages
 // Type:               HTML
 // Comment:            Custom issue
@@ -8,6 +8,23 @@
   var ajaxUpdateIssueList;
 
   window.addEventListener("DOMContentLoaded", function () {
+    const controller = [...document.body.classList]
+      .filter((i) => i.startsWith("controller"))[0]
+      .split("-")[1];
+    const action = [...document.body.classList]
+      .filter((i) => i.startsWith("action"))[0]
+      .split("-")[1];
+    if (
+      controller !== "issues" ||
+      (action !== "show" &&
+        action !== "edit" &&
+        action !== "update" &&
+        action !== "new" &&
+        action !== "create")
+    ) {
+      return;
+    }
+
     // ----- settings start -----
     const dialogBaseConfig = {
       minWidth: 400,
@@ -169,17 +186,10 @@
     const issueEditUrl = issueUrl + "/edit";
     const issueIdMatch = issuePathname.match(/\/issues\/([0-9]+)\/{0,1}$/);
     const issueId = issueIdMatch ? Number(issueIdMatch[1]) : null;
-    const isNewForm =
-      $("body").hasClass("controller-issues") &&
-      $("body").hasClass("action-new");
-    const isEditOrUpdateView =
-      $("body").hasClass("controller-issues") &&
-      ($("body").hasClass("action-edit") ||
-        $("body").hasClass("action-update"));
-    const isEditable = $("#update").length !== 0 || isEditOrUpdateView;
-    const isShowView =
-      $("body").hasClass("controller-issues") &&
-      $("body").hasClass("action-show");
+    const isNewForm = ["new", "create"].includes(action);
+    const isEditOrUpdateOrCreateView = ["edit", "update"].includes(action);
+    const isEditable = $("#update").length !== 0 || isEditOrUpdateOrCreateView;
+    const isShowView = action === "show";
     const issueNotesTextareaRowsDefault = $("#issue_notes").attr("rows");
     const addNotesLegendDefault = $("#add_notes>legend:first").text();
     const $submitButton = $('#issue-form input[type="submit"]');
@@ -2271,10 +2281,9 @@
             cursor: "pointer",
           })
           .appendTo("#content>.contextual .drdn-items");
-          
+
         if (svgIcons.settings) {
-          $settingsMenuItem
-            .prepend(svgIcons.settings);
+          $settingsMenuItem.prepend(svgIcons.settings);
         }
       }
 
@@ -2453,6 +2462,7 @@
     };
 
     function initialize() {
+      debugger;
       const settingsManager = new SettingsManager();
       settingsManager.loadSettings();
 
