@@ -31,7 +31,7 @@ module EnhancedUx
             end
           end
 
-          if /\/issues\/([0-9]+|new|[0-9]+\/copy|[0-9]+\/edit)\/{0,1}$/.match?(path)
+          if /\/issues(\/([0-9]+|new|[0-9]+\/copy|[0-9]+\/edit))?\/{0,1}$/.match?(path)
             if Setting.plugin_redmine_enhanced_ux[:custom_issue] == '1'
               tags << controller.render_to_string(partial: 'enhanced_ux/issues/custom_issue')
             end
