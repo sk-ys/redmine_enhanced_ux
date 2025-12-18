@@ -14,6 +14,41 @@
       return;
     }
 
+    const homeUrl =
+      ["login", "logout"]
+        .map(
+          (key) =>
+            $("." + key)
+              .attr("href")
+              ?.split(key)[0]
+        )
+        .filter((i) => i)[0] || "/";
+
+    const svgIcons = new (class SVGIcons {
+      constructor() {
+        const extractedPath = this.#extractIconPath();
+        this.basePath = extractedPath ? homeUrl + extractedPath : null;
+      }
+      #extractIconPath() {
+        const $elem = $("use[href*='/assets/icons-'][href*='.svg#']").first();
+        const match = $elem
+          .attr("href")
+          ?.match(/\/(assets\/icons-[a-f0-9]+\.svg)#/);
+        return match ? match[1] : null;
+      }
+      generateSvgIconTag(key) {
+        if (!this.basePath) return null;
+        return $(
+          `<svg class="s18 icon-svg" aria-hidden="true">` +
+            `<use href="${this.basePath}#${key}"></use>` +
+            `</svg>`
+        );
+      }
+      get close() {
+        return this.generateSvgIconTag("icon--close");
+      }
+    })();
+
     class FadeOutNotice {
       constructor(target) {
         this.target = target;
@@ -69,8 +104,13 @@
         .addClass("icon icon-close flash_notice_close_button")
         .on("click", () => {
           $(target).hide();
-        })
-        .text(String.fromCharCode(160));
+        });
+
+      if (svgIcons.close) {
+        $closeButton.append(svgIcons.close);
+      } else {
+        $closeButton.text(String.fromCharCode(160));
+      }
       $(target).prepend($closeButton);
     }
 
@@ -135,13 +175,17 @@
       margin: 0;
       padding: 0;
       width: 16px;
-      height: 16px;
       position: absolute;
       height: 100%;
       inset-inline-end: 5px;
       inset-inline-start: auto;
       top: 0;
       cursor: pointer;
+
+      svg.icon-svg {
+        margin-inline-start: -5px;
+        margin-inline-end: auto;
+      }
     }
   }
   #flash_notice.notice.fadeout_notice {
