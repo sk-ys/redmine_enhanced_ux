@@ -792,14 +792,18 @@
         right: 45px;
       }
     }
-    @media screen and (min-height: 400px) {
-      #sidebar-switch-panel {
-        position: absolute;
-        top: 5px;
-        left: auto;
-        right: 4px;
+    #sidebar:not(:has(#sidebar-wrapper)) ~ #content {
+      /* Support for Redmine earlier than 5 */
+      @media screen and (min-height: 400px) {
+        #sidebar-switch-panel {
+          position: absolute;
+          top: 5px;
+          left: auto;
+          right: 4px;
+        }
       }
     }
+
     table.list.issues > tbody > tr.issue > td.done_ratio > p.percent {
       top: 2px;
       align-items: start;

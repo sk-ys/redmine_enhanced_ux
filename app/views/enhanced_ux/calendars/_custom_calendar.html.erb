@@ -1004,13 +1004,16 @@
         margin-right: 25px;
       }
     }
-    @media screen and (min-height: 400px) {
-      #sidebar-switch-panel {
-        position: absolute;
-        top: 5px;
-        left: auto;
-        right: 4px;
-        z-index: 1;
+    #sidebar:not(:has(#sidebar-wrapper)) ~ #content {
+      /* Support for Redmine earlier than 5 */
+      @media screen and (min-height: 400px) {
+        #sidebar-switch-panel {
+          position: absolute;
+          top: 5px;
+          left: auto;
+          right: 4px;
+          z-index: 1;
+        }
       }
     }
   }
