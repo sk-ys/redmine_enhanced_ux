@@ -678,7 +678,9 @@
 
     ganttEntryClick = (e) => {
       ganttEntryClickOrg(e);
-      setTimeout(() => ganttCollapseExpandState.save(e.target, e.ctrlKey));
+      setTimeout(() =>
+        ganttCollapseExpandState.save(e.currentTarget, e.ctrlKey)
+      );
     };
 
     function ajaxUpdateIssueListWithQuery(target) {
@@ -795,8 +797,8 @@
 
           e.preventDefault();
           ajaxUpdateIssueList({
-            search: extractSearch($(e.target).attr("href")),
-            target: e.target,
+            search: extractSearch($(e.currentTarget).attr("href")),
+            target: e.currentTarget,
           });
         });
 
