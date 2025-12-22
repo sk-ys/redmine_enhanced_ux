@@ -423,7 +423,7 @@
           if (e.ctrlKey) return;
           e.preventDefault();
           ajaxUpdateIssueList({
-            search: extractSearch($(e.target).attr("href")),
+            search: extractSearch($(e.currentTarget).attr("href")),
           });
         });
 
@@ -448,7 +448,9 @@
       if (e.ctrlKey) return;
 
       e.preventDefault();
-      ajaxUpdateIssueList({ search: extractSearch($(e.target).attr("href")) });
+      ajaxUpdateIssueList({
+        search: extractSearch($(e.currentTarget).attr("href")),
+      });
     }
 
     function displayDoneRatioText() {
