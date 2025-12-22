@@ -1510,6 +1510,7 @@
   /* set area name */
   #sidebar {
     grid-area: sidebar;
+    overflow-x: hidden;
   }
 
   #content {
@@ -1889,33 +1890,36 @@
     }
 
     /* TODO: Support for % designation */
-    @media screen and (min-width: 1090px) and (max-width: 1279px) {
-      #main > #sidebar {
-        width: 240px;
+    #sidebar:not(:has(#sidebar-wrapper)) {
+      /* Support for Redmine earlier than 5 */
+      @media screen and (min-width: 1090px) and (max-width: 1279px) {
+        & {
+          width: 240px;
+        }
       }
-    }
 
-    @media screen and (min-width: 1280px) and (max-width: 1599px) {
-      #main > #sidebar {
-        width: 280px;
+      @media screen and (min-width: 1280px) and (max-width: 1599px) {
+        & {
+          width: 280px;
+        }
       }
-    }
 
-    @media screen and (min-width: 1600px) and (max-width: 1919px) {
-      #main > #sidebar {
-        width: 320px;
+      @media screen and (min-width: 1600px) and (max-width: 1919px) {
+        & {
+          width: 320px;
+        }
       }
-    }
 
-    @media screen and (min-width: 1920px) and (max-width: 2559px) {
-      #main > #sidebar {
-        width: 360px;
+      @media screen and (min-width: 1920px) and (max-width: 2559px) {
+        & {
+          width: 360px;
+        }
       }
-    }
 
-    @media screen and (min-width: 2560px) {
-      #main > #sidebar {
-        width: 380px;
+      @media screen and (min-width: 2560px) {
+        & {
+          width: 380px;
+        }
       }
     }
 
@@ -1961,7 +1965,7 @@
 
   /* TODO: Support for % designation */
   @media screen and (min-width: 0px) and (max-width: 1089px) {
-    #main.enable-2-pane-mode > #sidebar {
+    #main.enable-2-pane-mode:not(.collapsedsidebar) > #sidebar {
       width: 180px;
     }
   }
