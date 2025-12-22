@@ -515,7 +515,13 @@
             marginTop: defaultTopMenuHeight,
           });
         } else {
-          $topMenu.css(emptyStyle).removeClass("fixed");
+          $topMenu
+            .css({
+              ...emptyStyle,
+              boxSizing: "border-box",
+              height: defaultTopMenuHeight,
+            })
+            .removeClass("fixed");
           $main.css({
             top: "",
             position: "",
@@ -613,7 +619,7 @@
       }
 
       .ui-menu {
-          min-width: max-content;
+        min-width: max-content;
       }
 
       & + ul.ui-menu.visible {
