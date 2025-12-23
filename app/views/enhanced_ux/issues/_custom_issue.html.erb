@@ -3331,9 +3331,9 @@
 
   /* Support Redmine theme Bleuclair */
   body.theme-Bleuclair {
-    &:has(#sidebar-wrapper) {
+    #main:is(.collapsiblesidebar, .nosidebar) {
       /* Support for Redmine 6+ */
-      &.action-show #issue-form input[type="submit"].fixed-position {
+      .fixed-position:is(body.action-show #issue-form input[type="submit"]) {
         --floating-button-offset: 26px;
       }
       --floating-button-offset-with-draft-fixed: 106px;
