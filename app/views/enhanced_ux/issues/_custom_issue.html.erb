@@ -2657,6 +2657,10 @@
   #wrapper.side-by-side-mode-enabled {
     #side-by-side-switch-box {
       display: inline;
+      /* Adjust to badge position */
+      vertical-align: middle;
+      position: relative;
+      bottom: 6px;
       & > * {
         cursor: pointer;
       }
@@ -3454,6 +3458,16 @@
     &:not(.fixed) {
       margin-top: 0 !important;
     }
+
+    & > h2 {
+      max-width: 100%;
+      text-overflow: ellipsis;
+      overflow: hidden;
+      box-sizing: border-box;
+      white-space: nowrap;
+      vertical-align: middle;
+    }
+
     &.fixed {
       position: fixed;
       top: 0;
@@ -3462,6 +3476,10 @@
       box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
       padding: 10px;
       z-index: 10;
+
+      & > h2 {
+        margin-bottom: 0;
+      }
     }
 
     @media screen and (max-width: 899px) {
