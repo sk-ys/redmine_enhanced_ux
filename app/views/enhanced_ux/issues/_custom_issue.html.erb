@@ -2272,7 +2272,6 @@
       setupSettingsMenu() {
         const $settingsMenuItem = $("<a>")
           .addClass("custom-issue-view-settings-menu-item icon icon-settings")
-          .text(resources.labelIssueViewSettings)
           .on("click", (e) => {
             e.preventDefault();
             this.open();
@@ -2283,7 +2282,15 @@
           .appendTo("#content>.contextual .drdn-items");
 
         if (svgIcons.settings) {
-          $settingsMenuItem.prepend(svgIcons.settings);
+          $settingsMenuItem
+            .append(svgIcons.settings)
+            .append(
+              $("<span>")
+                .addClass("icon-label")
+                .text(resources.labelIssueViewSettings)
+            );
+        } else {
+          $settingsMenuItem.text(resources.labelIssueViewSettings);
         }
       }
 
@@ -3407,6 +3414,12 @@
     }
     #main {
       margin-top: 0 !important;
+    }
+  }
+
+  .custom-issue-view-settings-menu-item {
+    svg {
+      stroke: currentColor;
     }
   }
 
