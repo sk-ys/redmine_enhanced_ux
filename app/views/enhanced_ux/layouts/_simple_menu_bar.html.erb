@@ -669,11 +669,6 @@
             }
           }
 
-          .menu-children {
-            font-size: 1em;
-            box-shadow: 0px 0px 3px rgba(0, 0, 0, 0.1);
-          }
-
           & a,
           & div {
             color: black;
@@ -815,5 +810,13 @@
       }
     }
     /* TODO: Position the submenu to the left */
+  }
+
+  /* Override the Additional Plugin styles */
+  #top-menu:has(#simple-menu) {
+    .menu-children {
+      font-size: 1em;
+      box-shadow: 0px 0px 3px rgba(0, 0, 0, 0.1);
+    }
   }
 </style>
