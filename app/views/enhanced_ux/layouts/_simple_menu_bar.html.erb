@@ -271,7 +271,12 @@
       ) {
         appendMenuItemHeader("Wiki Sidebar");
       }
-      $sideBar.children().each(appendMenuItems);
+      if ($("#sidebar-wrapper").length > 0) {
+        // For Redmine 6.0+
+        $("#sidebar-wrapper").children().each(appendMenuItems);
+      } else {
+        $sideBar.children().each(appendMenuItems);
+      }
       if ($simpleSideMenuItems.children().length === 0) return;
 
       setMenuItems($simpleSideMenu, $simpleSideMenuItems, $baseMenu, true);
