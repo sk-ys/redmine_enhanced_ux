@@ -189,7 +189,7 @@
     function createSimpleSideMenu() {
       if ($sideBar.children().length === 0) return;
       if (location.pathname.match(/my\/account$/)) return;
-      if ($adminMenu.length > 0) return;
+      if ($("body.controller-admin").length > 0) return;
 
       let $baseMenu = $("#simple-menu").parent();
       if ($baseMenu.length === 0) $baseMenu = $projectsMenu.parent();
