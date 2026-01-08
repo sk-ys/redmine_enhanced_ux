@@ -727,6 +727,9 @@
     /* Sub-menu style */
     .ui-menu {
       position: fixed;
+      max-height: 50vh;
+      overflow-y: auto;
+      overflow-x: hidden;
 
       /* Support for additional-tags plugins */
       .ui-menu-item > span:is(.tag-label, .additional-tag-label-color) {
