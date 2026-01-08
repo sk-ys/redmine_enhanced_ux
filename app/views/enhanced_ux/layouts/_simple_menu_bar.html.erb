@@ -524,7 +524,6 @@
           $topMenu
             .css({
               position: "fixed",
-              zIndex: 201,
               top: 0,
               width: "100%",
               boxSizing: "border-box",
@@ -615,6 +614,15 @@
     display: grid;
     grid-template-columns: max-content minmax(0, auto) max-content max-content;
     grid-template-areas: "top-menu title-bar account loggedas";
+
+    /* Set z-index 1 higher than the issue table's sticky header */
+    z-index: 21;
+
+    &.fixed:hover,
+    &.fixed:is(#wrapper:has(#header:hover) > &) {
+      /* Set z-index 1 higher than the header */
+      z-index: 201;
+    }
 
     & > ul {
       grid-area: top-menu;
