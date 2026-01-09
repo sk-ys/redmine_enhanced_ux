@@ -217,9 +217,12 @@
         }
       }
 
-      function appendMenuItems(_, elem) {
+      function appendMenuItems(_, elem, $target) {
         const $elem = $(elem);
         const $nodeName = $elem.prop("nodeName");
+        if (!$target) {
+          $target = $simpleSideMenuItems;
+        }
 
         if ($nodeName === "H3" || $nodeName === "H4") {
           appendMenuItemHeader($elem.text());
@@ -227,40 +230,52 @@
           // Form is not supported
         } else if ($nodeName === "DIV") {
           if ($elem.hasClass("contextual_")) {
-            $simpleSideMenuItems.append(
+            $target.append(
               $("<li />")
                 .append($elem.children().clone())
                 .addClass("contextual")
             );
           } else if ($elem.attr("id") === "watchers") {
-            appendMenuItems(null, $elem.children("h3"));
-            appendMenuItems(null, $elem.children("div.contextual"));
-            appendMenuItems(null, $elem.children("ul"));
+            appendMenuItems(null, $elem.children("h3"), $target);
+            appendMenuItems(null, $elem.children("div.contextual"), $target);
+            appendMenuItems(null, $elem.children("ul"), $target);
           } else if ($elem.hasClass("tags-cloud")) {
             // RedmineUP Tags Plugin Items
-            $elem.find("a").each(appendMenuItems);
+            $elem.find("a").each((_, e) => appendMenuItems(null, e, $target));
           } else if ($elem.hasClass("tags")) {
             // Redmine Tags Plugin Items
-            $elem.find("a").each(appendMenuItems);
+            $elem.find("a").each((_, e) => appendMenuItems(null, e, $target));
+          } else if ($elem.hasClass("sidebar-tags")) {
+            // Additional Tags Plugin Sidebar
+            appendMenuItemHeader($elem.children("h3").text());
+            const $additionalTagsMenu = $("<li />").append(
+              $("<a>").text($elem.children("h3").text())
+            );
+            const $additionalTagsSubMenu =
+              $("<ul />").appendTo($additionalTagsMenu);
+            $elem.find("a").each((_, e) => {
+              $additionalTagsSubMenu.append(
+                $("<li>").append($(e).parent().clone())
+              );
+            });
+            $target.append($additionalTagsMenu);
           } else {
-            $elem.children().each(appendMenuItems);
+            $elem.children().each((_, e) => appendMenuItems(null, e, $target));
           }
         } else if ($nodeName === "UL") {
-          $simpleSideMenuItems.append($elem.children().clone());
+          $target.append($elem.children().clone());
         } else if ($nodeName === "P") {
           if ($elem.children("a").attr("id") === "toggle-completed-versions") {
             // Completed versions on roadmap page
             appendMenuItemHeader($elem.text());
           } else {
-            $elem.children().each(appendMenuItems);
+            $elem.children().each((_, e) => appendMenuItems(null, e, $target));
           }
-        } else if ($simpleSideMenuItems.children().length === 0) {
+        } else if ($target.children().length === 0) {
         } else if ($nodeName === "LI") {
-          $simpleSideMenuItems.append($elem.clone());
+          $target.append($elem.clone());
         } else {
-          $simpleSideMenuItems.append(
-            $("<li />").append($elem.clone().removeAttr("title"))
-          );
+          $target.append($("<li />").append($elem.clone().removeAttr("title")));
         }
       }
 
@@ -509,7 +524,6 @@
           $topMenu
             .css({
               position: "fixed",
-              zIndex: 99,
               top: 0,
               width: "100%",
               boxSizing: "border-box",
@@ -601,6 +615,15 @@
     grid-template-columns: max-content minmax(0, auto) max-content max-content;
     grid-template-areas: "top-menu title-bar account loggedas";
 
+    /* Set z-index 1 higher than the issue table's sticky header */
+    z-index: 21;
+
+    &.fixed:hover,
+    &.fixed:is(#wrapper:has(#header:hover) > &) {
+      /* Set z-index 1 higher than the header */
+      z-index: 201;
+    }
+
     & > ul {
       grid-area: top-menu;
     }
@@ -638,6 +661,10 @@
         box-shadow: 0px 0px 3px rgba(0, 0, 0, 0.1);
 
         .ui-menu-item {
+          float: left;
+          clear: both;
+          width: 100%;
+
           & > a:before {
             display: inline-block;
             line-height: 1em;
@@ -664,17 +691,12 @@
               padding-left: 2px;
             }
           }
-        }
-
-        li {
-          float: left;
-          clear: both;
-          width: 100%;
 
           & a,
           & div {
             color: black;
             width: 100%;
+            min-width: 100px;
             margin: 0;
             box-sizing: border-box;
             display: inline-block;
@@ -705,9 +727,26 @@
   }
 
   :is(#simple-side-menu, #simple-projects-menu) + .ui-menu {
+    /* Display scrollbar when menu content exceeds window height */
     max-height: calc(100vh - 100px);
     overflow-y: auto;
     overflow-x: hidden;
+
+    /* Sub-menu style */
+    .ui-menu {
+      position: fixed;
+      max-height: 50vh;
+      overflow-y: auto;
+      overflow-x: hidden;
+
+      /* Support for additional-tags plugins */
+      .ui-menu-item > span:is(.tag-label, .additional-tag-label-color) {
+        display: block !important;
+        padding: 0;
+        margin-bottom: 0 !important;
+        border-radius: 0 !important;
+      }
+    }
   }
 
   /* Show headers on mobile environment */
@@ -812,5 +851,22 @@
       }
     }
     /* TODO: Position the submenu to the left */
+  }
+
+  /* Override the Additional Plugin styles */
+  #top-menu:has(#simple-menu) {
+    .menu-children {
+      font-size: 1em;
+      box-shadow: 0px 0px 3px rgba(0, 0, 0, 0.1);
+      border: 1px solid #ccc;
+    }
+
+    #simple-search-menu + .menu-children {
+      border: none;
+    }
+  }
+  #issue_tags input[type="search"] {
+    background-color: transparent;
+    box-sizing: content-box;
   }
 </style>
