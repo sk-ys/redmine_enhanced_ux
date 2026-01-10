@@ -8,7 +8,7 @@
   (() => {
     // ----- settings start -----
     const modalHeight = "auto";
-    const modalWidth = 500;
+    const modalWidth = 550;
     const checkedDecodeDefault = true;
     // ----- settings end -----
 
@@ -24,6 +24,9 @@
         labelModalOptions: "Options",
         labelModalDecode: "decode",
         labelModalHtmlFormatting: "HTML formatting",
+        labelModalHtmlWithLineBreakTag: "With line break tag",
+        messageModalHowToEnableHtmlBreakTag:
+          "To enable break tag option, enable HTML formatting.",
         labelModalTagPreview: "Preview",
         labelModalUploadFile: "Upload file",
         labelModalChooseFiles: "Choose Files",
@@ -43,6 +46,9 @@
         labelModalOptions: "オプション",
         labelModalDecode: "デコード",
         labelModalHtmlFormatting: "HTMLフォーマット",
+        labelModalHtmlWithLineBreakTag: "改行タグ付き",
+        messageModalHowToEnableHtmlBreakTag:
+          "改行タグオプションを有効にするには、HTMLフォーマットを有効にしてください。",
         labelModalTagPreview: "プレビュー",
         labelModalUploadFile: "ファイルのアップロード",
         labelModalChooseFiles: "ファイル選択",
@@ -99,7 +105,7 @@
     }
     function getHtmlImgTagBaseRegex(global = true, strict = false) {
       return new RegExp(
-        (strict ? "^" : "") + "<img\\s+([^>]*)>" + (strict ? "$" : ""),
+        (strict ? "^" : "") + "<img\\s+([^>]*)>(<br>)?" + (strict ? "$" : ""),
         `${global ? "g" : ""}i`
       );
     }
@@ -194,6 +200,7 @@
           path: getHtmlImgTagSrcRegex().exec(match[1])?.[1]?.trim(),
           size: matchWidth?.[1],
           sizeUnit: matchWidth?.[2],
+          withLineBreak: match[2] !== undefined,
         });
         if (!global) break;
       }
@@ -380,7 +387,8 @@
       tagFormatting,
       imageTitle,
       size,
-      sizeUnit = "px"
+      sizeUnit = "px",
+      withLineBreak = false // for HTML tag only
     ) {
       let prefix = "";
       let suffix = "";
@@ -406,7 +414,8 @@
             '"' +
             (imageTitle === "" ? "" : ' title="' + imageTitle + '"') +
             (size === "" ? "" : ' style="width:' + size + sizeUnit + ';"') +
-            ">";
+            ">" +
+            (withLineBreak ? "<br>" : "");
           break;
       }
 
@@ -502,6 +511,7 @@
       #$sizeUnit;
       #$decodeEnabled;
       #$htmlFormatting;
+      #$htmlWithLineBreakTagEnabled;
       #$tagPreview;
       #$uploadFile;
 
@@ -551,6 +561,10 @@
           .attr("id", "image_insertion_modal_html_formatting")
           .attr("type", "checkbox");
 
+        this.#$htmlWithLineBreakTagEnabled = $("<input>")
+          .attr("id", "image_insertion_modal_html_with_line_break_enabled")
+          .attr("type", "checkbox");
+
         [
           this.#$fileName,
           this.#$imageTitle,
@@ -558,6 +572,7 @@
           this.#$sizeUnit,
           this.#$decodeEnabled,
           this.#$htmlFormatting,
+          this.#$htmlWithLineBreakTagEnabled,
         ].map((obj) => {
           obj.keydown((e) => {
             const key = e.which;
@@ -595,6 +610,19 @@
               .append(resources.labelModalHtmlFormatting)
           )
           .append(this.#$htmlFormatting);
+
+        const $modalHtmlWithLineBreakTagEnabledBox = $("<span>")
+          .attr(
+            "id",
+            "image_insertion_modal_html_with_line_break_tag_enabled_box"
+          )
+          .css("margin-left", "10px")
+          .append(
+            $("<label>")
+              .attr("for", "image_insertion_modal_html_with_line_break_enabled")
+              .append(resources.labelModalHtmlWithLineBreakTag)
+          )
+          .append(this.#$htmlWithLineBreakTagEnabled);
 
         const $modalSizeUnitBox = $("<span>")
           .attr("id", "image_insertion_modal_size_unit_box")
@@ -653,6 +681,7 @@
                   .addClass("image-insertion-modal-options")
                   .append($modalDecodeBox)
                   .append($modalHtmlFormattingBox)
+                  .append($modalHtmlWithLineBreakTagEnabledBox)
                   .append($modalSizeUnitBox)
               )
           )
@@ -703,6 +732,7 @@
             this.imageTitle = parsedText.imageTitle;
             this.size = parsedText.size ?? "";
             this.htmlFormattingEnabled = parsedText.type === "HtmlImg";
+            this.withLineBreak = parsedText.withLineBreak ?? false;
             this.sizeUnit =
               this.htmlFormattingEnabled &&
               parsedText.sizeUnit &&
@@ -777,6 +807,15 @@
         } else {
           this.#$sizeUnit.prop("disabled", false).removeAttr("title");
         }
+        if (!this.htmlFormattingEnabled) {
+          this.#$htmlWithLineBreakTagEnabled
+            .prop("disabled", true)
+            .attr("title", resources.messageModalHowToEnableHtmlBreakTag);
+        } else {
+          this.#$htmlWithLineBreakTagEnabled
+            .prop("disabled", false)
+            .removeAttr("title");
+        }
       }
       previewFormattedTextDelay(delay = 100) {
         setTimeout(() => this.previewFormattedText(), delay);
@@ -824,7 +863,8 @@
           tagFormatting,
           this.imageTitle,
           this.size,
-          this.htmlFormattingEnabled ? this.sizeUnit : "px"
+          this.htmlFormattingEnabled ? this.sizeUnit : "px",
+          this.htmlFormattingEnabled && this.withLineBreak
         );
 
         const formattedText =
@@ -938,6 +978,12 @@
       }
       set htmlFormattingEnabled(value) {
         return this.#$htmlFormatting.prop("checked", value);
+      }
+      get withLineBreak() {
+        return this.#$htmlWithLineBreakTagEnabled.prop("checked");
+      }
+      set withLineBreak(value) {
+        return this.#$htmlWithLineBreakTagEnabled.prop("checked", value);
       }
     }
 
