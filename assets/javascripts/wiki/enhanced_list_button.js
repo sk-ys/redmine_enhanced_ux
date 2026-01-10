@@ -659,6 +659,7 @@
       const decorator = getListDecorator(line);
       if (decorator) {
         e.preventDefault();
+        e.stopImmediatePropagation();
         if (!(e.shiftKey && tabCounts[i] === 0) || maxTabCount === 0) {
           textarea.setSelectionRange(
             startLine + cursorPos,
@@ -703,11 +704,13 @@
     if (head === null) return;
 
     e.preventDefault();
+    e.stopImmediatePropagation();
     insertNewLine(textarea, start, beforeTextSplitted, head, changed, offset);
   }
 
   function handleSlashKey(e, jsToolBarInstance) {
     e.preventDefault();
+    e.stopImmediatePropagation();
 
     const currentLine = extractCurrentLine(jsToolBarInstance.textarea).join("");
     if (methods.isOl(currentLine)) {
@@ -720,6 +723,7 @@
 
   function handlePeriodKey(e, jsToolBarInstance) {
     e.preventDefault();
+    e.stopImmediatePropagation();
 
     const currentLine = extractCurrentLine(jsToolBarInstance.textarea).join("");
     if (methods.isUl(currentLine)) {
@@ -732,6 +736,7 @@
 
   function handleCommaKey(e, jsToolBarInstance) {
     e.preventDefault();
+    e.stopImmediatePropagation();
 
     const currentLine = extractCurrentLine(jsToolBarInstance.textarea).join("");
     if (methods.isTl(currentLine)) {
@@ -751,6 +756,7 @@
 
     if (currentBlockHasTl.length > 0) {
       e.preventDefault();
+      e.stopImmediatePropagation();
       decorateLines(jsToolBarInstance, (lineStr) => {
         const tlInfo = methods.isTl(lineStr);
         return tlInfo
@@ -772,6 +778,7 @@
     const header = methods.extractHeader(currentLinePrefix);
     if (header !== undefined && currentLinePrefix.length > header.length) {
       e.preventDefault();
+      e.stopImmediatePropagation();
       const newStart = start - currentLinePrefix.length + header.length;
       textarea.setSelectionRange(newStart, e.shiftKey ? end : newStart);
     }
@@ -805,53 +812,57 @@
         initializeMethods(isTextile);
       }
 
-      jsToolBarInstance.textarea.addEventListener("keydown", (e) => {
-        if ($(".tribute-container").is(":visible")) return;
+      jsToolBarInstance.textarea.addEventListener(
+        "keydown",
+        (e) => {
+          if ($(".tribute-container").is(":visible")) return;
 
-        switch (e.key) {
-          case "Tab":
-            // Indent or outdent list
-            if (e.ctrlKey || e.metaKey) return;
-            handleTabKey(e, jsToolBarInstance);
-            break;
-          case "Enter":
-            // Insert new line with list marker
-            if (e.ctrlKey || e.metaKey) return;
-            handleEnterKey(e, jsToolBarInstance, isTextile);
-            break;
-          case OL_KEYBOARD_SHORTCUT:
-            // Append ordered list marker
-            if (!e.ctrlKey && !e.metaKey) return;
-            handleSlashKey(e, jsToolBarInstance);
-            break;
-          case UL_KEYBOARD_SHORTCUT:
-            // Append unordered list marker
-            if (!e.ctrlKey && !e.metaKey) return;
-            handlePeriodKey(e, jsToolBarInstance);
-            break;
-          case "Home":
-            // Move cursor to the beginning of the line or to the first list
-            if (e.ctrlKey || e.metaKey) return;
-            handleHomeKey(e, jsToolBarInstance);
-            break;
-          case TL_KEYBOARD_SHORTCUT:
-            // Append task list marker
-            if (methods === textileMethods || (!e.ctrlKey && !e.metaKey)) {
-              return;
-            }
-            handleCommaKey(e, jsToolBarInstance);
-            break;
-          case TOGGLE_TL_KEYBOARD_SHORTCUT:
-            // Toggle task list state
-            if (methods === textileMethods || (!e.ctrlKey && !e.metaKey)) {
-              return;
-            }
-            handleSemicolonKey(e, jsToolBarInstance);
-            break;
-          default:
-            break;
-        }
-      });
+          switch (e.key) {
+            case "Tab":
+              // Indent or outdent list
+              if (e.ctrlKey || e.metaKey) return;
+              handleTabKey(e, jsToolBarInstance);
+              break;
+            case "Enter":
+              // Insert new line with list marker
+              if (e.ctrlKey || e.metaKey) return;
+              handleEnterKey(e, jsToolBarInstance, isTextile);
+              break;
+            case OL_KEYBOARD_SHORTCUT:
+              // Append ordered list marker
+              if (!e.ctrlKey && !e.metaKey) return;
+              handleSlashKey(e, jsToolBarInstance);
+              break;
+            case UL_KEYBOARD_SHORTCUT:
+              // Append unordered list marker
+              if (!e.ctrlKey && !e.metaKey) return;
+              handlePeriodKey(e, jsToolBarInstance);
+              break;
+            case "Home":
+              // Move cursor to the beginning of the line or to the first list
+              if (e.ctrlKey || e.metaKey) return;
+              handleHomeKey(e, jsToolBarInstance);
+              break;
+            case TL_KEYBOARD_SHORTCUT:
+              // Append task list marker
+              if (methods === textileMethods || (!e.ctrlKey && !e.metaKey)) {
+                return;
+              }
+              handleCommaKey(e, jsToolBarInstance);
+              break;
+            case TOGGLE_TL_KEYBOARD_SHORTCUT:
+              // Toggle task list state
+              if (methods === textileMethods || (!e.ctrlKey && !e.metaKey)) {
+                return;
+              }
+              handleSemicolonKey(e, jsToolBarInstance);
+              break;
+            default:
+              break;
+          }
+        },
+        { capture: true } // Use capture to prioritize over other handlers
+      );
     };
 
     return true;
