@@ -8,7 +8,7 @@
   (() => {
     // ----- settings start -----
     const modalHeight = "auto";
-    const modalWidth = 550;
+    const modalWidth = 500;
     const checkedDecodeDefault = true;
     // ----- settings end -----
 
@@ -594,45 +594,60 @@
 
         const $modalDecodeBox = $("<span>")
           .attr("id", "image_insertion_modal_decode_box")
+          .addClass("image-insertion-modal-option-item")
           .append(
             $("<label>")
               .attr("for", "image_insertion_modal_decode")
+              .append(this.#$decodeEnabled)
               .append(resources.labelModalDecode)
-          )
-          .append(this.#$decodeEnabled);
+          );
 
         const $modalHtmlFormattingBox = $("<span>")
           .attr("id", "image_insertion_modal_html_formatting_box")
-          .css("margin-left", "10px")
+          .addClass("image-insertion-modal-option-item")
           .append(
             $("<label>")
               .attr("for", "image_insertion_modal_html_formatting")
+              .append(this.#$htmlFormatting)
               .append(resources.labelModalHtmlFormatting)
-          )
-          .append(this.#$htmlFormatting);
+          );
 
         const $modalHtmlWithLineBreakTagEnabledBox = $("<span>")
           .attr(
             "id",
             "image_insertion_modal_html_with_line_break_tag_enabled_box"
           )
-          .css("margin-left", "10px")
+          .addClass(
+            "image-insertion-modal-option-item image-insertion-modal-option-indent"
+          )
           .append(
             $("<label>")
               .attr("for", "image_insertion_modal_html_with_line_break_enabled")
+              .append(this.#$htmlWithLineBreakTagEnabled)
               .append(resources.labelModalHtmlWithLineBreakTag)
-          )
-          .append(this.#$htmlWithLineBreakTagEnabled);
+          );
 
-        const $modalSizeUnitBox = $("<span>")
-          .attr("id", "image_insertion_modal_size_unit_box")
-          .css("margin-left", "10px")
-          .append(
-            $("<label>")
-              .attr("for", "image_insertion_modal_size_unit")
-              .append(resources.labelModalSizeUnit)
-          )
+        const $modalSizeGroup = $("<div>")
+          .addClass("image-insertion-modal-size-group")
+          .append($("<label>").text(resources.labelModalSize + ":"))
+          .append(this.#$size)
           .append(this.#$sizeUnit);
+
+        const $modalOptionsDetails = $("<details>")
+          .attr("id", "image_insertion_modal_options_details")
+          .append(
+            $("<summary>")
+              .attr("id", "image_insertion_modal_options_summary")
+              .text(resources.labelModalOptions)
+          )
+          .append(
+            $("<div>")
+              .addClass("image-insertion-modal-options")
+              .append($modalSizeGroup)
+              .append($modalDecodeBox)
+              .append($modalHtmlFormattingBox)
+              .append($modalHtmlWithLineBreakTagEnabledBox)
+          );
 
         const $modalUploadFileButton = $("<button>")
           .attr("id", "image_insertion_modal_upload_file_button")
@@ -659,30 +674,16 @@
 
         this.#$modal
           .append(
-            $("<p>")
-              .append(resources.labelModalFilenameOrPath + ":")
-              .append(this.#$fileName)
-          )
-          .append(
-            $("<p>")
-              .append(resources.labelModalImageTitle + ":")
-              .append(this.#$imageTitle)
-          )
-          .append(
-            $("<p>")
-              .append(resources.labelModalSize + ":")
-              .append(this.#$size)
-          )
-          .append(
-            $("<p>")
-              .append(resources.labelModalOptions + ":")
+            $("<div>")
               .append(
-                $("<div>")
-                  .addClass("image-insertion-modal-options")
-                  .append($modalDecodeBox)
-                  .append($modalHtmlFormattingBox)
-                  .append($modalHtmlWithLineBreakTagEnabledBox)
-                  .append($modalSizeUnitBox)
+                $("<p>")
+                  .append(resources.labelModalFilenameOrPath + ":")
+                  .append(this.#$fileName)
+              )
+              .append(
+                $("<p>")
+                  .append(resources.labelModalImageTitle + ":")
+                  .append(this.#$imageTitle)
               )
           )
           .append(
@@ -691,6 +692,7 @@
               .append("<br>")
               .append(this.#$tagPreview)
           )
+          .append($("<div>").append($modalOptionsDetails))
           .append(this.#$uploadFile);
       }
 
@@ -1090,8 +1092,84 @@
     width: 100%;
   }
 
+  /* Options details styling */
+  #image_insertion_modal_options_details {
+    margin-top: 0;
+  }
+
+  #image_insertion_modal_options_summary {
+    cursor: pointer;
+    font-weight: bold;
+    padding: 0.5em 0;
+    user-select: none;
+    outline: none;
+  }
+
+  #image_insertion_modal_options_summary:hover {
+    color: #333;
+  }
+
+  #image_insertion_modal_options_details[open]
+    > #image_insertion_modal_options_summary {
+    margin-bottom: 0.5em;
+  }
+
+  /* Size group styling */
+  .image-insertion-modal-size-group {
+    display: flex;
+    align-items: center;
+    gap: 0.5em;
+    margin-bottom: 1em;
+  }
+
+  .image-insertion-modal-size-group > label {
+    margin: 0;
+    font-weight: normal;
+    min-width: fit-content;
+  }
+
+  .image-insertion-modal-size-group > input[type="number"] {
+    width: 80px !important;
+    flex: 0 0 auto;
+  }
+
+  .image-insertion-modal-size-group > select {
+    width: 80px;
+  }
+
+  /* Options styling */
   #image_insertion_modal .image-insertion-modal-options {
     padding-left: 2rem;
+    margin-top: 0.5em;
+  }
+
+  .image-insertion-modal-option-item {
+    display: block;
+    margin-bottom: 0.5em;
+  }
+
+  .image-insertion-modal-option-item label {
+    display: inline-flex;
+    align-items: center;
+    margin: 0;
+    font-weight: normal;
+  }
+
+  .image-insertion-modal-option-item input[type="checkbox"] {
+    margin-right: 0.5em;
+    height: auto;
+  }
+
+  .image-insertion-modal-option-indent {
+    margin-left: 1.5em;
+    opacity: 1;
+    transition: opacity 0.2s;
+  }
+
+  .image-insertion-modal-option-indent input:disabled,
+  .image-insertion-modal-option-indent input:disabled + label {
+    opacity: 0.6;
+    cursor: not-allowed;
   }
 
   #image_insertion_modal_tag_preview {
@@ -1106,7 +1184,7 @@
   }
 
   #image_insertion_modal_size_unit {
-    margin: 0 4px;
+    margin: 0;
   }
 
   #image_insertion_modal_decode {
