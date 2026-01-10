@@ -22,8 +22,11 @@
         messageModalHowToEnableSizeUnit:
           "To enable size unit selection, use HTML formatting and input size.",
         labelModalOptions: "Options",
-        labelModalDecode: "decode",
+        labelModalDecode: "Decode",
         labelModalHtmlFormatting: "HTML formatting",
+        labelModalHtmlWithLineBreakTag: "With line break tag",
+        messageModalHowToEnableHtmlBreakTag:
+          "To enable break tag option, enable HTML formatting.",
         labelModalTagPreview: "Preview",
         labelModalUploadFile: "Upload file",
         labelModalChooseFiles: "Choose Files",
@@ -43,6 +46,9 @@
         labelModalOptions: "オプション",
         labelModalDecode: "デコード",
         labelModalHtmlFormatting: "HTMLフォーマット",
+        labelModalHtmlWithLineBreakTag: "改行タグ付き",
+        messageModalHowToEnableHtmlBreakTag:
+          "改行タグオプションを有効にするには、HTMLフォーマットを有効にしてください。",
         labelModalTagPreview: "プレビュー",
         labelModalUploadFile: "ファイルのアップロード",
         labelModalChooseFiles: "ファイル選択",
@@ -99,7 +105,7 @@
     }
     function getHtmlImgTagBaseRegex(global = true, strict = false) {
       return new RegExp(
-        (strict ? "^" : "") + "<img\\s+([^>]*)>" + (strict ? "$" : ""),
+        (strict ? "^" : "") + "<img\\s+([^>]*)>(<br>)?" + (strict ? "$" : ""),
         `${global ? "g" : ""}i`
       );
     }
@@ -194,6 +200,7 @@
           path: getHtmlImgTagSrcRegex().exec(match[1])?.[1]?.trim(),
           size: matchWidth?.[1],
           sizeUnit: matchWidth?.[2],
+          withLineBreak: match[2] !== undefined,
         });
         if (!global) break;
       }
@@ -380,7 +387,8 @@
       tagFormatting,
       imageTitle,
       size,
-      sizeUnit = "px"
+      sizeUnit = "px",
+      withLineBreak = false // for HTML tag only
     ) {
       let prefix = "";
       let suffix = "";
@@ -406,7 +414,8 @@
             '"' +
             (imageTitle === "" ? "" : ' title="' + imageTitle + '"') +
             (size === "" ? "" : ' style="width:' + size + sizeUnit + ';"') +
-            ">";
+            ">" +
+            (withLineBreak ? "<br>" : "");
           break;
       }
 
@@ -502,6 +511,7 @@
       #$sizeUnit;
       #$decodeEnabled;
       #$htmlFormatting;
+      #$htmlWithLineBreakTagEnabled;
       #$tagPreview;
       #$uploadFile;
 
@@ -551,6 +561,10 @@
           .attr("id", "image_insertion_modal_html_formatting")
           .attr("type", "checkbox");
 
+        this.#$htmlWithLineBreakTagEnabled = $("<input>")
+          .attr("id", "image_insertion_modal_html_with_line_break_enabled")
+          .attr("type", "checkbox");
+
         [
           this.#$fileName,
           this.#$imageTitle,
@@ -558,6 +572,7 @@
           this.#$sizeUnit,
           this.#$decodeEnabled,
           this.#$htmlFormatting,
+          this.#$htmlWithLineBreakTagEnabled,
         ].map((obj) => {
           obj.keydown((e) => {
             const key = e.which;
@@ -579,32 +594,60 @@
 
         const $modalDecodeBox = $("<span>")
           .attr("id", "image_insertion_modal_decode_box")
+          .addClass("image-insertion-modal-option-item")
           .append(
             $("<label>")
               .attr("for", "image_insertion_modal_decode")
+              .append(this.#$decodeEnabled)
               .append(resources.labelModalDecode)
-          )
-          .append(this.#$decodeEnabled);
+          );
 
         const $modalHtmlFormattingBox = $("<span>")
           .attr("id", "image_insertion_modal_html_formatting_box")
-          .css("margin-left", "10px")
+          .addClass("image-insertion-modal-option-item")
           .append(
             $("<label>")
               .attr("for", "image_insertion_modal_html_formatting")
+              .append(this.#$htmlFormatting)
               .append(resources.labelModalHtmlFormatting)
-          )
-          .append(this.#$htmlFormatting);
+          );
 
-        const $modalSizeUnitBox = $("<span>")
-          .attr("id", "image_insertion_modal_size_unit_box")
-          .css("margin-left", "10px")
+        const $modalHtmlWithLineBreakTagEnabledBox = $("<span>")
+          .attr(
+            "id",
+            "image_insertion_modal_html_with_line_break_tag_enabled_box"
+          )
+          .addClass(
+            "image-insertion-modal-option-item image-insertion-modal-option-indent"
+          )
           .append(
             $("<label>")
-              .attr("for", "image_insertion_modal_size_unit")
-              .append(resources.labelModalSizeUnit)
-          )
+              .attr("for", "image_insertion_modal_html_with_line_break_enabled")
+              .append(this.#$htmlWithLineBreakTagEnabled)
+              .append(resources.labelModalHtmlWithLineBreakTag)
+          );
+
+        const $modalSizeGroup = $("<div>")
+          .addClass("image-insertion-modal-size-group")
+          .append($("<label>").text(resources.labelModalSize + ":"))
+          .append(this.#$size)
           .append(this.#$sizeUnit);
+
+        const $modalOptionsDetails = $("<details>")
+          .attr("id", "image_insertion_modal_options_details")
+          .append(
+            $("<summary>")
+              .attr("id", "image_insertion_modal_options_summary")
+              .text(resources.labelModalOptions)
+          )
+          .append(
+            $("<div>")
+              .addClass("image-insertion-modal-options")
+              .append($modalSizeGroup)
+              .append($modalDecodeBox)
+              .append($modalHtmlFormattingBox)
+              .append($modalHtmlWithLineBreakTagEnabledBox)
+          );
 
         const $modalUploadFileButton = $("<button>")
           .attr("id", "image_insertion_modal_upload_file_button")
@@ -631,29 +674,16 @@
 
         this.#$modal
           .append(
-            $("<p>")
-              .append(resources.labelModalFilenameOrPath + ":")
-              .append(this.#$fileName)
-          )
-          .append(
-            $("<p>")
-              .append(resources.labelModalImageTitle + ":")
-              .append(this.#$imageTitle)
-          )
-          .append(
-            $("<p>")
-              .append(resources.labelModalSize + ":")
-              .append(this.#$size)
-          )
-          .append(
-            $("<p>")
-              .append(resources.labelModalOptions + ":")
+            $("<div>")
               .append(
-                $("<div>")
-                  .addClass("image-insertion-modal-options")
-                  .append($modalDecodeBox)
-                  .append($modalHtmlFormattingBox)
-                  .append($modalSizeUnitBox)
+                $("<p>")
+                  .append(resources.labelModalFilenameOrPath + ":")
+                  .append(this.#$fileName)
+              )
+              .append(
+                $("<p>")
+                  .append(resources.labelModalImageTitle + ":")
+                  .append(this.#$imageTitle)
               )
           )
           .append(
@@ -662,6 +692,7 @@
               .append("<br>")
               .append(this.#$tagPreview)
           )
+          .append($("<div>").append($modalOptionsDetails))
           .append(this.#$uploadFile);
       }
 
@@ -703,6 +734,7 @@
             this.imageTitle = parsedText.imageTitle;
             this.size = parsedText.size ?? "";
             this.htmlFormattingEnabled = parsedText.type === "HtmlImg";
+            this.withLineBreak = parsedText.withLineBreak ?? false;
             this.sizeUnit =
               this.htmlFormattingEnabled &&
               parsedText.sizeUnit &&
@@ -777,6 +809,15 @@
         } else {
           this.#$sizeUnit.prop("disabled", false).removeAttr("title");
         }
+        if (!this.htmlFormattingEnabled) {
+          this.#$htmlWithLineBreakTagEnabled
+            .prop("disabled", true)
+            .attr("title", resources.messageModalHowToEnableHtmlBreakTag);
+        } else {
+          this.#$htmlWithLineBreakTagEnabled
+            .prop("disabled", false)
+            .removeAttr("title");
+        }
       }
       previewFormattedTextDelay(delay = 100) {
         setTimeout(() => this.previewFormattedText(), delay);
@@ -824,7 +865,8 @@
           tagFormatting,
           this.imageTitle,
           this.size,
-          this.htmlFormattingEnabled ? this.sizeUnit : "px"
+          this.htmlFormattingEnabled ? this.sizeUnit : "px",
+          this.htmlFormattingEnabled && this.withLineBreak
         );
 
         const formattedText =
@@ -939,6 +981,12 @@
       set htmlFormattingEnabled(value) {
         return this.#$htmlFormatting.prop("checked", value);
       }
+      get withLineBreak() {
+        return this.#$htmlWithLineBreakTagEnabled.prop("checked");
+      }
+      set withLineBreak(value) {
+        return this.#$htmlWithLineBreakTagEnabled.prop("checked", value);
+      }
     }
 
     $(() => {
@@ -968,25 +1016,65 @@
         addFile.nextAttachmentId = addFileOrg.nextAttachmentId;
       }
 
-      // Replace getInlineAttachmentMarkup function for Redmine 6+
-      if (window.getInlineAttachmentMarkup) {
-        const getInlineAttachmentMarkupOrg = getInlineAttachmentMarkup;
+      // Replace addInlineAttachmentMarkup function for Redmine 6+
+      if (window.addInlineAttachmentMarkup) {
+        const addInlineAttachmentMarkupOrg = addInlineAttachmentMarkup;
 
-        window.getInlineAttachmentMarkup = async function (file) {
-          const textarea = handleFileDropEvent.target;
-          return getInlineAttachmentMarkupOrg(file).then((imageMarkup) => {
-            setTimeout(() => {
-              const cursorPos = textarea.selectionStart;
-              // Manually select the before line break
-              textarea.setSelectionRange(cursorPos - 1, cursorPos - 1);
+        // ⚠️Caution: Completely replace the original function
+        window.addInlineAttachmentMarkup = function (file) {
+          /* --- Below code is based on attachments.js --- */
+          // insert uploaded image inline if dropped area is currently focused textarea
+          if (
+            $(handleFileDropEvent.target).hasClass("wiki-edit") &&
+            $.inArray(file.type, window.wikiImageMimeTypes) > -1
+          ) {
+            var $textarea = $(handleFileDropEvent.target);
+            var cursorPosition = $textarea.prop("selectionStart");
+            var description = $textarea.val();
+            var newLineBefore = true;
+            var newLineAfter = true;
+            if (
+              cursorPosition === 0 ||
+              description.substr(cursorPosition - 1, 1).match(/\r|\n/)
+            ) {
+              newLineBefore = false;
+            }
+            if (description.substr(cursorPosition, 1).match(/\r|\n/)) {
+              newLineAfter = false;
+            }
+
+            getInlineAttachmentMarkup(file).then((imageMarkup) => {
+              $textarea.val(
+                description.substring(0, cursorPosition) +
+                  (newLineBefore ? "\n" : "") +
+                  imageMarkup +
+                  (newLineAfter ? "\n" : "") +
+                  description.substring(cursorPosition, description.length)
+              );
+
+              // Ref: https://redmine.org/issues/43662
+              // Move cursor after the inserted markup
+              var newCursorPosition =
+                cursorPosition + (newLineBefore ? 1 : 0) + imageMarkup.length;
+              $textarea.prop({
+                selectionStart: newCursorPosition + 1,
+                selectionEnd: newCursorPosition + 1,
+              });
+              /* --- Above code is based on attachments.js --- */
+
+              // Open the image insertion modal
+              // Set cursor position after the inserted markup
+              $textarea[0].setSelectionRange(
+                newCursorPosition,
+                newCursorPosition
+              );
               const jsToolbarInstanceLike = {
-                textarea: textarea,
-                editor: $(textarea).closest(".jstEditor")[0],
+                textarea: $textarea[0],
+                editor: $textarea.closest(".jstEditor")[0],
               };
               addTask(jsToolbarInstanceLike);
             });
-            return imageMarkup;
-          });
+          }
         };
       }
     });
@@ -1004,8 +1092,84 @@
     width: 100%;
   }
 
+  /* Options details styling */
+  #image_insertion_modal_options_details {
+    margin-top: 0;
+  }
+
+  #image_insertion_modal_options_summary {
+    cursor: pointer;
+    font-weight: bold;
+    padding: 0.5em 0;
+    user-select: none;
+    outline: none;
+  }
+
+  #image_insertion_modal_options_summary:hover {
+    color: #333;
+  }
+
+  #image_insertion_modal_options_details[open]
+    > #image_insertion_modal_options_summary {
+    margin-bottom: 0.5em;
+  }
+
+  /* Size group styling */
+  .image-insertion-modal-size-group {
+    display: flex;
+    align-items: center;
+    gap: 0.5em;
+    margin-bottom: 1em;
+  }
+
+  .image-insertion-modal-size-group > label {
+    margin: 0;
+    font-weight: normal;
+    min-width: fit-content;
+  }
+
+  .image-insertion-modal-size-group > input[type="number"] {
+    width: 80px !important;
+    flex: 0 0 auto;
+  }
+
+  .image-insertion-modal-size-group > select {
+    width: 80px;
+  }
+
+  /* Options styling */
   #image_insertion_modal .image-insertion-modal-options {
     padding-left: 2rem;
+    margin-top: 0.5em;
+  }
+
+  .image-insertion-modal-option-item {
+    display: block;
+    margin-bottom: 0.5em;
+  }
+
+  .image-insertion-modal-option-item label {
+    display: inline-flex;
+    align-items: center;
+    margin: 0;
+    font-weight: normal;
+  }
+
+  .image-insertion-modal-option-item input[type="checkbox"] {
+    margin-right: 0.5em;
+    height: auto;
+  }
+
+  .image-insertion-modal-option-indent {
+    margin-left: 1.5em;
+    opacity: 1;
+    transition: opacity 0.2s;
+  }
+
+  .image-insertion-modal-option-indent input:disabled,
+  .image-insertion-modal-option-indent input:disabled + label {
+    opacity: 0.6;
+    cursor: not-allowed;
   }
 
   #image_insertion_modal_tag_preview {
@@ -1020,7 +1184,7 @@
   }
 
   #image_insertion_modal_size_unit {
-    margin: 0 4px;
+    margin: 0;
   }
 
   #image_insertion_modal_decode {
