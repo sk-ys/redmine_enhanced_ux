@@ -51,6 +51,11 @@
       enableFixedIssueSubject: true,
       enableFixedIssueSubjectInIframe: false,
       sideBySideModeBreakpointWidth: 1280,
+      attributeSeparatorColors: {
+        show: "#ccc",
+        edit: "#ccc",
+        new: "#ccc",
+      },
     };
 
     // ----- settings end -----
@@ -251,6 +256,10 @@
       // Default direction
       return "asc";
     }
+    function upper1stChar(str) {
+      if (str.length === 0) return str;
+      return str.charAt(0).toUpperCase() + str.slice(1);
+    }
 
     // Issue layout manager class
     class IssueLayoutManager {
@@ -264,7 +273,8 @@
         isDescriptionEditFieldOpenByDefault,
         enableFixedIssueSubject,
         enableFixedIssueSubjectInIframe,
-        sideBySideModeBreakpointWidth
+        sideBySideModeBreakpointWidth,
+        attributeSeparatorColors
       ) {
         this.tabViewEnabled = isShowView && (enableTabView ?? true);
         this.sideBySideModeEnabled =
@@ -288,6 +298,7 @@
           isShowView && (enableFixedIssueSubjectInIframe ?? false);
         this.sideBySideModeBreakpointWidth =
           sideBySideModeBreakpointWidth ?? 1280;
+        this.attrSepColors = attributeSeparatorColors || {};
         this.hasHistoryData = $("#history>p.nodata").length === 0;
 
         $("#update").prev().addClass("update-prev-marker");
@@ -324,6 +335,7 @@
         this.#setupShowDescriptionEditFieldOpenByDefault();
         this.#setupFormChangeDetection();
         this.#setupFixedIssueSubject();
+        this.#setupAttributeSeparatorColor();
       }
 
       sideBySideProperty = {
@@ -1092,6 +1104,30 @@
           .addClass("subject-clone")
           .text(": " + $subject.text().trim());
         $headerTitle.append($subjectClone).attr({ title: $headerTitle.text() });
+      }
+
+      #setupAttributeSeparatorColor() {
+        function appendStyleToHead(targetSelector, color) {
+          $("<style>")
+            .prop("type", "text/css")
+            .html(`${targetSelector} {background-color: ${color};}`)
+            .appendTo("head");
+        }
+
+        // For issue show view and edit/new form view
+        if (this.attrSepColors.show) {
+          appendStyleToHead(".issue.details hr", this.attrSepColors.show);
+        }
+
+        // For edit form view
+        if (this.attrSepColors.edit && isEditable) {
+          appendStyleToHead("#all_attributes hr", this.attrSepColors.edit);
+        }
+
+        // For new form view
+        if (this.attrSepColors.new && isNewForm) {
+          appendStyleToHead("#all_attributes hr", this.attrSepColors.new);
+        }
       }
     }
 
@@ -2257,8 +2293,8 @@
       constructor(settingsManager, config = {}) {
         super({
           title: resources.labelCustomIssueViewSettings,
-          width: 400,
-          height: 520,
+          width: 480,
+          height: 650,
           modal: true,
           autoOpen: false,
           ...config,
@@ -2325,45 +2361,85 @@
         this.loadSettingsToPanel(this.settingsManager.settings);
       }
 
-      loadSettingsToPanel(settings) {
-        this.$settingsPanel.empty();
+      loadSettingsToPanel(settings, $target = null, parentKeys = []) {
+        if ($target === null) {
+          $target = this.$settingsPanel;
+          $target.empty();
+        }
+
+        function getDefaultValue(key) {
+          let def = defaultSettings;
+          parentKeys.forEach((parentKey) => {
+            def = def[parentKey];
+          });
+          return def[key];
+        }
 
         Object.keys(settings).forEach((key) => {
           const value = settings[key];
-          const defaultValue = defaultSettings[key];
-          const $input = $("<input>").attr("id", `setting-${key}`);
+          const defaultValue = getDefaultValue(key);
+          const keyLabel =
+            parentKeys.map((k) => upper1stChar(k)).join("") + upper1stChar(key);
 
-          if (typeof defaultValue === "boolean") {
-            $input.attr("type", "checkbox").prop("checked", value);
-          } else if (key === "sideBySideModeBreakpointWidth") {
-            $input.attr({ type: "number", min: 0, step: 1 }).val(value);
-          } else if (typeof defaultValue === "number") {
-            $input.attr("type", "number").val(value);
+          if (typeof defaultValue === "object") {
+            const $fieldset = $("<fieldset>").addClass("setting-fieldset");
+            const resourceFieldsetLegendKey = `legendSetting${keyLabel}`;
+            const $legend = $("<legend>")
+              .text(
+                resources[resourceFieldsetLegendKey] ??
+                  key.replace(/([A-Z])/g, " $1").trimStart()
+              )
+              .appendTo($fieldset);
+            this.loadSettingsToPanel({ ...defaultValue, ...value }, $fieldset, [
+              ...parentKeys,
+              key,
+            ]);
+            $target.append($fieldset);
           } else {
-            $input.attr("type", "text").val(value);
-          }
-
-          const resourceLabelKey = `labelSetting${key
-            .charAt(0)
-            .toUpperCase()}${key.slice(1)}`;
-          const resourceMessageKey = `messageSetting${key
-            .charAt(0)
-            .toUpperCase()}${key.slice(1)}`;
-          const $label = $("<label>")
-            .attr("for", `setting-${key}`)
-            .attr("title", resources[resourceMessageKey] ?? "")
-            .text(
-              resources[resourceLabelKey] ??
-                key.replace(/([A-Z])/g, " $1").trimStart()
+            const $input = $("<input>").attr(
+              "id",
+              `setting-${[...parentKeys, key].join("-")}`
             );
-          const $settingItem = $("<div>").addClass("setting-item");
 
-          if (typeof defaultValue === "boolean") {
-            $settingItem.append($input).append($label);
-          } else {
-            $settingItem.append($label).append($input);
+            if (typeof defaultValue === "boolean") {
+              $input.attr("type", "checkbox").prop("checked", value);
+            } else if (key === "sideBySideModeBreakpointWidth") {
+              $input
+                .attr({
+                  type: "number",
+                  min: 0,
+                  step: 1,
+                  placeholder: defaultValue,
+                })
+                .val(value);
+            } else if (typeof defaultValue === "number") {
+              $input
+                .attr({ type: "number", placeholder: defaultValue })
+                .val(value);
+            } else {
+              $input
+                .attr({ type: "text", placeholder: defaultValue })
+                .val(value);
+            }
+
+            const resourceLabelKey = `labelSetting${keyLabel}`;
+            const resourceMessageKey = `messageSetting${keyLabel}`;
+            const $label = $("<label>")
+              .attr("for", `setting-${[...parentKeys, key].join("-")}`)
+              .attr("title", resources[resourceMessageKey] ?? "")
+              .text(
+                resources[resourceLabelKey] ??
+                  key.replace(/([A-Z])/g, " $1").trimStart()
+              );
+            const $settingItem = $("<div>").addClass("setting-item");
+
+            if (typeof defaultValue === "boolean") {
+              $settingItem.append($input).append($label);
+            } else {
+              $settingItem.append($label).append($input);
+            }
+            $target.append($settingItem);
           }
-          this.$settingsPanel.append($settingItem);
         });
       }
 
@@ -2372,19 +2448,29 @@
         Object.keys(this.settingsManager.settings).forEach((key) => {
           const defaultValue = defaultSettings[key];
 
-          const $input = $(`#setting-${key}`);
-          if (typeof defaultValue === "boolean") {
-            const isChecked = $input.is(":checked");
-            this.settingsManager.setSetting(key, isChecked);
-          } else if (typeof defaultValue === "number") {
-            const inputValue = $input.val();
-            const numberValue = Number(inputValue);
-            this.settingsManager.setSetting(
-              key,
-              isNaN(numberValue) ? 0 : numberValue
-            );
+          if (typeof defaultValue === "object") {
+            // Note: Only one level of sub-settings is supported
+            const subSettings = {};
+            Object.keys(defaultValue).forEach((subKey) => {
+              const $subInput = $(`#setting-${key}-${subKey}`);
+              const subDefaultValue = defaultValue[subKey];
+              subSettings[subKey] =
+                typeof subDefaultValue === "boolean"
+                  ? $subInput.is(":checked")
+                  : typeof subDefaultValue === "number"
+                  ? Number($subInput.val()) || 0
+                  : $subInput.val();
+            });
+            this.settingsManager.setSetting(key, subSettings);
           } else {
-            this.settingsManager.setSetting(key, $input.val());
+            const $input = $(`#setting-${key}`);
+            const value =
+              typeof defaultValue === "boolean"
+                ? $input.is(":checked")
+                : typeof defaultValue === "number"
+                ? Number($input.val()) || 0
+                : $input.val();
+            this.settingsManager.setSetting(key, value);
           }
         });
         this.settingsManager.saveSettings();
@@ -2484,7 +2570,8 @@
         settingsManager.settings.isDescriptionEditFieldOpenByDefault,
         settingsManager.settings.enableFixedIssueSubject,
         settingsManager.settings.enableFixedIssueSubjectInIframe,
-        settingsManager.settings.sideBySideModeBreakpointWidth
+        settingsManager.settings.sideBySideModeBreakpointWidth,
+        settingsManager.settings.attributeSeparatorColors
       );
 
       if (isEditable) {
