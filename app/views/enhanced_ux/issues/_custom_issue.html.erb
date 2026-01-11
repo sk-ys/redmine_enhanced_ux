@@ -3161,7 +3161,7 @@
       }
     }
 
-    #issue-form input[type="submit"] {
+    #issue-form > input[type="submit"] {
       display: none;
 
       /* Always hide the cancel button */
@@ -3279,7 +3279,9 @@
       padding-bottom: var(--floating-button-area-height);
     }
 
-    input[type="submit"],
+    /* Note: Use child combinator for submit button to avoid conflicting styles
+       on the issue conflict page */
+    & > input[type="submit"],
     .save-draft-button {
       position: absolute;
       border-radius: 50%;
@@ -3440,7 +3442,7 @@
   body.theme-Bleuclair {
     #main:is(.collapsiblesidebar, .nosidebar) {
       /* Support for Redmine 6+ */
-      .fixed-position:is(body.action-show #issue-form input[type="submit"]) {
+      .fixed-position:is(body.action-show #issue-form > input[type="submit"]) {
         --floating-button-offset: 26px;
       }
       --floating-button-offset-with-draft-fixed: 106px;
@@ -3450,13 +3452,17 @@
       padding-bottom: 90px;
     }
     #issue-form.floating-submit-button-enabled
-      :where(input[type="submit"], .save-draft-button):not(.fixed-position) {
+      :where(& > input[type="submit"], .save-draft-button):not(
+        .fixed-position
+      ) {
       margin-top: -110px;
     }
 
     #wrapper.side-by-side-mode-enabled.side-by-side
       #issue-form.floating-submit-button-enabled
-      :where(input[type="submit"], .save-draft-button):not(.fixed-position) {
+      :where(& > input[type="submit"], .save-draft-button):not(
+        .fixed-position
+      ) {
       margin-top: -80px;
     }
 
