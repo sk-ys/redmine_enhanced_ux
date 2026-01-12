@@ -771,34 +771,32 @@
         if (!(isEditable || isNewForm)) return;
         if (!this.correctAttributesPositionInEditViewEnabled) return;
 
-        // Move hidden attributes to top
+        // Change attributes order
         $("#all_attributes")
           .prepend(
-            $("#issue_parent_issue_id").parent().addClass("header_attribute")
+            $("#issue_parent_issue_id")
+              .parent()
+              .addClass("header_attribute")
+              .addClass("header_attribute_float-inline-end")
+          )
+          .prepend(
+            $("#issue_subject")
+              .parent()
+              .addClass("header_attribute")
+              .addClass("header_attribute_float-inline-start")
           )
           .prepend(
             $("#issue_tracker_id")
               .parent()
               .addClass("header_attribute")
-              .addClass("header_attribute_float-" + (isRtl ? "right" : "left"))
+              .addClass("header_attribute_float-inline-start")
               .css({ clear: "none" })
           )
           .prepend(
             $("#issue_project_id")
               .parent()
               .addClass("header_attribute")
-              .addClass("header_attribute_float-" + (isRtl ? "right" : "left"))
-          );
-
-        $("#attributes").css("clear: both");
-
-        // Move subject and is_private checkbox
-        $("#all_attributes")
-          .prepend(
-            $("#issue_subject")
-              .parent()
-              .addClass("header_attribute")
-              .addClass("header_attribute_float-" + (isRtl ? "right" : "left"))
+              .addClass("header_attribute_float-inline-start")
           )
           .prepend(
             $("#issue_is_private")
@@ -806,6 +804,8 @@
               .css({ clear: "both", paddingLeft: 0 })
               .addClass("header_attribute")
           );
+
+        $("#attributes").css("clear: both");
 
         // Move estimated_time
         $("#issue_estimated_hours")
@@ -2700,44 +2700,65 @@
     display: none;
   }
 
-  #parent_issue {
-    clear: none;
-    margin-bottom: 6px;
-  }
-
-  @media screen and (max-width: 899px) {
-    .header_attribute
-      :where(select, input, input#issue_subject, input#document_title),
-    #all_attributes .header_attribute select#issue_tracker_id {
-      width: 100%;
-    }
-
+  /* Arrange attributes position */
+  #all_attributes.corrected_attributes_position {
     #parent_issue {
-      float: left;
+      clear: none;
+      margin-bottom: 6px;
+    }
+    
+    #issue_subject {
+      font-size: 1.2em;
     }
 
-    #content > .contextual > a.icon-comment,
-    #notes-dialog-pop-out-button {
-      display: none;
-    }
-  }
+    @media screen and (max-width: 899px) {
+      #issue_is_private_wrap {
+        margin-left: auto;
+        margin-right: 0;
+        width: max-content;
+      }
 
-  @media screen and (min-width: 900px) {
-    .header_attribute :where(select, input) {
-      max-width: 100%;
-    }
+      #parent_issue {
+        float: left;
+      }
 
-    .header_attribute_float-left {
-      float: left;
-    }
-
-    .header_attribute_float-right {
-      float: right;
+      #content > .contextual > a.icon-comment,
+      #notes-dialog-pop-out-button {
+        display: none;
+      }
     }
 
-    #parent_issue {
-      clear: right;
-      float: right;
+    @media screen and (min-width: 900px) {
+      .header_attribute :where(select, input) {
+        max-width: 100%;
+      }
+
+      .header_attribute_float-inline-start {
+        float: inline-start;
+      }
+
+      .header_attribute_float-inline-end {
+        float: inline-end;
+      }
+
+      #issue_is_private_wrap {
+        margin-left: 1em;
+      }
+
+      p:has(#issue_subject) {
+        box-sizing: border-box;
+        width: 95%;
+        padding-top: 1em;
+        padding-bottom: 1em;
+        #issue_subject {
+          max-width: 100%;
+          width: 100%;
+        }
+      }
+
+      #parent_issue {
+        margin-right: 5%;
+      }
     }
   }
 
