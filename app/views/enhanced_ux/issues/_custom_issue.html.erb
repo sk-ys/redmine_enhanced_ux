@@ -907,9 +907,21 @@
           "Basic Information",
         );
         const $issueBasicInfoContainer = generateSplitContent();
+        const statusLabel = $(
+          ".issue.details .attributes .status.attribute .label",
+        )
+          .text()
+          .slice(0, -1);
+        const $statusAttr =
+          $("#issue_status_id").length > 0
+            ? $("#issue_status_id").closest("p")
+            : $("#all_attributes label")
+                .filter((_, el) => $(el).text() === statusLabel)
+                .addClass("status")
+                .parent();
         $issueBasicInfoContainer
           .children(".splitcontentleft")
-          .append($("#issue_status_id").closest("p"))
+          .append($statusAttr)
           .append($("#issue_priority_id").closest("p"))
           .append($("#issue_assigned_to_id").closest("p"))
           .append($("#issue_category_id").closest("p"))
@@ -919,7 +931,10 @@
           .append($("#issue_done_ratio").closest("p"))
           .append($("#issue_estimated_hours").closest("p"))
           .append($("#issue_author_id").closest("p")); // Support for Additionals plugin
-        if ($issueBasicInfoContainer.find("input, select").length > 0) {
+        if (
+          $issueBasicInfoContainer.find("input, select, label.status").length >
+          0
+        ) {
           $issueBasicInfoFieldSet
             .addClass("tabular")
             .append($issueBasicInfoContainer)
@@ -3036,6 +3051,12 @@
 
     #issue_is_private_wrap {
       padding-left: 10px;
+    }
+
+    fieldset:has(#all_attributes):not(
+        :has(:is(input:not([type="hidden"]), textarea, select))
+      ) {
+      display: none;
     }
   }
 
