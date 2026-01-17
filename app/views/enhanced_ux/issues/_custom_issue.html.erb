@@ -878,7 +878,7 @@
 
         function toggleFieldSet($legend) {
           const $fieldset = $legend.parent();
-          $fieldset.toggleClass("is-collapsed");
+          $fieldset.toggleClass("collapsed");
         }
 
         // Append date info fieldset
@@ -3041,7 +3041,7 @@
       font-size: 1.2em;
     }
 
-    fieldset.is-collapsed > *:not(legend) {
+    fieldset.collapsed > *:not(legend) {
       display: none !important;
     }
 
