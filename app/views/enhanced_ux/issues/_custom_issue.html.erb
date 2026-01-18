@@ -873,6 +873,24 @@
         $("#all_attributes").addClass("attribute_layout_type-1");
       }
 
+      loadFieldsetCollapsedState() {
+        return (
+          JSON.parse(
+            localStorage.getItem("custom-issue-fieldset-collapsed-state"),
+          ) || {}
+        );
+      }
+
+      saveFieldsetCollapsedState(fieldsetId, isCollapsed) {
+        const fieldsetCollapsedState = this.loadFieldsetCollapsedState();
+
+        fieldsetCollapsedState[fieldsetId] = isCollapsed;
+        localStorage.setItem(
+          "custom-issue-fieldset-collapsed-state",
+          JSON.stringify(fieldsetCollapsedState),
+        );
+      }
+
       toggleFieldSet($legend, state = null) {
         if (this.attributeLayoutTypeInEditView !== 2) return;
 
@@ -895,6 +913,8 @@
             $legend.prepend(svgIcons.angleRight.clone());
           }
         }
+
+        this.saveFieldsetCollapsedState($fieldset.attr("id"), !isCollapsed);
       }
 
       attributeLayoutTypeInEditView2() {
@@ -1036,13 +1056,26 @@
             .insertAfter($("#all_attributes").closest("fieldset"));
         }
 
-        // Add event to toggle
+        // Setup collapsible fieldsets
+        const fieldsetCollapsedState = this.loadFieldsetCollapsedState();
         $("#issue-form")
           .find("fieldset>legend")
-          .addClass("icon icon-expanded")
+          .addClass("icon")
           .each((_, e) => {
-            if (svgIcons.angleDown) {
-              $(e).prepend(svgIcons.angleDown.clone());
+            const $fieldset = $(e).parent();
+            const isCollapsed =
+              fieldsetCollapsedState[$fieldset.attr("id")] ?? false;
+            if (isCollapsed) {
+              $fieldset.addClass("collapsed");
+              $(e).addClass("icon-collapsed");
+              if (svgIcons.angleRight) {
+                $(e).prepend(svgIcons.angleRight.clone());
+              }
+            } else {
+              $(e).addClass("icon-expanded");
+              if (svgIcons.angleDown) {
+                $(e).prepend(svgIcons.angleDown.clone());
+              }
             }
           })
           .on("click", (e) => {
