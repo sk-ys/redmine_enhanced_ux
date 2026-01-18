@@ -1073,7 +1073,8 @@
               fieldsetCollapsedState[$fieldset.attr("id")] ?? false;
             this.toggleFieldSet($(e), isCollapsed);
           })
-          .on("click", (e) => {
+          .off("click.toggleFieldSet")
+          .on("click.toggleFieldSet", (e) => {
             this.toggleFieldSet($(e.currentTarget));
           });
 
