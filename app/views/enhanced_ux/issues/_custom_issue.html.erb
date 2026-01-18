@@ -1075,6 +1075,7 @@
           })
           .off("click.toggleFieldSet")
           .on("click.toggleFieldSet", (e) => {
+            if ($(e.target).is("#notes-dialog-pop-out-button")) return;
             this.toggleFieldSet($(e.currentTarget));
           });
 
