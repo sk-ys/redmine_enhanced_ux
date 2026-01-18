@@ -125,6 +125,9 @@
         labelSettingAttributeSeparatorColorsShow: "In issue view",
         labelSettingAttributeSeparatorColorsEdit: "In issue edit form",
         labelSettingAttributeSeparatorColorsNew: "In new issue form",
+        labelDateInfo: "Date Information",
+        labelBasicInfo: "Basic Information",
+        labelIssueSettings: "Issue Settings",
       },
       ja: {
         sideBySideMode: "左右に並べて表示",
@@ -187,6 +190,9 @@
         labelSettingAttributeSeparatorColorsShow: "チケット表示画面",
         labelSettingAttributeSeparatorColorsEdit: "チケット編集画面",
         labelSettingAttributeSeparatorColorsNew: "新規チケット画面",
+        labelDateInfo: "日付情報",
+        labelBasicInfo: "基本情報",
+        labelIssueSettings: "チケット設定",
       },
     };
     const resources = {
@@ -937,7 +943,7 @@
         // Append date info fieldset
         const $dateInfoFieldSet = generateFieldSet(
           "date_info_fieldset",
-          "Date Information",
+          resources.labelDateInfo,
         );
         const $dateInfoFieldsContainer = generateSplitContent();
         $dateInfoFieldsContainer
@@ -971,7 +977,7 @@
         // Append issue basic information fieldset
         const $issueBasicInfoFieldSet = generateFieldSet(
           "issue_basic_info_fieldset",
-          "Basic Information",
+          resources.labelBasicInfo,
         );
         const $issueBasicInfoContainer = generateSplitContent();
         const statusLabel = $(
@@ -1011,7 +1017,7 @@
         // Append issue settings fieldset
         const $issueSettingsFieldSet = generateFieldSet(
           "issue_settings_fieldset",
-          "Issue Settings",
+          resources.labelIssueSettings,
         );
         const $issueSettingsContainer = generateSplitContent();
         $issueSettingsContainer
