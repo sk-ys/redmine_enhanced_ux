@@ -244,8 +244,8 @@
       get angleDown() {
         return this.generateSvgIconTag("icon--angle-down");
       }
-      get angleUp() {
-        return this.generateSvgIconTag("icon--angle-up");
+      get angleRight() {
+        return this.generateSvgIconTag("icon--angle-right");
       }
     })();
     let notesManager = null;
@@ -644,6 +644,11 @@
 
         // Restore add_notes legend
         $("#add_notes>legend:first").text(addNotesLegendDefault);
+        // Add svg icon to legend if available
+        this.toggleFieldSet(
+          $("#add_notes>legend:first"),
+          !$("#add_notes").hasClass("collapsed"),
+        );
 
         // Reset height for history and quick notes2
         $("#history").css("height", "");
@@ -868,6 +873,30 @@
         $("#all_attributes").addClass("attribute_layout_type-1");
       }
 
+      toggleFieldSet($legend, state = null) {
+        if (this.attributeLayoutTypeInEditView !== 2) return;
+
+        const $fieldset = $legend.parent();
+        const isCollapsed =
+          typeof state === "boolean" ? !state : $fieldset.hasClass("collapsed");
+        $fieldset.toggleClass("collapsed", !isCollapsed);
+        $legend.toggleClass("icon-expanded", isCollapsed);
+        $legend.toggleClass("icon-collapsed", !isCollapsed);
+        if ($legend.find("svg").length > 0) {
+          $legend.find("svg").remove();
+        }
+
+        if (isCollapsed) {
+          if (svgIcons.angleDown) {
+            $legend.prepend(svgIcons.angleDown.clone());
+          }
+        } else {
+          if (svgIcons.angleRight) {
+            $legend.prepend(svgIcons.angleRight.clone());
+          }
+        }
+      }
+
       attributeLayoutTypeInEditView2() {
         // Future implementation for version 2
 
@@ -883,15 +912,6 @@
             .addClass("splitcontent")
             .append($("<div>").addClass("splitcontentleft"))
             .append($("<div>").addClass("splitcontentright"));
-        }
-
-        function toggleFieldSet($legend) {
-          const $fieldset = $legend.parent();
-          const isCollapsed = $fieldset.hasClass("collapsed");
-          $fieldset.toggleClass("collapsed", !isCollapsed);
-          $legend.toggleClass("icon-expanded", isCollapsed);
-          $legend.toggleClass("icon-collapsed", !isCollapsed);
-          toggleExpendCollapseIcon($legend[0]);
         }
 
         // Append date info fieldset
@@ -1026,7 +1046,7 @@
             }
           })
           .on("click", (e) => {
-            toggleFieldSet($(e.currentTarget));
+            this.toggleFieldSet($(e.currentTarget));
           });
 
         // Add class for CSS adjustment
@@ -2459,6 +2479,12 @@
         // Change legend
         $("#add_notes>legend:first").text(resources.labelQuickNotes);
 
+        // Add svg icon to legend if available
+        this.toggleFieldSet(
+          $("#add_notes>legend:first"),
+          !$("#add_notes").hasClass("collapsed"),
+        );
+
         // Add notes pop-out button
         this.addNotesDialogPopOutButton();
 
@@ -2975,7 +3001,10 @@
     height: calc(100% - 50px);
   }
 
-  #notes-dialog-content #update div.box fieldset.tabular {
+  #notes-dialog-content
+    #update
+    div.box
+    fieldset:not(:is(#add_notes, #add_attachments)) {
     display: none;
   }
 
@@ -3062,6 +3091,10 @@
 
     fieldset.collapsed > *:not(legend) {
       display: none !important;
+    }
+
+    #notes-dialog-content fieldset.collapsed > *:not(legend) {
+      display: revert !important;
     }
 
     fieldset {
