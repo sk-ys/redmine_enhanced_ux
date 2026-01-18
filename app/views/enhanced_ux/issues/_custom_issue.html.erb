@@ -241,6 +241,12 @@
       get settings() {
         return this.generateSvgIconTag("icon--settings");
       }
+      get angleDown() {
+        return this.generateSvgIconTag("icon--angle-down");
+      }
+      get angleUp() {
+        return this.generateSvgIconTag("icon--angle-up");
+      }
     })();
     let notesManager = null;
     let issueLayoutManager = null;
@@ -841,7 +847,10 @@
           $("#attributes").before($("<hr>"));
         }
         $("#attributes>.splitcontent").each((_, el) => {
-          if ($(el).next().is(":visible") && $(el).next()[0]?.nodeName !== "HR") {
+          if (
+            $(el).next().is(":visible") &&
+            $(el).next()[0]?.nodeName !== "HR"
+          ) {
             $(el).after($("<hr>"));
           }
         });
@@ -878,7 +887,11 @@
 
         function toggleFieldSet($legend) {
           const $fieldset = $legend.parent();
-          $fieldset.toggleClass("collapsed");
+          const isCollapsed = $fieldset.hasClass("collapsed");
+          $fieldset.toggleClass("collapsed", !isCollapsed);
+          $legend.toggleClass("icon-expanded", isCollapsed);
+          $legend.toggleClass("icon-collapsed", !isCollapsed);
+          toggleExpendCollapseIcon($legend[0]);
         }
 
         // Append date info fieldset
@@ -1006,6 +1019,12 @@
         // Add event to toggle
         $("#issue-form")
           .find("fieldset>legend")
+          .addClass("icon icon-expanded")
+          .each((_, e) => {
+            if (svgIcons.angleDown) {
+              $(e).prepend(svgIcons.angleDown.clone());
+            }
+          })
           .on("click", (e) => {
             toggleFieldSet($(e.currentTarget));
           });
@@ -2497,7 +2516,7 @@
             issueLayoutManager.resetForm();
             this.enableDialogNotes(true, isOpenedFromInlineNotes);
           })
-          .prependTo($("#add_notes>legend"));
+          .appendTo($("#add_notes>legend"));
       }
     }
 
@@ -3051,6 +3070,11 @@
       & > legend label {
         cursor: pointer;
       }
+      & > legend {
+        &.icon:not(:has(svg)) {
+          background-position-x: 3px;
+        }
+      }
     }
 
     #description_fieldset > p {
@@ -3570,7 +3594,6 @@
   #notes-dialog-pop-out-button {
     cursor: pointer;
     opacity: 0.3;
-    float: right;
     margin: auto;
 
     &:hover {
