@@ -1071,18 +1071,7 @@
             const $fieldset = $(e).parent();
             const isCollapsed =
               fieldsetCollapsedState[$fieldset.attr("id")] ?? false;
-            if (isCollapsed) {
-              $fieldset.addClass("collapsed");
-              $(e).addClass("icon-collapsed");
-              if (svgIcons.angleRight) {
-                $(e).prepend(svgIcons.angleRight.clone());
-              }
-            } else {
-              $(e).addClass("icon-expanded");
-              if (svgIcons.angleDown) {
-                $(e).prepend(svgIcons.angleDown.clone());
-              }
-            }
+            this.toggleFieldSet($(e), isCollapsed);
           })
           .on("click", (e) => {
             this.toggleFieldSet($(e.currentTarget));
