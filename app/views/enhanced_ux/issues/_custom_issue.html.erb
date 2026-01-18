@@ -1320,7 +1320,7 @@
         function calcBaseTop() {
           baseTop =
             ($("#header").outerHeight() ?? 0) +
-            (isMobile() ? 0 : $("#top-menu").outerHeight() ?? 0);
+            (isMobile() ? 0 : ($("#top-menu").outerHeight() ?? 0));
         }
 
         function updateMarginTop() {
@@ -2815,8 +2815,8 @@
                 typeof subDefaultValue === "boolean"
                   ? $subInput.is(":checked")
                   : typeof subDefaultValue === "number"
-                  ? Number($subInput.val()) || 0
-                  : $subInput.val();
+                    ? Number($subInput.val()) || 0
+                    : $subInput.val();
             });
             this.settingsManager.setSetting(key, subSettings);
           } else {
@@ -2825,8 +2825,8 @@
               typeof defaultValue === "boolean"
                 ? $input.is(":checked")
                 : typeof defaultValue === "number"
-                ? Number($input.val()) || 0
-                : $input.val();
+                  ? Number($input.val()) || 0
+                  : $input.val();
             this.settingsManager.setSetting(key, value);
           }
         });
@@ -2898,11 +2898,11 @@
       settings.search = settings.noSearch
         ? ""
         : settings.search[0] === "?"
-        ? settings.search
-        : "?" +
-          (settings.search[0] === "&"
-            ? settings.search.slice(1)
-            : settings.search);
+          ? settings.search
+          : "?" +
+            (settings.search[0] === "&"
+              ? settings.search.slice(1)
+              : settings.search);
 
       const url = location.origin + location.pathname + settings.search;
 
@@ -3133,6 +3133,11 @@
         cursor: pointer;
       }
       & > legend {
+        padding-right: 5px;
+        border-radius: 5px;
+        &:hover {
+          background-color: rgba(0, 0, 0, 0.1);
+        }
         &.icon:not(:has(svg)) {
           background-position-x: 3px;
         }
@@ -3490,7 +3495,11 @@
     &:not(.ui-dialog-resizing):not(.ui-dialog-dragging):not(
         .ui-dialog-position-changing
       ) {
-      transition: width 0.5s, height 0.5s, top 0.5s, left 0.5s;
+      transition:
+        width 0.5s,
+        height 0.5s,
+        top 0.5s,
+        left 0.5s;
     }
 
     & > .ui-dialog-titlebar {
