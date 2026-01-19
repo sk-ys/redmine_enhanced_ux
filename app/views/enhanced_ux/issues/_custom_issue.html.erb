@@ -1077,6 +1077,7 @@
           .off("click.toggleFieldSet")
           .on("click.toggleFieldSet", (e) => {
             if ($(e.target).is("#notes-dialog-pop-out-button")) return;
+            if ($(e.target).closest("#quick_notes2").length) return;
             this.toggleFieldSet($(e.currentTarget));
           });
 
@@ -2508,12 +2509,6 @@
         // Change legend
         $("#add_notes>legend:first").text(resources.labelQuickNotes);
 
-        // Add svg icon to legend if available
-        this.toggleFieldSet(
-          $("#add_notes>legend:first"),
-          $("#add_notes").hasClass("collapsed")
-        );
-
         // Add notes pop-out button
         this.addNotesDialogPopOutButton();
 
@@ -3124,7 +3119,7 @@
 
     #notes-dialog-content fieldset.collapsed#add_notes > *:not(legend) {
       display: revert !important;
-      
+
       /* Support for Redmine silencer plugin */
       &.plugin_redmine_silencer {
         display: inline-block !important;
@@ -3390,6 +3385,18 @@
           .wiki-preview {
             box-sizing: border-box;
           }
+        }
+      }
+    }
+
+    #add_notes,
+    #add_attachments {
+      legend {
+        background-image: none;
+        padding-left: revert;
+
+        svg {
+          display: none;
         }
       }
     }
