@@ -2782,13 +2782,10 @@
                 resources[resourceLabelKey] ??
                   key.replace(/([A-Z])/g, " $1").trimStart()
               );
-            const $settingItem = $("<div>").addClass("setting-item");
-
-            if (typeof defaultValue === "boolean") {
-              $settingItem.append($input).append($label);
-            } else {
-              $settingItem.append($label).append($input);
-            }
+            const $settingItem = $("<div>")
+              .addClass("setting-item")
+              .append($label)
+              .append($input);
 
             $target.append($settingItem);
           }
@@ -3987,6 +3984,17 @@
     }
     #setting-attributeLayoutTypeInEditView {
       min-width: 6em;
+    }
+    .setting-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      & + .setting-item {
+        border-top: 1px solid #ddd;
+      }
+      &:hover {
+        background-color: #f9f9f9;
+      }
     }
   }
 
