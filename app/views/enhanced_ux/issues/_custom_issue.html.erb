@@ -3124,6 +3124,11 @@
 
     #notes-dialog-content fieldset.collapsed#add_notes > *:not(legend) {
       display: revert !important;
+      
+      /* Support for Redmine silencer plugin */
+      &.plugin_redmine_silencer {
+        display: inline-block !important;
+      }
     }
 
     fieldset {
