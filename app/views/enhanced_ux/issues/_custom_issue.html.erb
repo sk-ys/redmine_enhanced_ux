@@ -3016,13 +3016,21 @@
       }
     }
   }
-  #wrapper.side-by-side-mode-enabled.side-by-side
+  #wrapper.side-by-side-mode-enabled.side-by-side {
     #container
-    #update
-    #issue-form.edit_issue:not(.floating-submit-button-enabled)
-    > div.box {
-    margin-bottom: 10px;
-    height: calc(100% - 50px);
+      #update
+      #issue-form.edit_issue:not(.floating-submit-button-enabled)
+      > div.box {
+      margin-bottom: 10px;
+      height: calc(100% - 50px);
+    }
+    #content:has(#content-header) {
+      display: flex;
+      flex-direction: column;
+      #container {
+        height: 100%;
+      }
+    }
   }
 
   #notes-dialog-content
