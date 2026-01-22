@@ -19,75 +19,104 @@ window.addEventListener("DOMContentLoaded", function () {
     YEAR: 365 * 24 * 60 * 60,
   };
 
-  // Localized messages
-  const messagesAll = {
+  // Localized messages (update_relative_time_in_realtime.js style)
+  const translations = {
     en: {
-      justThen: "just then",
-      seconds: " seconds ago",
-      aMinute: "a minute ago",
-      minutes: " minutes ago",
-      oneHour: "1 hour ago",
-      hours: " hours ago",
-      yesterday: "yesterday",
-      days: " days ago",
-      oneWeek: "1 week ago",
-      weeks: " weeks ago",
-      aMonth: "a month ago",
-      months: " months ago",
-      oneYear: "1 year ago",
-      years: " years ago",
+      less_than_x_seconds: "less than %count% seconds",
+      half_a_minute: "half a minute",
+      less_than_a_minute: "less than a minute",
+      one_minute: "1 minute",
+      minutes: "%count% minutes",
+      about_one_hour: "about 1 hour",
+      hours: "about %count% hours",
+      one_day: "1 day",
+      days: "%count% days",
+      about_one_month: "about 1 month",
+      months: "%count% months",
+      about_one_year: "about 1 year",
+      years: "over %count% years",
+      relativeTimeSuffix: " ago",
     },
     ja: {
-      justThen: "たった今",
-      seconds: "秒前",
-      aMinute: "1分前",
-      minutes: "分前",
-      oneHour: "1時間前",
-      hours: "時間前",
-      yesterday: "昨日",
-      days: "日前",
-      oneWeek: "1週間前",
-      weeks: "週間前",
-      aMonth: "1ヶ月前",
-      months: "ヶ月前",
-      oneYear: "1年以上前",
-      years: "年以上前",
+      less_than_x_seconds: "%count%秒未満",
+      half_a_minute: "30秒前後",
+      less_than_a_minute: "1分未満",
+      one_minute: "1分",
+      minutes: "%count%分",
+      about_one_hour: "約1時間",
+      hours: "約%count%時間",
+      one_day: "1日",
+      days: "%count%日",
+      about_one_month: "約1ヶ月",
+      months: "%count%ヶ月",
+      about_one_year: "約1年",
+      years: "%count%年以上",
+      relativeTimeSuffix: "前",
     },
   };
 
-  const messages =
-    messagesAll[document.documentElement.lang] || messagesAll["en"];
+  function getLanguage() {
+    const lang = (document.documentElement.lang || navigator.language || "en")
+      .split("-")[0]
+      .toLowerCase();
+    return translations[lang] ? lang : "en";
+  }
 
-  function getFuzzyTime(delta) {
-    if (delta < 30) {
-      return messages.justThen;
-    } else if (delta < TIME_UNITS.MINUTE) {
-      return delta + messages.seconds;
-    } else if (delta < 2 * TIME_UNITS.MINUTE) {
-      return messages.aMinute;
-    } else if (delta < TIME_UNITS.HOUR) {
-      return Math.floor(delta / TIME_UNITS.MINUTE) + messages.minutes;
-    } else if (delta < TIME_UNITS.DAY) {
-      return Math.floor(delta / TIME_UNITS.HOUR) === 1
-        ? messages.oneHour
-        : Math.floor(delta / TIME_UNITS.HOUR) + messages.hours;
-    } else if (delta < 2 * TIME_UNITS.DAY) {
-      return messages.yesterday;
-    } else if (delta < TIME_UNITS.WEEK) {
-      return Math.floor(delta / TIME_UNITS.DAY) + messages.days;
-    } else if (delta < 2 * TIME_UNITS.WEEK) {
-      return messages.oneWeek;
-    } else if (delta < TIME_UNITS.MONTH) {
-      return Math.floor(delta / TIME_UNITS.WEEK) + messages.weeks;
-    } else if (delta < TIME_UNITS.MONTH * 2) {
-      return messages.aMonth;
-    } else if (delta < TIME_UNITS.YEAR) {
-      return Math.floor(delta / TIME_UNITS.MONTH) + messages.months;
-    } else if (delta < TIME_UNITS.YEAR * 2) {
-      return messages.oneYear;
+  function interpolate(text, count) {
+    return text.replace(/%count%/g, count);
+  }
+
+  function getRelativeTime(fromTime, toTime = new Date()) {
+    const lang = getLanguage();
+    const t = translations[lang];
+
+    const fromDate = new Date(fromTime);
+    const toDate = new Date(toTime);
+    const secondsDiff = Math.floor(
+      (toDate.getTime() - fromDate.getTime()) / 1000,
+    );
+
+    const minutes = Math.floor(secondsDiff / 60);
+    const hours = Math.floor(minutes / 60);
+    const days = Math.floor(hours / 24);
+    const months = Math.floor(days / 30);
+    const years = Math.floor(months / 12);
+
+    let ret = "";
+    if (secondsDiff < 5) {
+      ret = interpolate(t.less_than_x_seconds, 5);
+    } else if (secondsDiff < 10) {
+      ret = interpolate(t.less_than_x_seconds, 10);
+    } else if (secondsDiff < 20) {
+      ret = interpolate(t.less_than_x_seconds, 20);
+    } else if (secondsDiff < 40) {
+      ret = t.half_a_minute;
+    } else if (secondsDiff < 60) {
+      ret = t.less_than_a_minute;
+    } else if (secondsDiff < 90) {
+      ret = t.one_minute;
+    } else if (minutes < 45) {
+      ret = interpolate(t.minutes, minutes);
+    } else if (minutes < 90) {
+      ret = t.about_one_hour;
+    } else if (hours < 24) {
+      ret = interpolate(t.hours, Math.round(hours));
+    } else if (days === 1) {
+      ret = t.one_day;
+    } else if (days < 30) {
+      ret = interpolate(t.days, days);
+    } else if (days < 60) {
+      ret = t.about_one_month;
+    } else if (months < 12) {
+      ret = interpolate(t.months, months);
+    } else if (years === 1) {
+      ret = t.about_one_year;
     } else {
-      return Math.floor(delta / TIME_UNITS.YEAR) + messages.years;
+      ret = interpolate(t.years, years);
     }
+
+    ret += t.relativeTimeSuffix;
+    return ret;
   }
 
   function replaceUpdatedOn(elem, baseDate) {
@@ -97,10 +126,9 @@ window.addEventListener("DOMContentLoaded", function () {
       if (isNaN(date)) return;
 
       baseDate = baseDate || new Date();
-      const delta = Math.round((baseDate - date) / 1000);
-      const fuzzy = getFuzzyTime(delta);
+      const relative = getRelativeTime(date, baseDate);
 
-      $(elem).text(fuzzy).attr("title", dateText);
+      $(elem).text(relative).attr("title", dateText);
     } catch (error) {
       console.warn("Failed to parse timestamp:", dateText, error);
     }
