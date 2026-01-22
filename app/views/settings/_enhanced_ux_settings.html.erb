@@ -472,6 +472,14 @@
         <%= image_tag('features/fixes_for_rtl_design.png', plugin: 'redmine_enhanced_ux',
             class: "feature-image", alt: "Fixes for RTL design preview") %>
       </div>
+      
+      <div class="feature-card" data-feature="update_relative_time_in_realtime">
+        <div class="feature-header">
+          <input type="hidden" name="settings[update_relative_time_in_realtime]" value="0">
+          <%= check_box_tag 'settings[update_relative_time_in_realtime]', '1', @settings[:update_relative_time_in_realtime] == '1', class: 'feature-checkbox' %>
+          <label class="feature-title" for="settings_update_relative_time_in_realtime">Update relative time in real-time</label>
+        </div>
+      </div>
     </div>
   </div>
 </div>
