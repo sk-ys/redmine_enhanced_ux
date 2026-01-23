@@ -125,6 +125,10 @@ module EnhancedUx
             tags << stylesheet_link_tag("global/fixes_for_rtl_design", :plugin => "redmine_enhanced_ux", media: "all")
           end
 
+          if Setting.plugin_redmine_enhanced_ux[:update_relative_time_in_realtime] == '1'
+            tags << javascript_include_tag("global/update_relative_time_in_realtime", :plugin => "redmine_enhanced_ux")
+          end
+
           return tags.join('')
         else
           return ''
