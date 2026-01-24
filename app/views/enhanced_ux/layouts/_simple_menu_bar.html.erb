@@ -40,15 +40,20 @@
     // ----- Define variables -----
     const $header = $("#header");
     const $topMenu = $("#top-menu");
-    const $mainMenu = $("#main-menu");
+    const $mainWithFlyoutMenu = $("#main-menu, .js-project-menu");
     const $main = $("#main");
-    const $projectsMenu = $topMenu.find("ul li a.projects:first");
-    const $adminMenu = $topMenu.find("a.administration:first");
-    const $helpMenu = $topMenu.find("ul li a.help:first");
-    const $sideBar = $("#sidebar");
-
-    const defaultTopMenuHeight = $topMenu.outerHeight();
-    const defaultHeaderHeight = $header.outerHeight();
+    const $topWithFlyoutMenu = $("#top-menu, .js-general-menu");
+    const $projectsMenu = $topWithFlyoutMenu.find("ul li a.projects:first");
+    const $adminMenu = $topWithFlyoutMenu.find("a.administration:first");
+    const $helpMenu = $topWithFlyoutMenu.find("ul li a.help:first");
+    const $sideBarChildren = $("#sidebar, .js-sidebar").children();
+    const defaultTopMenuHeight = (function detectTopMenuDefaultHeight() {
+      const activeTopMenuStyle = $topMenu.attr("style") || "";
+      $topMenu.attr("style", "display: block !important; visibility: visible;");
+      const height = $topMenu.outerHeight();
+      $topMenu.attr("style", activeTopMenuStyle);
+      return height;
+    })();
     const homeUrl =
       ["login", "logout"]
         .map(
@@ -165,7 +170,7 @@
         return $simpleMenuItems;
       }
 
-      const $simpleMenuItems = $mainMenu.children("ul").clone();
+      const $simpleMenuItems = $mainWithFlyoutMenu.children("ul").clone();
       if ($simpleMenuItems.length === 0) {
         // Load main menu items from projects page in the background
         const url = $projectsMenu.attr("href");
@@ -187,7 +192,7 @@
     }
 
     function createSimpleSideMenu() {
-      if ($sideBar.children().length === 0) return;
+      if ($sideBarChildren.length === 0) return;
       if (location.pathname.match(/my\/account$/)) return;
       if ($("body.controller-admin").length > 0) return;
 
@@ -290,7 +295,7 @@
         // For Redmine 6.0+
         $("#sidebar-wrapper").children().each(appendMenuItems);
       } else {
-        $sideBar.children().each(appendMenuItems);
+        $sideBarChildren.each(appendMenuItems);
       }
       if ($simpleSideMenuItems.children().length === 0) return;
 
@@ -404,7 +409,7 @@
         $title.append($projectTitle.text());
       }
 
-      const mainMenu = $mainMenu
+      const mainMenu = $mainWithFlyoutMenu
         .find(".selected:first")
         .clone()
         .css("margin", 0);
@@ -484,12 +489,26 @@
         localStorage.setItem("header-visibility", state);
       }
 
+      let defaultHeaderHeight = null;
+      // Detect default header height when shown for the first time
+      function detectHeaderDefaultHeight() {
+        if (defaultHeaderHeight !== null) return;
+        const activeHeaderStyle = $header.attr("style") || "";
+        $header.attr(
+          "style",
+          "display: block !important; visibility: visible;",
+        );
+        defaultHeaderHeight = $header.outerHeight();
+        $header.attr("style", activeHeaderStyle);
+      }
+
       function setHeaderPositionFixed(state) {
         if (state) {
           if (
             !$header.hasClass("fixed") &&
             $header.css("visibility") === "hidden"
           ) {
+            detectHeaderDefaultHeight();
             $header
               .css({
                 position: "fixed",
