@@ -11,7 +11,7 @@
   // This style is then removed when the DOM finishes loading.
   if (localStorage.getItem("header-visibility") === "false") {
     $("head").append(
-      '<style class="simple-menu-bar">#header{display: none;}</style>'
+      '<style class="simple-menu-bar">#header{display: none;}</style>',
     );
   }
 
@@ -55,7 +55,7 @@
           (key) =>
             $("." + key)
               .attr("href")
-              ?.split(key)[0]
+              ?.split(key)[0],
         )
         .filter((i) => i)[0] || "/";
     const projectIdentifier = $("body")
@@ -87,7 +87,7 @@
         return $(
           `<svg class="s18 icon-svg" aria-hidden="true">` +
             `<use href="${this.basePath}#${key}"></use>` +
-            `</svg>`
+            `</svg>`,
         );
       }
       get angleDown() {
@@ -174,14 +174,14 @@
           setMenuItems(
             $simpleMenu,
             formatSimpleMenuItems($simpleMenuItems),
-            $projectsMenu.parent()
+            $projectsMenu.parent(),
           );
         });
       } else {
         setMenuItems(
           $simpleMenu,
           formatSimpleMenuItems($simpleMenuItems),
-          $projectsMenu.parent()
+          $projectsMenu.parent(),
         );
       }
     }
@@ -208,7 +208,7 @@
           .hasClass("contextual");
 
         $simpleSideMenuItems.append(
-          $("<li><div>" + text + "</div></li>").addClass("ui-widget-header")
+          $("<li><div>" + text + "</div></li>").addClass("ui-widget-header"),
         );
 
         if (lastItemIsContextual) {
@@ -233,7 +233,7 @@
             $target.append(
               $("<li />")
                 .append($elem.children().clone())
-                .addClass("contextual")
+                .addClass("contextual"),
             );
           } else if ($elem.attr("id") === "watchers") {
             appendMenuItems(null, $elem.children("h3"), $target);
@@ -249,13 +249,13 @@
             // Additional Tags Plugin Sidebar
             appendMenuItemHeader($elem.children("h3").text());
             const $additionalTagsMenu = $("<li />").append(
-              $("<a>").text($elem.children("h3").text())
+              $("<a>").text($elem.children("h3").text()),
             );
             const $additionalTagsSubMenu =
               $("<ul />").appendTo($additionalTagsMenu);
             $elem.find("a").each((_, e) => {
               $additionalTagsSubMenu.append(
-                $("<li>").append($(e).parent().clone())
+                $("<li>").append($(e).parent().clone()),
               );
             });
             $target.append($additionalTagsMenu);
@@ -334,12 +334,12 @@
           if (isHeader) {
             $simpleProjectMenuItems.append(
               $("<li><div>" + $elem.text() + "</div></li>").addClass(
-                "ui-widget-header"
-              )
+                "ui-widget-header",
+              ),
             );
           } else {
             $simpleProjectMenuItems.append(
-              $("<li />").append($elem.clone().removeAttr("title"))
+              $("<li />").append($elem.clone().removeAttr("title")),
             );
           }
         });
@@ -377,7 +377,7 @@
       $simpleSearchMenu.click(() => {
         setDropdownVisibility(
           $simpleSearchDialog,
-          !$simpleSearchDialog.hasClass("visible")
+          !$simpleSearchDialog.hasClass("visible"),
         );
       });
 
@@ -414,7 +414,7 @@
             .addClass("main-menu")
             .append("<span> [</span>")
             .append(mainMenu)
-            .append("<span>]</span>")
+            .append("<span>]</span>"),
         );
       }
 
@@ -553,7 +553,7 @@
         .click(() => {
           setHeaderVisibility(
             localStorage.getItem("header-visibility") === "false" ||
-              $header.hasClass("fixed")
+              $header.hasClass("fixed"),
           );
         })
         .mouseover(() => {
@@ -565,7 +565,7 @@
 
       // Load settings from local storage
       setHeaderVisibility(
-        !(localStorage.getItem("header-visibility") === "false")
+        !(localStorage.getItem("header-visibility") === "false"),
       );
     }
 
@@ -724,6 +724,13 @@
         }
       }
     }
+
+    li:has(#hide-header-btn) {
+      width: 18px;
+      #hide-header-btn {
+        position: absolute;
+      }
+    }
   }
 
   :is(#simple-side-menu, #simple-projects-menu) + .ui-menu {
@@ -782,12 +789,14 @@
     left: 0;
     pointer-events: none;
     text-align: center;
+    margin-left: 1em;
+    margin-right: 1.5em;
 
     & > div {
       display: inline-block;
       pointer-events: auto;
       opacity: 0.5;
-      width: calc(100% - 20px);
+      width: 100%;
       overflow: hidden;
       text-overflow: ellipsis;
       white-space: nowrap;
