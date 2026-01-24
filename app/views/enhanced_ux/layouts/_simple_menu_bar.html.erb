@@ -15,7 +15,7 @@
     );
   }
 
-  window.addEventListener("DOMContentLoaded", () => {
+  function setupSimpleMenuBar() {
     // ----- i18n -----
     const lang = document.documentElement.lang;
     const resourcesAll = {
@@ -623,6 +623,10 @@
       // Remove the default header style if the style is added to the html header
       $("head>style.simple-menu-bar").remove();
     }
+  }
+
+  window.addEventListener("DOMContentLoaded", () => {
+    requestAnimationFrame(setupSimpleMenuBar);
   });
   //]]>
 </script>
