@@ -197,8 +197,7 @@
         labelBasicInfo: "基本情報",
         labelIssueSettings: "チケット設定",
         labelResetAndReload: "リセットして再読み込み",
-        messageConfirmRestoreDefaults:
-          "デフォルト設定にリセットしますか？",
+        messageConfirmRestoreDefaults: "デフォルト設定にリセットしますか？",
       },
     };
     const resources = {
@@ -1056,36 +1055,40 @@
         }
 
         // Move description attribute to after the date information fieldset
-        const $descriptionAttribute = $(
-          "#issue_description_and_toolbar",
-        ).closest("p");
-        const $descriptionFieldSet = generateFieldSet(
-          "description_fieldset",
-          $descriptionAttribute.find("label[for=issue_description]"),
-        );
-        if ($descriptionAttribute.length > 0) {
-          $descriptionFieldSet
-            .append($descriptionAttribute)
-            .insertAfter($("#all_attributes").closest("fieldset"));
+        if (action !== "new" && action !== "create") {
+          const $descriptionAttribute = $(
+            "#issue_description_and_toolbar",
+          ).closest("p");
+          const $descriptionFieldSet = generateFieldSet(
+            "description_fieldset",
+            $descriptionAttribute.find("label[for=issue_description]"),
+          );
+          if ($descriptionAttribute.length > 0) {
+            $descriptionFieldSet
+              .append($descriptionAttribute)
+              .insertAfter($("#all_attributes").closest("fieldset"));
+          }
         }
 
         // Setup collapsible fieldsets
-        const fieldsetCollapsedState = this.loadFieldsetCollapsedState();
-        $("#issue-form")
-          .find("fieldset>legend")
-          .addClass("icon")
-          .each((_, e) => {
-            const $fieldset = $(e).parent();
-            const isCollapsed =
-              fieldsetCollapsedState[$fieldset.attr("id")] ?? false;
-            this.toggleFieldSet($(e), isCollapsed);
-          })
-          .off("click.toggleFieldSet")
-          .on("click.toggleFieldSet", (e) => {
-            if ($(e.target).is("#notes-dialog-pop-out-button")) return;
-            if ($(e.target).closest("#quick_notes2").length) return;
-            this.toggleFieldSet($(e.currentTarget));
-          });
+        if (action !== "new" && action !== "create") {
+          const fieldsetCollapsedState = this.loadFieldsetCollapsedState();
+          $("#issue-form")
+            .find("fieldset>legend")
+            .addClass("icon")
+            .each((_, e) => {
+              const $fieldset = $(e).parent();
+              const isCollapsed =
+                fieldsetCollapsedState[$fieldset.attr("id")] ?? false;
+              this.toggleFieldSet($(e), isCollapsed);
+            })
+            .off("click.toggleFieldSet")
+            .on("click.toggleFieldSet", (e) => {
+              if ($(e.target).is("#notes-dialog-pop-out-button")) return;
+              if ($(e.target).closest("#quick_notes2").length) return;
+              this.toggleFieldSet($(e.currentTarget));
+            });
+        }
 
         // Add class for CSS adjustment
         $("#issue-form").addClass("attribute_layout_type-2");
@@ -3160,6 +3163,7 @@
       & > legend,
       & > legend label {
         cursor: pointer;
+        width: auto;
       }
       & > legend {
         user-select: none;
