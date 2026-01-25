@@ -493,7 +493,7 @@
           .children()
           .map((_, el) => $(el).attr("style") || "");
         $topMenu.children().each((i, el) => {
-          if (!$(el).is("#loggedas")) $(el).hide();
+          if (!$(el).is("#account")) $(el).hide();
         });
         defaultTopMenuHeight = $topMenu.outerHeight();
         $topMenu.attr("style", activeTopMenuStyle);
