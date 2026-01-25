@@ -17,6 +17,27 @@
         messageFailedToSetInterval:
           "Failed to set auto-reload interval. " +
           "Please specify between %0 minutes and %1 minutes.",
+        labelAutoReloadSettings: "Auto-reload Settings",
+        labelSettings: "Settings",
+        labelResetAndReload: "Reset and Reload",
+        messageConfirmResetSettings:
+          "Are you sure you want to reset the settings to their default values?",
+        labelSaveAndReload: "Save and Reload",
+        labelCancel: "Cancel",
+        errorDescription:
+          "Failed to save settings due to the following error(s).",
+        labelAvailableAutoReloadIntervals:
+          "Available auto-reload intervals (minutes)",
+        labelDefaultAutoReloadInterval:
+          "Default auto-reload interval (minutes)",
+        labelRestorePreviousAutoReloadState:
+          "Restore previous auto-reload state from local storage automatically",
+        labelControllerActionsToShowAutoReloadMenu:
+          "Controller and Actions to show auto-reload menu",
+        labelController: "Controller",
+        labelActions: "Actions",
+        labelRemove: "Remove",
+        labelAddControllerActions: "Add Controller and Actions",
       },
       ja: {
         autoReload: "自動更新",
@@ -28,13 +49,30 @@
         messageFailedToSetInterval:
           "自動更新の間隔の設定に失敗しました。" +
           "最小 %0 分、最大 %1 分の範囲で指定してください。",
+        labelAutoReloadSettings: "自動更新設定",
+        labelSettings: "設定",
+        labelResetAndReload: "リセットして再読み込み",
+        messageConfirmResetSettings: "設定を初期状態に戻してもよろしいですか？",
+        labelSaveAndReload: "保存して再読み込み",
+        labelCancel: "キャンセル",
+        errorDescription: "以下のエラーのため、設定を保存できませんでした。",
+        labelAvailableAutoReloadIntervals: "利用可能な自動更新間隔（分）",
+        labelDefaultAutoReloadInterval: "デフォルトの自動更新間隔（分）",
+        labelRestorePreviousAutoReloadState:
+          "前回の自動更新状態をローカルストレージから自動で復元",
+        labelControllerActionsToShowAutoReloadMenu:
+          "自動更新メニューを表示するコントローラーとアクション",
+        labelController: "コントローラー",
+        labelActions: "アクション",
+        labelRemove: "削除",
+        labelAddControllerActions: "コントローラーとアクションを追加",
       },
     };
     const resources =
       resourcesAll[document.documentElement.lang] || resourcesAll["en"];
 
     const settingsDefault = {
-      intervalMinList: [0.25, 0.5, 1, 3, 5, 10, 15, 30, 60], // in minutes
+      availableIntervalMins: [0.25, 0.5, 1, 3, 5, 10, 15, 30, 60],
       defaultIntervalMin: 1,
       lastUsedIntervalMin: null,
       restoreFromLocalStorage: false,
@@ -43,7 +81,7 @@
         { controller: "issues", actions: ["index", "gantt"] },
         { controller: "versions", actions: ["index", "show"] },
         { controller: "timelog", actions: ["index"] },
-        { controller: "calendar", actions: ["show"] },
+        { controller: "calendars", actions: ["show"] },
         { controller: "news", actions: ["index"] },
         { controller: "issue_note_list", actions: ["index"] },
       ],
@@ -69,8 +107,8 @@
       return;
     }
 
-    const minimalIntervalMin = Math.min(...settings.intervalMinList);
-    const maximalIntervalMin = Math.max(...settings.intervalMinList);
+    const minimalIntervalMin = Math.min(...settings.availableIntervalMins);
+    const maximalIntervalMin = Math.max(...settings.availableIntervalMins);
 
     // Determine whether to enable auto-reload based on URL parameters
     const urlParams = new URLSearchParams(window.location.search);
@@ -80,6 +118,214 @@
 
     function saveSettings() {
       localStorage.setItem("autoReloadSettings", JSON.stringify(settings));
+    }
+
+    function intervalsStringToArray(str) {
+      return str
+        .split(",")
+        .map((i) => parseFloat(i.trim()))
+        .filter(
+          (i) =>
+            !isNaN(i) && i >= minimalIntervalMin && i <= maximalIntervalMin,
+        );
+    }
+
+    const $settingsPanel = $("<div>").attr(
+      "id",
+      "auto-reload-settings-panel-content",
+    );
+    function openAutoReloadSettingsDialog() {
+      $settingsPanel.empty();
+      $settingsPanel.attr("title", resources.labelAutoReloadSettings).dialog({
+        modal: true,
+        width: 500,
+        buttons: {
+          [resources.labelResetAndReload]: function () {
+            if (confirm(resources.messageConfirmResetSettings)) {
+              Object.assign(settings, settingsDefault);
+              saveSettings();
+              location.reload();
+            }
+          },
+          [resources.labelSaveAndReload]: function () {
+            try {
+              settings.availableIntervalMins = intervalsStringToArray(
+                $intervalsInput.val(),
+              );
+              settings.restoreFromLocalStorage =
+                $restoreStateCheckbox.is(":checked");
+              settings.defaultIntervalMin = parseFloat(
+                $defaultIntervalSelect.val(),
+              );
+              settings.availableControllerAndActions =
+                serializeControllerAndActions();
+              saveSettings();
+              location.reload();
+            } catch (e) {
+              alert(resources.errorDescription + "\n" + e.message);
+              return;
+            }
+          },
+          [resources.labelCancel]: function () {
+            $(this).dialog("close");
+          },
+        },
+      });
+
+      // Available intervals
+      const $intervalsBox = $("<div>");
+      const $intervalsLabel = $("<label>")
+        .attr({ for: "auto_reload_intervals_setting" })
+        .text(resources.labelAvailableAutoReloadIntervals + ":")
+        .appendTo($intervalsBox);
+      const $intervalsInput = $(`<input>`)
+        .attr({
+          type: "text",
+          id: "auto_reload_intervals_setting",
+        })
+        .css({ width: "100%" })
+        .val(settings.availableIntervalMins.join(", "))
+        .appendTo($intervalsBox);
+      $settingsPanel.append($intervalsBox);
+
+      // Default interval
+      const $defaultIntervalBox = $("<div>");
+      const $defaultIntervalLabel = $("<label>")
+        .attr({ for: "auto_reload_default_interval_setting" })
+        .text(resources.labelDefaultAutoReloadInterval + ":")
+        .appendTo($defaultIntervalBox);
+      const $defaultIntervalSelect = $(`<select>`)
+        .attr("id", "auto_reload_default_interval_setting")
+        .css("width", "100%")
+        .appendTo($defaultIntervalBox);
+      settings.availableIntervalMins.forEach((min) =>
+        $("<option>")
+          .attr("value", min)
+          .prop("selected", min === settings.defaultIntervalMin)
+          .text(
+            min < 1
+              ? min * 60 + " " + resources.seconds
+              : min + " " + resources.minutes,
+          )
+          .appendTo($defaultIntervalSelect),
+      );
+      $settingsPanel.append($defaultIntervalBox);
+
+      // Restore previous state checkbox
+      const $restoreStateBox = $("<div>");
+      const $restoreStateCheckbox = $(`<input>`)
+        .attr({
+          type: "checkbox",
+          id: "auto_reload_restore_state_setting",
+        })
+        .prop("checked", settings.restoreFromLocalStorage)
+        .appendTo($restoreStateBox);
+      const $restoreStateLabel = $(`<label>`)
+        .attr({ for: "auto_reload_restore_state_setting" })
+        .text(resources.labelRestorePreviousAutoReloadState)
+        .appendTo($restoreStateBox);
+      $settingsPanel.append($restoreStateBox);
+
+      // Controller/Action selector
+      const $controllerActionSelector = generateControllerAndActionSelector();
+      $settingsPanel.append($controllerActionSelector);
+    }
+
+    function generateControllerAndActionSelector() {
+      const $controllerAndActionSelector = $("<fieldset>").attr(
+        "id",
+        "auto_reload_controller_action_setting",
+      );
+
+      // Title
+      $controllerAndActionSelector.append(
+        $("<legend>")
+          .addClass("auto_reload_controller_action_setting_title")
+          .text(resources.labelControllerActionsToShowAutoReloadMenu),
+      );
+
+      // Header
+      const $controllerAndActionSelectorGrid = $("<div>")
+        .attr("id", "auto_reload_controller_action_setting_grid")
+        .appendTo($controllerAndActionSelector);
+      $controllerAndActionSelectorGrid.append(
+        $("<div>")
+          .attr({ id: "auto_reload_controller_action_setting_labels" })
+          .append(
+            $("<span>")
+              .addClass("auto_reload_controller_label")
+              .append($("<strong>").text(resources.labelController)),
+          )
+          .append(
+            $("<span>")
+              .addClass("auto_reload_actions_label")
+              .append($("<strong>").text(resources.labelActions)),
+          )
+          .append(
+            $("<span>")
+              .addClass("auto_reload_remove_label")
+              .append($("<strong>").text(resources.labelRemove)),
+          ),
+      );
+
+      // Existing items
+      function generateItem(controller, actions) {
+        const id = Math.random().toString(36).substring(2, 10);
+        const $item = $("<div>");
+        const $controllerInput = $(`<input>`)
+          .attr({ type: "text", id: `auto_reload_controller_${id}` })
+          .val(controller)
+          .addClass("auto_reload_controller_input");
+        const $actionsInput = $(`<input>`)
+          .attr({ type: "text", id: `auto_reload_actions_${id}` })
+          .val(actions.join(", "))
+          .addClass("auto_reload_actions_input");
+        const $removeButton = $("<a>")
+          .addClass("icon icon-del icon-only remove_controller_action")
+          .on("click", () => {
+            $item.remove();
+          });
+        return $item.append($controllerInput, $actionsInput, $removeButton);
+      }
+      settings.availableControllerAndActions.forEach((item) => {
+        const $item = generateItem(item.controller, item.actions);
+        $controllerAndActionSelectorGrid.append($item);
+      });
+
+      // Add button
+      const $addButton = $("<button>")
+        .attr({ type: "button" })
+        .text(resources.labelAddControllerActions)
+        .addClass("icon icon-add add_controller_action")
+        .on("click", () => {
+          const $item = generateItem("", []);
+          $controllerAndActionSelectorGrid.append($item);
+        });
+      $controllerAndActionSelector.append($addButton);
+
+      return $controllerAndActionSelector;
+    }
+
+    function serializeControllerAndActions() {
+      const newSettings = [];
+      $("#auto_reload_controller_action_setting_grid > div").each((i, e) => {
+        const $item = $(e);
+        if ($item.is("#auto_reload_controller_action_setting_labels")) return;
+        const controller = $item
+          .find("input.auto_reload_controller_input")
+          .val()
+          ?.trim();
+        const actions = $item
+          .find("input.auto_reload_actions_input")
+          .val()
+          ?.split(",")
+          .map((a) => a.trim())
+          .filter((a) => a.length > 0);
+        if (controller && actions.length > 0) {
+          newSettings.push({ controller: controller, actions: actions });
+        }
+      });
+      return newSettings;
     }
 
     async function reload() {
@@ -132,13 +378,28 @@
 
     // Interval selection menu
     const $menu = $("<ul>").attr({ id: "auto_reload_menu", title: "" });
-    settings.intervalMinList.forEach((i) => {
+    settings.availableIntervalMins.forEach((i) => {
       const label = i < 1 ? resources.seconds : resources.minutes;
       const $item = $(
         `<li><div>${i < 1 ? i * 60 : i} ${label}</div></li>`,
       ).data("minutes", i);
       $menu.append($item);
     });
+
+    // Append settings menu link
+    $menu.append(
+      $(
+        $("<li>")
+          .addClass("settings-link")
+          .append(
+            $("<div>").append(
+              $("<a>")
+                .addClass("icon icon-settings")
+                .text(resources.labelSettings),
+            ),
+          ),
+      ).on("click", openAutoReloadSettingsDialog),
+    );
 
     const $checkboxControl = $("<span>")
       .attr({ title: resources.description, id: "auto_reload_controller" })
@@ -243,10 +504,11 @@
       $menu
         .menu({
           select: function (event, ui) {
-            enableAutoReload(parseFloat(ui.item.data("minutes")));
             setTimeout(() => {
               $menu.hide();
             });
+            if (ui.item.hasClass("settings-link")) return;
+            enableAutoReload(parseFloat(ui.item.data("minutes")));
           },
         })
         .hide();
@@ -350,6 +612,74 @@
         cursor: pointer;
         &.selected {
           background-color: #ddd;
+        }
+
+        &.settings-link {
+          border-top: 1px solid #ccc;
+          margin-top: 5px;
+          padding-top: 5px;
+          > div {
+            text-align: center;
+            a {
+              text-decoration: none;
+              color: inherit;
+              padding: 4px 8px 4px 20px;
+            }
+          }
+        }
+      }
+    }
+  }
+
+  .ui-dialog:has(#auto-reload-settings-panel-content) {
+    .ui-dialog-buttonset button {
+      height: auto;
+    }
+
+    #auto-reload-settings-panel-content {
+      padding: 10px;
+
+      > div,
+      > fieldset {
+        margin-bottom: 15px;
+      }
+
+      #auto_reload_controller_action_setting {
+        align-items: center;
+        .auto_reload_controller_action_setting_title {
+          margin-bottom: 5px;
+        }
+
+        #auto_reload_controller_action_setting_grid {
+          display: grid;
+          grid-template-columns: 1fr 1fr auto;
+          gap: 3px 3px;
+
+          #auto_reload_controller_action_setting_labels {
+            display: contents;
+          }
+
+          > div:not(#auto_reload_controller_action_setting_labels) {
+            display: contents;
+
+            .auto_reload_controller_input,
+            .auto_reload_actions_input {
+              width: 100%;
+            }
+
+            .remove_controller_action {
+              justify-self: center;
+              align-self: center;
+              cursor: pointer;
+            }
+          }
+        }
+
+        .add_controller_action {
+          float: right;
+          margin-right: 10px;
+          margin-top: 10px;
+          cursor: pointer;
         }
       }
     }
