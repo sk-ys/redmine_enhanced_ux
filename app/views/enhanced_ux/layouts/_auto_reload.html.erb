@@ -110,6 +110,43 @@
     const minimalIntervalMin = Math.min(...settings.availableIntervalMins);
     const maximalIntervalMin = Math.max(...settings.availableIntervalMins);
 
+    const homeUrl =
+      ["login", "logout"]
+        .map(
+          (key) =>
+            $("." + key)
+              .attr("href")
+              ?.split(key)[0],
+        )
+        .filter((i) => i)[0] || "/";
+    const svgIcons = new (class SVGIcons {
+      constructor() {
+        const extractedPath = this.#extractIconPath();
+        this.basePath = extractedPath ? homeUrl + extractedPath : null;
+      }
+      #extractIconPath() {
+        const $elem = $("use[href*='/assets/icons-'][href*='.svg#']").first();
+        const match = $elem
+          .attr("href")
+          ?.match(/\/(assets\/icons-[a-f0-9]+\.svg)#/);
+        return match ? match[1] : null;
+      }
+      generateSvgIconTag(key) {
+        if (!this.basePath) return null;
+        return $(
+          `<svg class="s18 icon-svg" aria-hidden="true">` +
+            `<use href="${this.basePath}#${key}"></use>` +
+            `</svg>`,
+        );
+      }
+      get settings() {
+        return this.generateSvgIconTag("icon--settings");
+      }
+      get del() {
+        return this.generateSvgIconTag("icon--del");
+      }
+    })();
+
     // Determine whether to enable auto-reload based on URL parameters
     const urlParams = new URLSearchParams(window.location.search);
     const hasAutoReloadParam = urlParams.has("auto_reload");
@@ -305,6 +342,9 @@
           .on("click", () => {
             $item.remove();
           });
+        if (svgIcons.del) {
+          $removeButton.append(svgIcons.del);
+        }
         return $item.append($controllerInput, $actionsInput, $removeButton);
       }
       settings.availableControllerAndActions.forEach((item) => {
@@ -407,18 +447,17 @@
     });
 
     // Append settings menu link
+    const $settingsAnchor = $("<a>")
+      .addClass("icon icon-settings")
+      .text(resources.labelSettings);
+    if (svgIcons.settings) {
+      $settingsAnchor.prepend(svgIcons.settings);
+    }
     $menu.append(
-      $(
-        $("<li>")
-          .addClass("settings-link")
-          .append(
-            $("<div>").append(
-              $("<a>")
-                .addClass("icon icon-settings")
-                .text(resources.labelSettings),
-            ),
-          ),
-      ).on("click", openAutoReloadSettingsDialog),
+      $("<li>")
+        .addClass("settings-link")
+        .append($("<div>").append($settingsAnchor))
+        .on("click", openAutoReloadSettingsDialog),
     );
 
     const $checkboxControl = $("<span>")
@@ -645,7 +684,7 @@
           padding-top: 5px;
           > div {
             text-align: center;
-            a {
+            a:not(:has(svg)) {
               text-decoration: none;
               color: inherit;
               padding: 4px 8px 4px 20px;
