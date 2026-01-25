@@ -33,18 +33,30 @@
     const resources =
       resourcesAll[document.documentElement.lang] || resourcesAll["en"];
 
-    const intervalMinList = [0.25, 0.5, 1, 3, 5, 10, 15, 30, 60]; // in minutes
-    const defaultIntervalMin = 1;
-    const minimalIntervalMin = Math.min(...intervalMinList);
-    const maximalIntervalMin = Math.max(...intervalMinList);
+    const settingsDefault = {
+      intervalMinList: [0.25, 0.5, 1, 3, 5, 10, 15, 30, 60], // in minutes
+      defaultIntervalMin: 1,
+      lastUsedIntervalMin: null,
+      restoreFromLocalStorage: false,
+    };
 
-    const useLocalStorage = false; // Default to not use localStorage.
+    const settings = {
+      ...settingsDefault,
+      ...JSON.parse(localStorage.getItem("autoReloadSettings") || "{}"),
+    };
+
+    const minimalIntervalMin = Math.min(...settings.intervalMinList);
+    const maximalIntervalMin = Math.max(...settings.intervalMinList);
 
     // Determine whether to enable auto-reload based on URL parameters
     const urlParams = new URLSearchParams(window.location.search);
     const hasAutoReloadParam = urlParams.has("auto_reload");
 
     let timerId = null;
+
+    function saveSettings() {
+      localStorage.setItem("autoReloadSettings", JSON.stringify(settings));
+    }
 
     async function reload() {
       try {
@@ -96,7 +108,7 @@
 
     // Interval selection menu
     const $menu = $("<ul>").attr({ id: "auto_reload_menu", title: "" });
-    intervalMinList.forEach((i) => {
+    settings.intervalMinList.forEach((i) => {
       const label = i < 1 ? resources.seconds : resources.minutes;
       const $item = $(
         `<li><div>${i < 1 ? i * 60 : i} ${label}</div></li>`,
@@ -149,9 +161,9 @@
       }
 
       $checkbox.prop("checked", state);
-      if (useLocalStorage) {
-        localStorage.setItem("autoReload", intervalMin);
-      }
+
+      settings.lastUsedIntervalMin = intervalMin;
+      saveSettings();
 
       updateUrl(intervalMin);
     }
@@ -174,7 +186,9 @@
         }
       }
       $checkbox.on("change", function () {
-        enableAutoReload($(this).is(":checked") ? defaultIntervalMin : null);
+        enableAutoReload(
+          $(this).is(":checked") ? settings.defaultIntervalMin : null,
+        );
       });
       setupMenu();
     }
@@ -237,15 +251,19 @@
       return parsedIntervalMin;
     }
 
-    if (hasAutoReloadParam || useLocalStorage) {
+    if (hasAutoReloadParam || settings.restoreFromLocalStorage) {
       const intervalMin = hasAutoReloadParam
         ? validateInterval(
             urlParams.get("auto_reload"),
             minimalIntervalMin,
             maximalIntervalMin,
           )
-        : useLocalStorage
-          ? validateInterval(localStorage.getItem("autoReload"))
+        : settings.restoreFromLocalStorage
+          ? validateInterval(
+              settings.lastUsedIntervalMin,
+              minimalIntervalMin,
+              maximalIntervalMin,
+            )
           : null;
 
       if (intervalMin) {
