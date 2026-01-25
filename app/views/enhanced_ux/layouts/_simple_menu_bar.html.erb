@@ -15,7 +15,7 @@
     );
   }
 
-  window.addEventListener("DOMContentLoaded", () => {
+  function setupSimpleMenuBar() {
     // ----- i18n -----
     const lang = document.documentElement.lang;
     const resourcesAll = {
@@ -40,15 +40,13 @@
     // ----- Define variables -----
     const $header = $("#header");
     const $topMenu = $("#top-menu");
-    const $mainMenu = $("#main-menu");
+    const $mainMenuWithFlyoutMenu = $("#main-menu, .js-project-menu");
     const $main = $("#main");
-    const $projectsMenu = $topMenu.find("ul li a.projects:first");
-    const $adminMenu = $topMenu.find("a.administration:first");
-    const $helpMenu = $topMenu.find("ul li a.help:first");
-    const $sideBar = $("#sidebar");
-
-    const defaultTopMenuHeight = $topMenu.outerHeight();
-    const defaultHeaderHeight = $header.outerHeight();
+    const $topMenuWithFlyoutMenu = $("#top-menu, .js-general-menu");
+    const $projectsMenu = $topMenuWithFlyoutMenu.find("ul li a.projects:first");
+    const $adminMenu = $topMenuWithFlyoutMenu.find("a.administration:first");
+    const $helpMenu = $topMenuWithFlyoutMenu.find("ul li a.help:first");
+    const $sideBarChildren = $("#sidebar, .js-sidebar").children();
     const homeUrl =
       ["login", "logout"]
         .map(
@@ -165,7 +163,7 @@
         return $simpleMenuItems;
       }
 
-      const $simpleMenuItems = $mainMenu.children("ul").clone();
+      const $simpleMenuItems = $mainMenuWithFlyoutMenu.children("ul").clone();
       if ($simpleMenuItems.length === 0) {
         // Load main menu items from projects page in the background
         const url = $projectsMenu.attr("href");
@@ -187,7 +185,7 @@
     }
 
     function createSimpleSideMenu() {
-      if ($sideBar.children().length === 0) return;
+      if ($sideBarChildren.length === 0) return;
       if (location.pathname.match(/my\/account$/)) return;
       if ($("body.controller-admin").length > 0) return;
 
@@ -290,7 +288,7 @@
         // For Redmine 6.0+
         $("#sidebar-wrapper").children().each(appendMenuItems);
       } else {
-        $sideBar.children().each(appendMenuItems);
+        $sideBarChildren.each(appendMenuItems);
       }
       if ($simpleSideMenuItems.children().length === 0) return;
 
@@ -404,7 +402,7 @@
         $title.append($projectTitle.text());
       }
 
-      const mainMenu = $mainMenu
+      const mainMenu = $mainMenuWithFlyoutMenu
         .find(".selected:first")
         .clone()
         .css("margin", 0);
@@ -484,12 +482,56 @@
         localStorage.setItem("header-visibility", state);
       }
 
+      let defaultTopMenuHeight = null;
+      // Detect default top menu height when shown for the first time
+      function detectTopMenuDefaultHeight() {
+        if (defaultTopMenuHeight !== null) return;
+        if (isMobile()) return;
+        const activeTopMenuStyle = $topMenu.attr("style") || "";
+        $topMenu.attr("style", "display: block !important; overflow: hidden;");
+        const topMenuChildrenStyles = $topMenu
+          .children()
+          .map((_, el) => $(el).attr("style") || "");
+        $topMenu.children().each((i, el) => {
+          if (!$(el).is("#loggedas")) $(el).hide();
+        });
+        defaultTopMenuHeight = $topMenu.outerHeight();
+        $topMenu.attr("style", activeTopMenuStyle);
+        $topMenu.children().each((i, el) => {
+          $(el).attr("style", topMenuChildrenStyles[i]);
+        });
+      }
+      if (isMobile()) {
+        $(window).on("resize.detectTopMenuHeight", () => {
+          if (!isMobile()) {
+            $(window).off("resize.detectTopMenuHeight");
+            setTopMenuPositionFixed($topMenu.hasClass("fixed"));
+          }
+        });
+      } else {
+        detectTopMenuDefaultHeight();
+      }
+
+      let defaultHeaderHeight = null;
+      // Detect default header height when shown for the first time
+      function detectHeaderDefaultHeight() {
+        if (defaultHeaderHeight !== null) return;
+        const activeHeaderStyle = $header.attr("style") || "";
+        $header.attr(
+          "style",
+          "display: block !important; visibility: visible;",
+        );
+        defaultHeaderHeight = $header.outerHeight();
+        $header.attr("style", activeHeaderStyle);
+      }
+
       function setHeaderPositionFixed(state) {
         if (state) {
           if (
             !$header.hasClass("fixed") &&
             $header.css("visibility") === "hidden"
           ) {
+            detectHeaderDefaultHeight();
             $header
               .css({
                 position: "fixed",
@@ -520,6 +562,7 @@
       }
 
       function setTopMenuPositionFixed(state) {
+        detectTopMenuDefaultHeight();
         if (state) {
           $topMenu
             .css({
@@ -604,6 +647,10 @@
       // Remove the default header style if the style is added to the html header
       $("head>style.simple-menu-bar").remove();
     }
+  }
+
+  window.addEventListener("DOMContentLoaded", () => {
+    requestAnimationFrame(setupSimpleMenuBar);
   });
   //]]>
 </script>
