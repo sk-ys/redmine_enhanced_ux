@@ -115,10 +115,30 @@
     const hasAutoReloadParam = urlParams.has("auto_reload");
 
     let timerId = null;
+    let isPageVisible = !document.hidden;
+    let intervalMin = null; // Store the interval for resuming
 
     function saveSettings() {
       localStorage.setItem("autoReloadSettings", JSON.stringify(settings));
     }
+
+    // Page Visibility API: Handle background/foreground state
+    document.addEventListener("visibilitychange", () => {
+      isPageVisible = !document.hidden;
+
+      if (isPageVisible && intervalMin && intervalMin > 0) {
+        // Resume auto-reload when page becomes visible
+        clearInterval(timerId);
+        timerId = setInterval(reload, intervalMin * 1000 * 60);
+        reload(); // Immediate reload
+        console.log(`[${new Date().toLocaleString()}] Auto-reload resumed.`);
+      } else if (!isPageVisible && timerId) {
+        // Pause auto-reload when page goes to background
+        clearInterval(timerId);
+        timerId = null;
+        console.log(`[${new Date().toLocaleString()}] Auto-reload paused.`);
+      }
+    });
 
     function intervalsStringToArray(str) {
       return str
@@ -422,24 +442,29 @@
       window.history.replaceState({}, "", url);
     }
 
-    function enableAutoReload(intervalMin = null) {
+    function enableAutoReload(newIntervalMin = null) {
       clearInterval(timerId);
       timerId = null;
 
-      const state = intervalMin && intervalMin > 0;
+      const state = newIntervalMin && newIntervalMin > 0;
 
       if (state) {
-        selectIntervalItem(intervalMin);
-        timerId = setInterval(reload, intervalMin * 1000 * 60);
+        selectIntervalItem(newIntervalMin);
+        // Only start the timer if the page is visible
+        if (isPageVisible) {
+          timerId = setInterval(reload, newIntervalMin * 1000 * 60);
+        }
+        intervalMin = newIntervalMin; // Store for resuming later
         $checkboxControl.attr(
           "title",
           `${resources.labelActive} (${
-            intervalMin < 1
-              ? intervalMin * 60 + " " + resources.seconds
-              : intervalMin + " " + resources.minutes
+            newIntervalMin < 1
+              ? newIntervalMin * 60 + " " + resources.seconds
+              : newIntervalMin + " " + resources.minutes
           })`,
         );
       } else {
+        newIntervalMin = 0;
         intervalMin = 0;
         selectIntervalItem(0);
         $checkboxControl.attr("title", resources.description);
@@ -447,10 +472,10 @@
 
       $checkbox.prop("checked", state);
 
-      settings.lastUsedIntervalMin = intervalMin;
+      settings.lastUsedIntervalMin = newIntervalMin;
       saveSettings();
 
-      updateUrl(intervalMin);
+      updateUrl(newIntervalMin);
     }
 
     function appendCheckbox() {
@@ -538,7 +563,7 @@
     }
 
     if (hasAutoReloadParam || settings.restoreFromLocalStorage) {
-      const intervalMin = hasAutoReloadParam
+      const resolvedIntervalMin = hasAutoReloadParam
         ? validateInterval(
             urlParams.get("auto_reload"),
             minimalIntervalMin,
@@ -552,8 +577,8 @@
             )
           : null;
 
-      if (intervalMin) {
-        enableAutoReload(parseFloat(intervalMin));
+      if (resolvedIntervalMin) {
+        enableAutoReload(parseFloat(resolvedIntervalMin));
       } else {
         enableAutoReload(null);
         alert(
