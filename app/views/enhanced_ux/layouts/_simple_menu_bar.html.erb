@@ -40,12 +40,12 @@
     // ----- Define variables -----
     const $header = $("#header");
     const $topMenu = $("#top-menu");
-    const $mainWithFlyoutMenu = $("#main-menu, .js-project-menu");
+    const $mainMenuWithFlyoutMenu = $("#main-menu, .js-project-menu");
     const $main = $("#main");
-    const $topWithFlyoutMenu = $("#top-menu, .js-general-menu");
-    const $projectsMenu = $topWithFlyoutMenu.find("ul li a.projects:first");
-    const $adminMenu = $topWithFlyoutMenu.find("a.administration:first");
-    const $helpMenu = $topWithFlyoutMenu.find("ul li a.help:first");
+    const $topMenuWithFlyoutMenu = $("#top-menu, .js-general-menu");
+    const $projectsMenu = $topMenuWithFlyoutMenu.find("ul li a.projects:first");
+    const $adminMenu = $topMenuWithFlyoutMenu.find("a.administration:first");
+    const $helpMenu = $topMenuWithFlyoutMenu.find("ul li a.help:first");
     const $sideBarChildren = $("#sidebar, .js-sidebar").children();
     const homeUrl =
       ["login", "logout"]
@@ -163,7 +163,7 @@
         return $simpleMenuItems;
       }
 
-      const $simpleMenuItems = $mainWithFlyoutMenu.children("ul").clone();
+      const $simpleMenuItems = $mainMenuWithFlyoutMenu.children("ul").clone();
       if ($simpleMenuItems.length === 0) {
         // Load main menu items from projects page in the background
         const url = $projectsMenu.attr("href");
@@ -402,7 +402,7 @@
         $title.append($projectTitle.text());
       }
 
-      const mainMenu = $mainWithFlyoutMenu
+      const mainMenu = $mainMenuWithFlyoutMenu
         .find(".selected:first")
         .clone()
         .css("margin", 0);
