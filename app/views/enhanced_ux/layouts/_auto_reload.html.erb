@@ -1,5 +1,5 @@
 <!--
-// Path pattern:       (/issues($|/gantt)|/roadmap|/issue_note_list|/calendar|/versions/[0-9]+$|/activity|/news)
+// Path pattern:
 // Insertion position: Head of all pages
 // Type:               HTML
 // Comment:            Auto reload
@@ -38,12 +38,36 @@
       defaultIntervalMin: 1,
       lastUsedIntervalMin: null,
       restoreFromLocalStorage: false,
+      availableControllerAndActions: [
+        { controller: "activities", actions: ["index"] },
+        { controller: "issues", actions: ["index", "gantt"] },
+        { controller: "versions", actions: ["index", "show"] },
+        { controller: "timelog", actions: ["index"] },
+        { controller: "calendar", actions: ["show"] },
+        { controller: "news", actions: ["index"] },
+        { controller: "issue_note_list", actions: ["index"] },
+      ],
     };
 
     const settings = {
       ...settingsDefault,
       ...JSON.parse(localStorage.getItem("autoReloadSettings") || "{}"),
     };
+
+    const controller = [...document.body.classList]
+      .filter((i) => i.startsWith("controller"))[0]
+      .split("-")[1];
+    const action = [...document.body.classList]
+      .filter((i) => i.startsWith("action"))[0]
+      .split("-")[1];
+    if (
+      !settings.availableControllerAndActions.some(
+        (item) =>
+          item.controller === controller && item.actions.includes(action),
+      )
+    ) {
+      return;
+    }
 
     const minimalIntervalMin = Math.min(...settings.intervalMinList);
     const maximalIntervalMin = Math.max(...settings.intervalMinList);
