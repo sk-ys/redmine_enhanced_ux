@@ -47,13 +47,6 @@
     const $adminMenu = $topWithFlyoutMenu.find("a.administration:first");
     const $helpMenu = $topWithFlyoutMenu.find("ul li a.help:first");
     const $sideBarChildren = $("#sidebar, .js-sidebar").children();
-    const defaultTopMenuHeight = (function detectTopMenuDefaultHeight() {
-      const activeTopMenuStyle = $topMenu.attr("style") || "";
-      $topMenu.attr("style", "display: block !important; visibility: visible;");
-      const height = $topMenu.outerHeight();
-      $topMenu.attr("style", activeTopMenuStyle);
-      return height;
-    })();
     const homeUrl =
       ["login", "logout"]
         .map(
@@ -489,6 +482,36 @@
         localStorage.setItem("header-visibility", state);
       }
 
+      let defaultTopMenuHeight = null;
+      // Detect default top menu height when shown for the first time
+      function detectTopMenuDefaultHeight() {
+        if (defaultTopMenuHeight !== null) return;
+        if (isMobile()) return;
+        const activeTopMenuStyle = $topMenu.attr("style") || "";
+        $topMenu.attr("style", "display: block !important; overflow: hidden;");
+        const topMenuChildrenStyles = $topMenu
+          .children()
+          .map((_, el) => $(el).attr("style") || "");
+        $topMenu.children().each((i, el) => {
+          if (!$(el).is("#loggedas")) $(el).hide();
+        });
+        defaultTopMenuHeight = $topMenu.outerHeight();
+        $topMenu.attr("style", activeTopMenuStyle);
+        $topMenu.children().each((i, el) => {
+          $(el).attr("style", topMenuChildrenStyles[i]);
+        });
+      }
+      if (isMobile()) {
+        $(window).on("resize.detectTopMenuHeight", () => {
+          if (!isMobile()) {
+            $(window).off("resize.detectTopMenuHeight");
+            setTopMenuPositionFixed($topMenu.hasClass("fixed"));
+          }
+        });
+      } else {
+        detectTopMenuDefaultHeight();
+      }
+
       let defaultHeaderHeight = null;
       // Detect default header height when shown for the first time
       function detectHeaderDefaultHeight() {
@@ -539,6 +562,7 @@
       }
 
       function setTopMenuPositionFixed(state) {
+        detectTopMenuDefaultHeight();
         if (state) {
           $topMenu
             .css({
