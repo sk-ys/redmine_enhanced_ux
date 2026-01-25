@@ -128,6 +128,9 @@
         labelDateInfo: "Date Information",
         labelBasicInfo: "Basic Information",
         labelIssueSettings: "Issue Settings",
+        labelResetAndReload: "Reset and Reload",
+        messageConfirmRestoreDefaults:
+          "Do you want to reset to default settings?",
       },
       ja: {
         sideBySideMode: "左右に並べて表示",
@@ -193,6 +196,9 @@
         labelDateInfo: "日付情報",
         labelBasicInfo: "基本情報",
         labelIssueSettings: "チケット設定",
+        labelResetAndReload: "リセットして再読み込み",
+        messageConfirmRestoreDefaults:
+          "デフォルト設定にリセットしますか？",
       },
     };
     const resources = {
@@ -2675,6 +2681,12 @@
 
         this.appendButtons([
           {
+            text: resources.labelResetAndReload,
+            click: () => {
+              this.restoreDefaults();
+            },
+          },
+          {
             text: resources.labelSaveAndReload,
             click: () => {
               this.saveAndReload();
@@ -2828,6 +2840,16 @@
 
         // Reload page to apply settings
         location.reload();
+      }
+
+      restoreDefaults() {
+        if (confirm(resources.messageConfirmRestoreDefaults)) {
+          // Clear settings from localStorage
+          localStorage.removeItem("custom_issue_view_settings");
+
+          // Reload page to apply default settings
+          location.reload();
+        }
       }
 
       closeEvent() {}
