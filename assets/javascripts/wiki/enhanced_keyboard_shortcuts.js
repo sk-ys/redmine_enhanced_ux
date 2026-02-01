@@ -72,7 +72,7 @@ window.addEventListener("DOMContentLoaded", () => {
   $("#main").on("keydown", "textarea", (e) => {
     const textarea = e.target;
     // Detect Mac using userAgent instead of deprecated navigator.platform
-    const isMac = /Mac|iPhone|iPad|iPod/.test(navigator.userAgent);
+    const isMac = /Macintosh|MacIntel|MacPPC|Mac68K/.test(navigator.userAgent);
     const ctrlOrCmd = isMac ? e.metaKey : e.ctrlKey;
     
     // Cut line (empty selection) - Ctrl+X / ⌘X
