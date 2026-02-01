@@ -20,14 +20,12 @@
         labelCriteria: "Criteria",
         labelDisplayPeriod: "Display Period",
         labelDisplayStartMonth: "Display start month",
-        labelIssueNew: "New Issue",
       },
       ja: {
         labelCancel: "キャンセル",
         labelCriteria: "抽出条件",
         labelDisplayPeriod: "表示期間",
         labelDisplayStartMonth: "表示開始年月",
-        labelIssueNew: "新しいチケット",
       },
     };
     const resources = {
@@ -35,9 +33,47 @@
       ...(resourcesAll[document.documentElement.lang] || {}),
     };
 
-    const homeUrl = $("link[href*='favicon.ico']")
-      .attr("href")
-      .split("favicon.ico")[0];
+    const homeUrl =
+      ["login", "logout"]
+        .map(
+          (key) =>
+            $("." + key)
+              .attr("href")
+              ?.split(key)[0],
+        )
+        .filter((i) => i)[0] || "/";
+    const localStorageKeyPrefix = homeUrl.slice(1).replaceAll("/", ".");
+
+    const svgIcons = new (class SVGIcons {
+      constructor() {
+        const extractedPath = this.#extractIconPath();
+        this.basePath = extractedPath ? homeUrl + extractedPath : null;
+      }
+      #extractIconPath() {
+        const $elem = $("use[href*='/assets/icons-'][href*='.svg#']").first();
+        const match = $elem
+          .attr("href")
+          ?.match(/\/(assets\/icons-[a-f0-9]+\.svg)#/);
+        return match ? match[1] : null;
+      }
+      generateSvgIconTag(key) {
+        if (!this.basePath) return null;
+        return $(
+          `<svg class="s18 icon-svg" aria-hidden="true">` +
+            `<use href="${this.basePath}#${key}"></use>` +
+            `</svg>`,
+        );
+      }
+      get magnifier() {
+        return this.generateSvgIconTag("icon--search");
+      }
+      get close() {
+        return this.generateSvgIconTag("icon--close");
+      }
+      get add() {
+        return this.generateSvgIconTag("icon--add");
+      }
+    })();
 
     const projectName = (() => {
       const res = /\/projects\/(.+)\/issues\/gantt/.exec(location.pathname);
@@ -133,7 +169,7 @@
         .remove()
         .end()
         .append(
-          $("#query_form_with_buttons > p.contextual", htmlString).children()
+          $("#query_form_with_buttons > p.contextual", htmlString).children(),
         )
         .find("a")
         .addClass("prevent-popup-anywhere");
@@ -165,7 +201,7 @@
       window.resizableSubjectColumn && resizableSubjectColumn();
       window.drawSelectedColumns && drawSelectedColumns();
       $("#draw_relations, #draw_progress_line, #draw_selected_columns").change(
-        drawGanttHandler
+        drawGanttHandler,
       );
       $("div.gantt_subjects .expander").on("click", ganttEntryClick);
     }
@@ -181,11 +217,11 @@
       settings.search = settings.noSearch
         ? ""
         : settings.search[0] === "?"
-        ? settings.search
-        : "?" +
-          (settings.search[0] === "&"
-            ? settings.search.slice(1)
-            : settings.search);
+          ? settings.search
+          : "?" +
+            (settings.search[0] === "&"
+              ? settings.search.slice(1)
+              : settings.search);
 
       const url = location.origin + location.pathname + settings.search;
 
@@ -252,7 +288,15 @@
         $("head>title").text($headData.find("title").text());
 
         // Update sidebar
-        $("#sidebar").empty().append($("#sidebar", htmlString).children());
+        if ($("#sidebar-wrapper").length === 0) {
+          // Support for Redmine earlier than 5
+          $("#sidebar").empty().append($("#sidebar", htmlString).children());
+        } else {
+          // Support for Redmine 6 and later
+          $("#sidebar-wrapper")
+            .empty()
+            .append($("#sidebar-wrapper", htmlString).children());
+        }
 
         // Support for RedmineUp issue_tags plugin
         if (typeof setSelect2Filter) {
@@ -274,8 +318,8 @@
           left: $(settings.target).parent().hasClass("previous page")
             ? $(scrollTargetSelector).width()
             : $(settings.target).parent().hasClass("next page")
-            ? 0
-            : $(scrollTargetSelector).scrollLeft(),
+              ? 0
+              : $(scrollTargetSelector).scrollLeft(),
         };
 
         const $ganttTable = $("table.gantt-table");
@@ -311,7 +355,7 @@
         const scriptTag = $(".gantt-table~script", data)
           .toArray()
           .filter((e) =>
-            $(e).text().includes("disable_unavailable_columns")
+            $(e).text().includes("disable_unavailable_columns"),
           )[0];
         const regexExtractUnavailableColumns =
           /disable_unavailable_columns\(\s*'([^']+)'\.split\(\s*','\)/;
@@ -372,7 +416,7 @@
         .find(
           ".gantt_subjects_container, " +
             ".gantt_selected_column_container, " +
-            "#gantt_area"
+            "#gantt_area",
         )
         .height(100)
         .height(
@@ -384,10 +428,10 @@
             // do the following
             $("table.gantt-table:not(.cloned) #gantt_draw_area").height() +
               $(
-                "table.gantt-table:not(.cloned) #gantt_area div.gantt_hdr:first"
+                "table.gantt-table:not(.cloned) #gantt_area div.gantt_hdr:first",
               ).height() +
-              1
-          )
+              1,
+          ),
         );
 
       $("table.gantt-table:not(.cloned)")
@@ -402,10 +446,10 @@
     });
 
     const ganttCollapseExpandState = {
-      localStorageKey: "gantt-closed-items",
+      localStorageKey: localStorageKeyPrefix + "gantt-closed-items",
       getCollapsableElements: (context) => {
         return $(".gantt_subjects>form>div", context).filter(
-          (_, e) => $(e).find("span.expander").length > 0
+          (_, e) => $(e).find("span.expander").length > 0,
         );
       },
       getClosedElements: (context) => {
@@ -443,13 +487,13 @@
       load: () => {
         return (
           JSON.parse(
-            localStorage.getItem(ganttCollapseExpandState.localStorageKey)
+            localStorage.getItem(ganttCollapseExpandState.localStorageKey),
           ) || {}
         );
       },
       save: (target, collapseWithChildren = false, context = null) => {
         const $parent = $(target).closest(
-          ".project-name, .version-name, .issue-subject"
+          ".project-name, .version-name, .issue-subject",
         );
         const $anchor = $parent.find("a");
         const states = ganttCollapseExpandState.load();
@@ -470,7 +514,7 @@
 
           if (collapseWithChildren) {
             closedItems = closedItems.filter(
-              (item) => !childElements.includes(item)
+              (item) => !childElements.includes(item),
             );
           }
         } else {
@@ -504,7 +548,7 @@
             const maxTimeStamp = Math.max(
               ...Object.values(states).map((s) => {
                 Number(s.timeStamp);
-              })
+              }),
             );
 
             for (const [key, value] of Object.entries(states)) {
@@ -518,7 +562,7 @@
 
         localStorage.setItem(
           ganttCollapseExpandState.localStorageKey,
-          JSON.stringify(states)
+          JSON.stringify(states),
         );
       },
       /**
@@ -542,7 +586,7 @@
                 state.closedItems.includes($(e).find("a").attr("href")) &&
                 $(e)
                   .closest(".project-name, .version-name, .issue-subject")
-                  .hasClass("open")
+                  .hasClass("open"),
             )
             .map((e) => ({
               elem: e,
@@ -562,7 +606,7 @@
     };
 
     const ganttColumnWidth = {
-      localStorageKey: "gantt-column-width",
+      localStorageKey: localStorageKeyPrefix + "gantt-column-width",
       getColumnName: (elem) => {
         return $(elem)
           .attr("class")
@@ -571,7 +615,7 @@
       },
       loadList: () => {
         return JSON.parse(
-          localStorage.getItem(ganttColumnWidth.localStorageKey) || "{}"
+          localStorage.getItem(ganttColumnWidth.localStorageKey) || "{}",
         );
       },
       saveList: (elem) => {
@@ -587,13 +631,13 @@
 
         localStorage.setItem(
           ganttColumnWidth.localStorageKey,
-          JSON.stringify(ganttColumnWidthList)
+          JSON.stringify(ganttColumnWidthList),
         );
       },
       restoreAll: () => {
         const ganttColumnWidthList = ganttColumnWidth.loadList();
         for (const [columnName, columnWidth] of Object.entries(
-          ganttColumnWidthList
+          ganttColumnWidthList,
         )) {
           ganttColumnWidth.set(columnName, columnWidth);
         }
@@ -610,7 +654,7 @@
             ".gantt_hdr, " +
               ".gantt_subjects .project-name, " +
               ".gantt_subjects .issue-subject, " +
-              ".gantt_subjects .version-name"
+              ".gantt_subjects .version-name",
           )
           .each((_, e) => $(e).width($(e).width() + diffWidth));
       },
@@ -633,7 +677,7 @@
 
         localStorage.setItem(
           ganttColumnWidth.localStorageKey,
-          JSON.stringify(ganttColumnWidthList)
+          JSON.stringify(ganttColumnWidthList),
         );
       },
     };
@@ -643,7 +687,9 @@
 
     ganttEntryClick = (e) => {
       ganttEntryClickOrg(e);
-      setTimeout(() => ganttCollapseExpandState.save(e.target, e.ctrlKey));
+      setTimeout(() =>
+        ganttCollapseExpandState.save(e.currentTarget, e.ctrlKey),
+      );
     };
 
     function ajaxUpdateIssueListWithQuery(target) {
@@ -673,7 +719,6 @@
         .attr("id", "query_form_open_button")
         .addClass("icon")
         .text(resources.labelCriteria)
-        .css({ backgroundImage: `url(${homeUrl}images/magnifier.png)` })
         .on("click", (e) => {
           e.preventDefault();
           $("#query_form").show();
@@ -682,6 +727,12 @@
           $("#query_form").show();
         })
         .appendTo("#content>h2:first");
+
+      if (svgIcons.magnifier) {
+        $queryFormOpenButton.prepend(svgIcons.magnifier);
+      } else {
+        $queryFormOpenButton.addClass("icon-magnifier");
+      }
 
       // Close the query form when the outside of the form is clicked.
       $(document).click((e) => {
@@ -704,15 +755,21 @@
 
     function setUpQueryFormButtons() {
       // Add cancel button to query form.
-      $("#query_form_with_buttons>.buttons").append(
-        $("<a>")
-          .text(resources.labelCancel)
-          .addClass("icon icon-close query_form_cancel")
-          .css("cursor", "pointer")
-          .on("click", () => {
-            $("#query_form").hide();
-          })
-      );
+      const $cancelButton = $("<a>")
+        .text(resources.labelCancel)
+        .addClass("icon query_form_cancel")
+        .css("cursor", "pointer")
+        .on("click", () => {
+          $("#query_form").hide();
+        });
+
+      if (svgIcons.close) {
+        $cancelButton.prepend(svgIcons.close);
+      } else {
+        $cancelButton.addClass("icon-close");
+      }
+
+      $("#query_form_with_buttons>.buttons").append($cancelButton);
 
       // Add label for display settings
       if (SHOW_DISPLAY_PERIOD_LABEL) {
@@ -749,15 +806,15 @@
 
           e.preventDefault();
           ajaxUpdateIssueList({
-            search: extractSearch($(e.target).attr("href")),
-            target: e.target,
+            search: extractSearch($(e.currentTarget).attr("href")),
+            target: e.currentTarget,
           });
         });
 
       // Remove the ReplaceQueryFormSubmission function before the click event
       // in the capturing phase.
       $(
-        "#query_form_with_buttons p.buttons > a.icon.icon-save"
+        "#query_form_with_buttons p.buttons > a.icon.icon-save",
       )[0]?.addEventListener("click", removeReplaceQueryFormSubmission, {
         capture: true,
       });
@@ -782,13 +839,16 @@
         // Prevent Ajax updating when clicking with the Ctrl key
         if (e.ctrlKey) return;
 
-        const url = location.origin + $(e.target).attr("href");
+        const url = location.origin + $(e.currentTarget).attr("href");
 
         // Prevent Ajax updating if location pathname is different
         if (location.pathname !== new URL(url).pathname) return;
 
         e.preventDefault();
-        ajaxUpdateIssueList({ search: extractSearch(url), target: e.target });
+        ajaxUpdateIssueList({
+          search: extractSearch(url),
+          target: e.currentTarget,
+        });
       });
 
       // Prevent popup-anywhere
@@ -815,12 +875,12 @@
       const $fixedGanttHeader = $("<div>")
         .attr("id", "gantt_header_cloned")
         .append(
-          $("table.gantt-table:not(.cloned) #gantt_area div.gantt_hdr").clone()
+          $("table.gantt-table:not(.cloned) #gantt_area div.gantt_hdr").clone(),
         )
         .css({
           height:
             $(
-              "table.gantt-table:not(.cloned) #gantt_area div.gantt_hdr:first"
+              "table.gantt-table:not(.cloned) #gantt_area div.gantt_hdr:first",
             ).height() + 1,
         })
         .prependTo("table.gantt-table:not(.cloned) #gantt_area");
@@ -829,7 +889,7 @@
       $("table.gantt-table:not(.cloned) #gantt_area").on("scroll", () => {
         // Scroll subjects and selected columns
         $(
-          ".gantt_subjects_container, .gantt_selected_column_container"
+          ".gantt_subjects_container, .gantt_selected_column_container",
         ).scrollTop($("#gantt_area").scrollTop());
 
         // Scroll gantt header
@@ -841,11 +901,11 @@
         .find(
           "td.gantt_subjects_column, " +
             "td.gantt_project_column, " +
-            "td.gantt_selected_column"
+            "td.gantt_selected_column",
         )
         .on("wheel", (e) => {
           $("#gantt_area").scrollTop(
-            $("#gantt_area").scrollTop() + e.originalEvent.deltaY
+            $("#gantt_area").scrollTop() + e.originalEvent.deltaY,
           );
         });
 
@@ -870,7 +930,7 @@
           null,
           function () {
             $(this).css({ opacity: "" });
-          }
+          },
         );
       });
 
@@ -905,18 +965,28 @@
 
     // Add adding new issue link
     if ($("#content > .contextual a.new-issue").length === 0) {
-      const newIssueUrl =
-        `${homeUrl}` +
-        (projectName === null ? "" : `projects/${projectName}/`) +
-        "issues/new";
+      const $newIssueLinkInMenu = $("#main-menu a[href$='/issues/new']:first");
+
       // Check access to the new issue page
-      $.ajax(newIssueUrl).done(() => {
-        $("<a>")
+      if ($newIssueLinkInMenu.length > 0) {
+        const $newIssueLink = $("<a>")
           .addClass("icon icon-add new-issue")
-          .attr("href", newIssueUrl)
-          .text(resources.labelIssueNew)
-          .prependTo("#content > .contextual");
-      });
+          .attr("href", $newIssueLinkInMenu.attr("href"));
+
+        if (svgIcons.add) {
+          $newIssueLink
+            .append(svgIcons.add)
+            .append(
+              $("<span>")
+                .addClass("icon-label")
+                .text($newIssueLinkInMenu.text()),
+            );
+        } else {
+          $newIssueLink.text($newIssueLinkInMenu.text());
+        }
+
+        $newIssueLink.prependTo("#content > .contextual");
+      }
     }
 
     setUpQueryForm();
@@ -1031,7 +1101,6 @@
       display: inline;
       font-size: 0.6em;
       margin: 0 10px;
-      background-repeat: no-repeat;
       cursor: pointer;
     }
     #query_form {
@@ -1064,7 +1133,7 @@
         margin: 0;
         display: flex;
         justify-content: space-between;
-        align-items: baseline;
+        align-items: center;
         width: calc(100% - 10px);
         border-top: 1px solid #ccc;
         padding-top: 10px;
@@ -1096,9 +1165,9 @@
   /* Hide gantt items until loading is complete. */
   table.gantt-table:not(.restored) {
     :is(
-        div.gantt_subjects_container > div.gantt_subjects,
-        form[data-cm-url$="/issues/context_menu"]
-      ) {
+      div.gantt_subjects_container > div.gantt_subjects,
+      form[data-cm-url$="/issues/context_menu"]
+    ) {
       opacity: 0.1;
     }
 
@@ -1172,12 +1241,15 @@
         right: 45px;
       }
     }
-    @media screen and (min-height: 400px) {
-      #sidebar-switch-panel {
-        position: absolute;
-        top: 5px;
-        left: auto;
-        right: 4px;
+    #sidebar:not(:has(#sidebar-wrapper)) ~ #content {
+      /* Support for Redmine earlier than 5 */
+      @media screen and (min-height: 400px) {
+        #sidebar-switch-panel {
+          position: absolute;
+          top: 5px;
+          left: auto;
+          right: 4px;
+        }
       }
     }
   }

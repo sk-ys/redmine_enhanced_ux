@@ -6,16 +6,27 @@
 -->
 <script>
   //<![CDATA[
+  // Detect home URL from the responsive CSS link tag
+  const homeUrl =
+    $("link[href*='/responsive'][href*='.css']")
+      .map((i, e) =>
+        e
+          .href
+          .replace(/(assets|stylesheets)\/responsive.*/, "")
+          .replace(location.origin, "")
+      )[0] || "/";
+  const localStorageKeyPrefix = homeUrl.slice(1).replaceAll("/", ".");
   // If the saved visibility setting is false, apply the following style that
   // hides the header.
   // This style is then removed when the DOM finishes loading.
-  if (localStorage.getItem("header-visibility") === "false") {
+  if (localStorage.getItem(
+    localStorageKeyPrefix + "header-visibility") === "false") {
     $("head").append(
-      '<style class="simple-menu-bar">#header{display: none;}</style>'
+      '<style class="simple-menu-bar">#header{display: none;}</style>',
     );
   }
 
-  window.addEventListener("DOMContentLoaded", () => {
+  function setupSimpleMenuBar() {
     // ----- i18n -----
     const lang = document.documentElement.lang;
     const resourcesAll = {
@@ -40,16 +51,14 @@
     // ----- Define variables -----
     const $header = $("#header");
     const $topMenu = $("#top-menu");
-    const $mainMenu = $("#main-menu");
+    const $mainMenuWithFlyoutMenu = $("#main-menu, .js-project-menu");
     const $main = $("#main");
-    const $projectsMenu = $topMenu.find("ul li a.projects:first");
-    const $adminMenu = $topMenu.find("a.administration:first");
-    const $helpMenu = $topMenu.find("ul li a.help:first");
-    const $sideBar = $("#sidebar");
+    const $topMenuWithFlyoutMenu = $("#top-menu, .js-general-menu");
+    const $projectsMenu = $topMenuWithFlyoutMenu.find("ul li a.projects:first");
+    const $adminMenu = $topMenuWithFlyoutMenu.find("a.administration:first");
+    const $helpMenu = $topMenuWithFlyoutMenu.find("ul li a.help:first");
+    const $sideBarChildren = $("#sidebar, .js-sidebar").children();
 
-    const defaultTopMenuHeight = $topMenu.outerHeight();
-    const defaultHeaderHeight = $header.outerHeight();
-    const homePath = $topMenu.find("ul li a.home:first").attr("href");
     const projectIdentifier = $("body")
       .attr("class")
       .split(" ")
@@ -61,6 +70,31 @@
     if ($adminMenu.length > 0) {
       $topMenu.addClass("has-admin-menu");
     }
+
+    const svgIcons = new (class SVGIcons {
+      constructor() {
+        const extractedPath = this.#extractIconPath();
+        this.basePath = extractedPath ? homeUrl + extractedPath : null;
+      }
+      #extractIconPath() {
+        const $elem = $("use[href*='/assets/icons-'][href*='.svg#']").first();
+        const match = $elem
+          .attr("href")
+          ?.match(/\/(assets\/icons-[a-f0-9]+\.svg)#/);
+        return match ? match[1] : null;
+      }
+      generateSvgIconTag(key) {
+        if (!this.basePath) return null;
+        return $(
+          `<svg class="s18 icon-svg" aria-hidden="true">` +
+            `<use href="${this.basePath}#${key}"></use>` +
+            `</svg>`,
+        );
+      }
+      get angleDown() {
+        return this.generateSvgIconTag("icon--angle-down");
+      }
+    })();
 
     // ----- Common functions -----
     // Show or hide dropdown menu
@@ -132,7 +166,7 @@
         return $simpleMenuItems;
       }
 
-      const $simpleMenuItems = $mainMenu.children("ul").clone();
+      const $simpleMenuItems = $mainMenuWithFlyoutMenu.children("ul").clone();
       if ($simpleMenuItems.length === 0) {
         // Load main menu items from projects page in the background
         const url = $projectsMenu.attr("href");
@@ -141,22 +175,22 @@
           setMenuItems(
             $simpleMenu,
             formatSimpleMenuItems($simpleMenuItems),
-            $projectsMenu.parent()
+            $projectsMenu.parent(),
           );
         });
       } else {
         setMenuItems(
           $simpleMenu,
           formatSimpleMenuItems($simpleMenuItems),
-          $projectsMenu.parent()
+          $projectsMenu.parent(),
         );
       }
     }
 
     function createSimpleSideMenu() {
-      if ($sideBar.children().length === 0) return;
+      if ($sideBarChildren.length === 0) return;
       if (location.pathname.match(/my\/account$/)) return;
-      if ($adminMenu.length > 0) return;
+      if ($("body.controller-admin").length > 0) return;
 
       let $baseMenu = $("#simple-menu").parent();
       if ($baseMenu.length === 0) $baseMenu = $projectsMenu.parent();
@@ -175,7 +209,7 @@
           .hasClass("contextual");
 
         $simpleSideMenuItems.append(
-          $("<li><div>" + text + "</div></li>").addClass("ui-widget-header")
+          $("<li><div>" + text + "</div></li>").addClass("ui-widget-header"),
         );
 
         if (lastItemIsContextual) {
@@ -184,9 +218,12 @@
         }
       }
 
-      function appendMenuItems(_, elem) {
+      function appendMenuItems(_, elem, $target) {
         const $elem = $(elem);
         const $nodeName = $elem.prop("nodeName");
+        if (!$target) {
+          $target = $simpleSideMenuItems;
+        }
 
         if ($nodeName === "H3" || $nodeName === "H4") {
           appendMenuItemHeader($elem.text());
@@ -194,40 +231,52 @@
           // Form is not supported
         } else if ($nodeName === "DIV") {
           if ($elem.hasClass("contextual_")) {
-            $simpleSideMenuItems.append(
+            $target.append(
               $("<li />")
                 .append($elem.children().clone())
-                .addClass("contextual")
+                .addClass("contextual"),
             );
           } else if ($elem.attr("id") === "watchers") {
-            appendMenuItems(null, $elem.children("h3"));
-            appendMenuItems(null, $elem.children("div.contextual"));
-            appendMenuItems(null, $elem.children("ul"));
+            appendMenuItems(null, $elem.children("h3"), $target);
+            appendMenuItems(null, $elem.children("div.contextual"), $target);
+            appendMenuItems(null, $elem.children("ul"), $target);
           } else if ($elem.hasClass("tags-cloud")) {
             // RedmineUP Tags Plugin Items
-            $elem.find("a").each(appendMenuItems);
+            $elem.find("a").each((_, e) => appendMenuItems(null, e, $target));
           } else if ($elem.hasClass("tags")) {
             // Redmine Tags Plugin Items
-            $elem.find("a").each(appendMenuItems);
+            $elem.find("a").each((_, e) => appendMenuItems(null, e, $target));
+          } else if ($elem.hasClass("sidebar-tags")) {
+            // Additional Tags Plugin Sidebar
+            appendMenuItemHeader($elem.children("h3").text());
+            const $additionalTagsMenu = $("<li />").append(
+              $("<a>").text($elem.children("h3").text()),
+            );
+            const $additionalTagsSubMenu =
+              $("<ul />").appendTo($additionalTagsMenu);
+            $elem.find("a").each((_, e) => {
+              $additionalTagsSubMenu.append(
+                $("<li>").append($(e).parent().clone()),
+              );
+            });
+            $target.append($additionalTagsMenu);
           } else {
-            $elem.children().each(appendMenuItems);
+            $elem.children().each((_, e) => appendMenuItems(null, e, $target));
           }
         } else if ($nodeName === "UL") {
-          $simpleSideMenuItems.append($elem.children().clone());
+          $target.append($elem.children().clone());
         } else if ($nodeName === "P") {
           if ($elem.children("a").attr("id") === "toggle-completed-versions") {
             // Completed versions on roadmap page
             appendMenuItemHeader($elem.text());
           } else {
-            $elem.children().each(appendMenuItems);
+            $elem.children().each((_, e) => appendMenuItems(null, e, $target));
           }
-        } else if ($simpleSideMenuItems.children().length === 0) {
+        } else if ($target.children().length === 0) {
         } else if ($nodeName === "LI") {
-          $simpleSideMenuItems.append($elem.clone());
+          $target.append($elem.clone());
         } else {
-          $simpleSideMenuItems.append(
-            $("<li />").append($elem.clone().removeAttr("title"))
-          );
+          $target.append($("<li />").append($elem.clone().removeAttr("title")));
         }
       }
 
@@ -238,7 +287,12 @@
       ) {
         appendMenuItemHeader("Wiki Sidebar");
       }
-      $sideBar.children().each(appendMenuItems);
+      if ($("#sidebar-wrapper").length > 0) {
+        // For Redmine 6.0+
+        $("#sidebar-wrapper").children().each(appendMenuItems);
+      } else {
+        $sideBarChildren.each(appendMenuItems);
+      }
       if ($simpleSideMenuItems.children().length === 0) return;
 
       setMenuItems($simpleSideMenu, $simpleSideMenuItems, $baseMenu, true);
@@ -281,12 +335,12 @@
           if (isHeader) {
             $simpleProjectMenuItems.append(
               $("<li><div>" + $elem.text() + "</div></li>").addClass(
-                "ui-widget-header"
-              )
+                "ui-widget-header",
+              ),
             );
           } else {
             $simpleProjectMenuItems.append(
-              $("<li />").append($elem.clone().removeAttr("title"))
+              $("<li />").append($elem.clone().removeAttr("title")),
             );
           }
         });
@@ -324,7 +378,7 @@
       $simpleSearchMenu.click(() => {
         setDropdownVisibility(
           $simpleSearchDialog,
-          !$simpleSearchDialog.hasClass("visible")
+          !$simpleSearchDialog.hasClass("visible"),
         );
       });
 
@@ -351,7 +405,7 @@
         $title.append($projectTitle.text());
       }
 
-      const mainMenu = $mainMenu
+      const mainMenu = $mainMenuWithFlyoutMenu
         .find(".selected:first")
         .clone()
         .css("margin", 0);
@@ -361,7 +415,7 @@
             .addClass("main-menu")
             .append("<span> [</span>")
             .append(mainMenu)
-            .append("<span>]</span>")
+            .append("<span>]</span>"),
         );
       }
 
@@ -384,9 +438,17 @@
         .attr("id", "hide-header-btn")
         .css({
           cursor: "pointer",
-          backgroundImage: "url(" + homePath + "images/arrow_down.png)",
         })
         .addClass("icon icon-only");
+
+      if (svgIcons.angleDown) {
+        $btn.append(svgIcons.angleDown.css({ stroke: "currentColor" }));
+      } else {
+        $btn.css({
+          backgroundImage: "url(" + homeUrl + "images/arrow_down.png)",
+        });
+      }
+
       $topMenu.children("ul").append($("<li />").append($btn));
 
       function setHeaderVisibility(state) {
@@ -413,16 +475,58 @@
             height: 0,
             minHeight: 0,
           });
-          $btn
-            // .attr("title", resources.showHeader) // Interferes with mouseover
-            .css({ transform: "" });
+          $btn.attr("title", resources.showHeader).css({ transform: "" });
 
           syncHeaderVisibilityItems.forEach((e) => {
             e.show();
           });
         }
         setTopMenuPositionFixed(!state);
-        localStorage.setItem("header-visibility", state);
+        localStorage.setItem(
+          localStorageKeyPrefix + "header-visibility", state);
+      }
+
+      let defaultTopMenuHeight = null;
+      // Detect default top menu height when shown for the first time
+      function detectTopMenuDefaultHeight() {
+        if (defaultTopMenuHeight !== null) return;
+        if (isMobile()) return;
+        const activeTopMenuStyle = $topMenu.attr("style") || "";
+        $topMenu.attr("style", "display: block !important; overflow: hidden;");
+        const topMenuChildrenStyles = $topMenu
+          .children()
+          .map((_, el) => $(el).attr("style") || "");
+        $topMenu.children().each((i, el) => {
+          if (!$(el).is("#account")) $(el).hide();
+        });
+        defaultTopMenuHeight = $topMenu.outerHeight();
+        $topMenu.attr("style", activeTopMenuStyle);
+        $topMenu.children().each((i, el) => {
+          $(el).attr("style", topMenuChildrenStyles[i]);
+        });
+      }
+      if (isMobile()) {
+        $(window).on("resize.detectTopMenuHeight", () => {
+          if (!isMobile()) {
+            $(window).off("resize.detectTopMenuHeight");
+            setTopMenuPositionFixed($topMenu.hasClass("fixed"));
+          }
+        });
+      } else {
+        detectTopMenuDefaultHeight();
+      }
+
+      let defaultHeaderHeight = null;
+      // Detect default header height when shown for the first time
+      function detectHeaderDefaultHeight() {
+        if (defaultHeaderHeight !== null) return;
+        const activeHeaderStyle = $header.attr("style") || "";
+        $header.attr(
+          "style",
+          "display: block !important; visibility: visible;",
+        );
+        defaultHeaderHeight = $header.outerHeight();
+        $header.attr("style", activeHeaderStyle);
       }
 
       function setHeaderPositionFixed(state) {
@@ -431,6 +535,7 @@
             !$header.hasClass("fixed") &&
             $header.css("visibility") === "hidden"
           ) {
+            detectHeaderDefaultHeight();
             $header
               .css({
                 position: "fixed",
@@ -461,11 +566,11 @@
       }
 
       function setTopMenuPositionFixed(state) {
+        detectTopMenuDefaultHeight();
         if (state) {
           $topMenu
             .css({
               position: "fixed",
-              zIndex: 99,
               top: 0,
               width: "100%",
               boxSizing: "border-box",
@@ -476,7 +581,13 @@
             marginTop: defaultTopMenuHeight,
           });
         } else {
-          $topMenu.css(emptyStyle).removeClass("fixed");
+          $topMenu
+            .css({
+              ...emptyStyle,
+              boxSizing: "border-box",
+              height: defaultTopMenuHeight,
+            })
+            .removeClass("fixed");
           $main.css({
             top: "",
             position: "",
@@ -488,8 +599,9 @@
       $btn
         .click(() => {
           setHeaderVisibility(
-            localStorage.getItem("header-visibility") === "false" ||
-              $header.hasClass("fixed")
+            localStorage.getItem(
+              localStorageKeyPrefix + "header-visibility") === "false" ||
+              $header.hasClass("fixed"),
           );
         })
         .mouseover(() => {
@@ -501,7 +613,8 @@
 
       // Load settings from local storage
       setHeaderVisibility(
-        !(localStorage.getItem("header-visibility") === "false")
+        !(localStorage.getItem(
+          localStorageKeyPrefix + "header-visibility") === "false"),
       );
     }
 
@@ -540,6 +653,10 @@
       // Remove the default header style if the style is added to the html header
       $("head>style.simple-menu-bar").remove();
     }
+  }
+
+  window.addEventListener("DOMContentLoaded", () => {
+    requestAnimationFrame(setupSimpleMenuBar);
   });
   //]]>
 </script>
@@ -550,6 +667,15 @@
     display: grid;
     grid-template-columns: max-content minmax(0, auto) max-content max-content;
     grid-template-areas: "top-menu title-bar account loggedas";
+
+    /* Set z-index 1 higher than the issue table's sticky header */
+    z-index: 21;
+
+    &.fixed:hover,
+    &.fixed:is(#wrapper:has(#header:hover) > &) {
+      /* Set z-index 1 higher than the header */
+      z-index: 201;
+    }
 
     & > ul {
       grid-area: top-menu;
@@ -565,6 +691,10 @@
 
     & > #loggedas {
       grid-area: loggedas;
+    }
+
+    .ui-menu {
+      min-width: max-content;
     }
 
     .simple-menu {
@@ -584,6 +714,10 @@
         box-shadow: 0px 0px 3px rgba(0, 0, 0, 0.1);
 
         .ui-menu-item {
+          float: left;
+          clear: both;
+          width: 100%;
+
           & > a:before {
             display: inline-block;
             line-height: 1em;
@@ -604,18 +738,18 @@
               color: #fff;
               background-color: #759fcf;
             }
-          }
-        }
 
-        li {
-          float: left;
-          clear: both;
-          width: 100%;
+            /* Affects the Admin menu */
+            &:has(svg) {
+              padding-left: 2px;
+            }
+          }
 
           & a,
           & div {
             color: black;
             width: 100%;
+            min-width: 100px;
             margin: 0;
             box-sizing: border-box;
             display: inline-block;
@@ -643,12 +777,36 @@
         }
       }
     }
+
+    li:has(#hide-header-btn) {
+      width: 18px;
+      #hide-header-btn {
+        position: absolute;
+      }
+    }
   }
 
   :is(#simple-side-menu, #simple-projects-menu) + .ui-menu {
+    /* Display scrollbar when menu content exceeds window height */
     max-height: calc(100vh - 100px);
     overflow-y: auto;
     overflow-x: hidden;
+
+    /* Sub-menu style */
+    .ui-menu {
+      position: fixed;
+      max-height: 50vh;
+      overflow-y: auto;
+      overflow-x: hidden;
+
+      /* Support for additional-tags plugins */
+      .ui-menu-item > span:is(.tag-label, .additional-tag-label-color) {
+        display: block !important;
+        padding: 0;
+        margin-bottom: 0 !important;
+        border-radius: 0 !important;
+      }
+    }
   }
 
   /* Show headers on mobile environment */
@@ -684,12 +842,14 @@
     left: 0;
     pointer-events: none;
     text-align: center;
+    margin-left: 1em;
+    margin-right: 1.5em;
 
     & > div {
       display: inline-block;
       pointer-events: auto;
       opacity: 0.5;
-      width: calc(100% - 20px);
+      width: 100%;
       overflow: hidden;
       text-overflow: ellipsis;
       white-space: nowrap;
@@ -753,5 +913,22 @@
       }
     }
     /* TODO: Position the submenu to the left */
+  }
+
+  /* Override the Additional Plugin styles */
+  #top-menu:has(#simple-menu) {
+    .menu-children {
+      font-size: 1em;
+      box-shadow: 0px 0px 3px rgba(0, 0, 0, 0.1);
+      border: 1px solid #ccc;
+    }
+
+    #simple-search-menu + .menu-children {
+      border: none;
+    }
+  }
+  #issue_tags input[type="search"] {
+    background-color: transparent;
+    box-sizing: content-box;
   }
 </style>

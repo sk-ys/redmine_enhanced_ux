@@ -4,7 +4,7 @@ Redmine::Plugin.register :redmine_enhanced_ux do
   name 'Redmine Enhanced UX plugin'
   author 'sk-ys'
   description 'This is a plugin for Redmine. This plugin improves various aspects of the user experience in Redmine.'
-  version '1.1.3'
+  version '1.2.0-alpha'
   url 'https://github.com/sk-ys/redmine_enhanced_ux'
   author_url 'https://github.com/sk-ys'
     settings default: {
@@ -36,6 +36,8 @@ Redmine::Plugin.register :redmine_enhanced_ux do
         auto_reload: '1',
         fixes_for_rtl_design: '1',
         local_storage_manager: '1',
+        update_relative_time_in_realtime: '1',
+        enhanced_keyboard_shortcuts: '1',
       },
       partial: 'settings/enhanced_ux_settings'
 end

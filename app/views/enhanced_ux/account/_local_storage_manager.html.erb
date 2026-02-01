@@ -28,6 +28,43 @@
     const resources =
       resourcesAll[document.documentElement.lang] || resourcesAll["en"];
 
+    const homeUrl =
+      ["login", "logout"]
+        .map(
+          (key) =>
+            $("." + key)
+              .attr("href")
+              ?.split(key)[0]
+        )
+        .filter((i) => i)[0] || "/";
+    const svgIcons = new (class SVGIcons {
+      constructor() {
+        const extractedPath = this.#extractIconPath();
+        this.basePath = extractedPath ? homeUrl + extractedPath : null;
+      }
+      #extractIconPath() {
+        const $elem = $("use[href*='/assets/icons-'][href*='.svg#']").first();
+        const match = $elem
+          .attr("href")
+          ?.match(/\/(assets\/icons-[a-f0-9]+\.svg)#/);
+        return match ? match[1] : null;
+      }
+      generateSvgIconTag(key) {
+        if (!this.basePath) return null;
+        return $(
+          `<svg class="s18 icon-svg" aria-hidden="true">` +
+            `<use href="${this.basePath}#${key}"></use>` +
+            `</svg>`
+        );
+      }
+      get settings() {
+        return this.generateSvgIconTag("icon--settings");
+      }
+      get del() {
+        return this.generateSvgIconTag("icon--del");
+      }
+    })();
+
     function drawLocalStorageItemList() {
       const $tableOuter = $("<div>").addClass("table-outer");
       const $table = $("<table>")
@@ -51,25 +88,28 @@
       Object.entries(localStorage)
         .sort(([keyA], [keyB]) => keyA.localeCompare(keyB))
         .forEach(([key, value]) => {
-          $table.find("tbody").append(
-            $("<tr>")
-              .append($("<td>").addClass("key-column").text(key))
-              .append($("<td>").addClass("value-column").text(value))
-              .append(
-                $("<td>")
-                  .addClass("remove-action-column")
-                  .append(
-                    $("<a>")
-                      .addClass("icon icon-del icon-only")
-                      .on("click", (e) => {
-                        if (confirm(resources.messageAreYouSure)) {
-                          removeItem(e.currentTarget);
-                          drawLocalStorageItemList();
-                        }
-                      })
-                  )
-              )
-          );
+          const $removeLink = $("<a>")
+            .addClass("icon icon-del icon-only")
+            .on("click", (e) => {
+              if (confirm(resources.messageAreYouSure)) {
+                removeItem(e.currentTarget);
+                drawLocalStorageItemList();
+              }
+            });
+
+          if (svgIcons.del) {
+            $removeLink.append(svgIcons.del);
+          }
+          $table
+            .find("tbody")
+            .append(
+              $("<tr>")
+                .append($("<td>").addClass("key-column").text(key))
+                .append($("<td>").addClass("value-column").text(value))
+                .append(
+                  $("<td>").addClass("remove-action-column").append($removeLink)
+                )
+            );
         });
 
       $listBox.empty().append($tableOuter);
@@ -93,6 +133,9 @@
           drawLocalStorageItemList();
         }
       });
+    if (svgIcons.del) {
+      $removeAllButton.prepend(svgIcons.del);
+    }
     const $contextual = $("<div>")
       .addClass("contextual")
       .append($removeAllButton);
@@ -125,6 +168,9 @@
         console.log("");
         $localStorageManager.dialog("open");
       });
+    if (svgIcons.settings) {
+      $menu.prepend(svgIcons.settings);
+    }
 
     function initialize() {
       $("#content > div.contextual").prepend($menu);

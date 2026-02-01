@@ -1,25 +1,13 @@
-// Path pattern:       /issues$
+// Path pattern:
 // Insertion position: Head of all pages
 // Type:               JavaScript
-// Comment:            Fuzzy timestamps formatter for issue list
-window.addEventListener("DOMContentLoaded", function () {
-  const targetSelector = "table.issues.list td.updated_on";
+// Comment:            Update relative time in real-time
+// Description:        Updates relative time displays every minute for activity links and timestamps
+(function () {
+  "use strict";
 
-  // Exit if no target elements found
-  if ($(targetSelector).length === 0) return;
+  const TIME_UPDATE_INTERVAL_MS = 60000; // 1 minute in milliseconds
 
-  // Define time units in seconds
-  const TIME_UNITS = {
-    SECOND: 1,
-    MINUTE: 60,
-    HOUR: 60 * 60,
-    DAY: 24 * 60 * 60,
-    WEEK: 7 * 24 * 60 * 60,
-    MONTH: 30 * 24 * 60 * 60,
-    YEAR: 365 * 24 * 60 * 60,
-  };
-
-  // Localized messages (update_relative_time_in_realtime.js style)
   const translations = {
     en: {
       less_than_x_seconds: "less than %count% seconds",
@@ -138,14 +126,19 @@ window.addEventListener("DOMContentLoaded", function () {
       half_a_minute: "полминуты",
       less_than_a_minute: "меньше минуты",
       one_minute: "1 минута",
+      minutes_few: "%count% минуты",
       minutes: "%count% минут",
       about_one_hour: "около 1 часа",
+      hours_few: "около %count% часов",
       hours: "около %count% часов",
       one_day: "1 день",
+      days_few: "%count% дня",
       days: "%count% дней",
       about_one_month: "около 1 месяца",
+      months_few: "%count% месяца",
       months: "%count% месяцев",
       about_one_year: "около 1 года",
+      years_few: "%count% года",
       years: "%count% лет",
       relativeTimeSuffix: " назад",
     },
@@ -194,7 +187,11 @@ window.addEventListener("DOMContentLoaded", function () {
     return text.replace(/%count%/g, count);
   }
 
-  function getRelativeTime(fromTime, toTime = new Date()) {
+  function distanceOfTimeInWords(
+    fromTime,
+    appendAgoSuffix = false,
+    toTime = new Date(),
+  ) {
     const lang = getLanguage();
     const t = translations[lang];
 
@@ -253,37 +250,53 @@ window.addEventListener("DOMContentLoaded", function () {
       ret = interpolate(t.years, years);
     }
 
-    ret += t.relativeTimeSuffix;
+    if (appendAgoSuffix && ret !== t.in_the_future) {
+      ret += t.relativeTimeSuffix;
+    }
+
     return ret;
   }
 
-  function replaceUpdatedOn(elem, baseDate) {
-    try {
-      const dateText = $(elem).text();
-      const date = new Date(dateText);
-      if (isNaN(date)) return;
+  function updateRelativeTime() {
+    document
+      .querySelectorAll("a[href*='/activity?from='], .updated_on")
+      .forEach((el) => {
+        const timestampStr = el.getAttribute("title");
+        const timestamp = new Date(timestampStr);
+        if (timestamp.getTime()) {
+          el.textContent = distanceOfTimeInWords(
+            timestamp,
+            el.classList.contains("updated_on"),
+          );
+        }
+      });
+  }
 
-      baseDate = baseDate || new Date();
-      const relative = getRelativeTime(date, baseDate);
+  // Setup periodic update every minute
+  let updateInterval = null;
 
-      $(elem).text(relative).attr("title", dateText);
-    } catch (error) {
-      console.warn("Failed to parse timestamp:", dateText, error);
+  function startUpdating() {
+    stopUpdating();
+    updateInterval = setInterval(updateRelativeTime, TIME_UPDATE_INTERVAL_MS);
+  }
+
+  function stopUpdating() {
+    if (updateInterval !== null) {
+      clearInterval(updateInterval);
+      updateInterval = null;
     }
   }
 
-  function updateIssueListTimes() {
-    const now = new Date();
-    $(targetSelector).each((_, e) => replaceUpdatedOn(e, now));
-  }
+  // Monitor visibility state
+  document.addEventListener("visibilitychange", () => {
+    if (document.hidden) {
+      stopUpdating();
+    } else {
+      updateRelativeTime();
+      startUpdating();
+    }
+  });
 
-  if (window.ajaxUpdateIssueList) {
-    const original = ajaxUpdateIssueList;
-    ajaxUpdateIssueList = async function (settings) {
-      await original(settings);
-      updateIssueListTimes();
-    };
-  }
-
-  updateIssueListTimes();
-});
+  // Initial execution
+  startUpdating();
+})();

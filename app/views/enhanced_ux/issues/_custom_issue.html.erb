@@ -1,5 +1,5 @@
 <!-- 
-// Path pattern:       (/issues/[0-9]+$|/issues/new|/issues/[0-9]+/copy|/issues/[0-9]+/edit)
+// Path pattern:       (/issues(/([0-9]+|new|[0-9]+/copy|[0-9]+/edit))?/?$)
 // Insertion position: Head of all pages
 // Type:               HTML
 // Comment:            Custom issue
@@ -8,6 +8,23 @@
   var ajaxUpdateIssueList;
 
   window.addEventListener("DOMContentLoaded", function () {
+    const controller = [...document.body.classList]
+      .filter((i) => i.startsWith("controller"))[0]
+      .split("-")[1];
+    const action = [...document.body.classList]
+      .filter((i) => i.startsWith("action"))[0]
+      .split("-")[1];
+    if (
+      controller !== "issues" ||
+      (action !== "show" &&
+        action !== "edit" &&
+        action !== "update" &&
+        action !== "new" &&
+        action !== "create")
+    ) {
+      return;
+    }
+
     // ----- settings start -----
     const dialogBaseConfig = {
       minWidth: 400,
@@ -30,10 +47,16 @@
       enableFloatingSubmitButtonInEditForm: true,
       enableFloatingSubmitButtonInNewForm: true,
       enableResizableAttachmentTable: true,
-      enableCorrectAttributesPositionInEditView: true,
+      attributeLayoutTypeInEditView: 1,
       enableFixedIssueSubject: true,
       enableFixedIssueSubjectInIframe: false,
       sideBySideModeBreakpointWidth: 1280,
+      quickNotesPosition: "auto",
+      attributeSeparatorColors: {
+        show: "rgba(0, 0, 0, 0.1)",
+        edit: "rgba(0, 0, 0, 0.1)",
+        new: "rgba(0, 0, 0, 0.1)",
+      },
     };
 
     // ----- settings end -----
@@ -90,15 +113,31 @@
           "Enable floating submit button in new issue form",
         labelSettingEnableResizableAttachmentTable:
           "Enable resizable attachment table",
-        labelSettingEnableCorrectAttributesPositionInEditView:
-          "Enable correct attributes position in edit view",
+        labelSettingAttributeLayoutTypeInEditView:
+          "Type of attributes layout in edit view",
         labelSettingEnableFixedIssueSubject: "Enable fixed issue subject",
         labelSettingEnableFixedIssueSubjectInIframe:
           "Enable fixed issue subject in iframe",
         labelSettingSideBySideModeBreakpointWidth:
           "Minimum screen width for side-by-side mode",
+        labelSettingQuickNotesPosition: "Quick notes position",
+        messageSettingQuickNotesPosition:
+          "Select where to display quick notes: auto (based on history direction), top, or bottom",
+        labelSettingQuickNotesPositionAuto: "Auto",
+        labelSettingQuickNotesPositionTop: "Top",
+        labelSettingQuickNotesPositionBottom: "Bottom",
         messageSettingEnableSideBySideMode:
           "⚠️To enable side-by-side mode, issue tab view must be enabled",
+        legendSettingAttributeSeparatorColors: "Attribute separator colors",
+        labelSettingAttributeSeparatorColorsShow: "In issue view",
+        labelSettingAttributeSeparatorColorsEdit: "In issue edit form",
+        labelSettingAttributeSeparatorColorsNew: "In new issue form",
+        labelDateInfo: "Date Information",
+        labelBasicInfo: "Basic Information",
+        labelIssueSettings: "Issue Settings",
+        labelResetAndReload: "Reset and Reload",
+        messageConfirmRestoreDefaults:
+          "Do you want to reset to default settings?",
       },
       ja: {
         sideBySideMode: "左右に並べて表示",
@@ -148,15 +187,30 @@
           "新規チケット画面で送信ボタンを浮動化する",
         labelSettingEnableResizableAttachmentTable:
           "添付ファイル欄をリサイズ可能にする",
-        labelSettingEnableCorrectAttributesPositionInEditView:
-          "編集画面の項目の位置を修正する",
+        labelSettingAttributeLayoutTypeInEditView:
+          "編集画面の項目のレイアウトタイプ",
         labelSettingEnableFixedIssueSubject: "チケットの件名を固定して表示する",
         labelSettingEnableFixedIssueSubjectInIframe:
           "iframe内でチケットの件名を固定表示する",
         labelSettingSideBySideModeBreakpointWidth:
           "左右に並べて表示を有効にする最小の画面幅",
+        labelSettingQuickNotesPosition: "クイックコメントの位置",
+        messageSettingQuickNotesPosition:
+          "クイックコメントを表示する位置を選択: auto (履歴の方向に基づく)、top、または bottom",
+        labelSettingQuickNotesPositionAuto: "自動",
+        labelSettingQuickNotesPositionTop: "上",
+        labelSettingQuickNotesPositionBottom: "下",
         messageSettingEnableSideBySideMode:
           "⚠️左右に並べて表示を有効にするにはチケットタブ表示を有効にする必要があります",
+        legendSettingAttributeSeparatorColors: "項目区切り線の色設定",
+        labelSettingAttributeSeparatorColorsShow: "チケット表示画面",
+        labelSettingAttributeSeparatorColorsEdit: "チケット編集画面",
+        labelSettingAttributeSeparatorColorsNew: "新規チケット画面",
+        labelDateInfo: "日付情報",
+        labelBasicInfo: "基本情報",
+        labelIssueSettings: "チケット設定",
+        labelResetAndReload: "リセットして再読み込み",
+        messageConfirmRestoreDefaults: "デフォルト設定にリセットしますか？",
       },
     };
     const resources = {
@@ -169,23 +223,56 @@
     const issueEditUrl = issueUrl + "/edit";
     const issueIdMatch = issuePathname.match(/\/issues\/([0-9]+)\/{0,1}$/);
     const issueId = issueIdMatch ? Number(issueIdMatch[1]) : null;
-    const isNewForm =
-      $("body").hasClass("controller-issues") &&
-      $("body").hasClass("action-new");
-    const isEditOrUpdateView =
-      $("body").hasClass("controller-issues") &&
-      ($("body").hasClass("action-edit") ||
-        $("body").hasClass("action-update"));
-    const isEditable = $("#update").length !== 0 || isEditOrUpdateView;
-    const isShowView =
-      $("body").hasClass("controller-issues") &&
-      $("body").hasClass("action-show");
+    const isNewForm = ["new", "create"].includes(action);
+    const isEditOrUpdateOrCreateView = ["edit", "update"].includes(action);
+    const isEditable = $("#update").length !== 0 || isEditOrUpdateOrCreateView;
+    const isShowView = action === "show";
     const issueNotesTextareaRowsDefault = $("#issue_notes").attr("rows");
     const addNotesLegendDefault = $("#add_notes>legend:first").text();
     const $submitButton = $('#issue-form input[type="submit"]');
     const $history = $("#history");
     const enableRedmineRT = $("#quick_notes").length > 0;
     const isInIframe = window.self !== window.top;
+    const homeUrl =
+      ["login", "logout"]
+        .map(
+          (key) =>
+            $("." + key)
+              .attr("href")
+              ?.split(key)[0],
+        )
+        .filter((i) => i)[0] || "/";
+    const localStorageKeyPrefix = homeUrl.slice(1).replaceAll("/", ".");
+    const svgIcons = new (class SVGIcons {
+      constructor() {
+        const extractedPath = this.#extractIconPath();
+        this.basePath = extractedPath ? homeUrl + extractedPath : null;
+      }
+      #extractIconPath() {
+        const $elem = $("use[href*='/assets/icons-'][href*='.svg#']").first();
+        const match = $elem
+          .attr("href")
+          ?.match(/\/(assets\/icons-[a-f0-9]+\.svg)#/);
+        return match ? match[1] : null;
+      }
+      generateSvgIconTag(key) {
+        if (!this.basePath) return null;
+        return $(
+          `<svg class="s18 icon-svg" aria-hidden="true">` +
+            `<use href="${this.basePath}#${key}"></use>` +
+            `</svg>`,
+        );
+      }
+      get settings() {
+        return this.generateSvgIconTag("icon--settings");
+      }
+      get angleDown() {
+        return this.generateSvgIconTag("icon--angle-down");
+      }
+      get angleRight() {
+        return this.generateSvgIconTag("icon--angle-right");
+      }
+    })();
     let notesManager = null;
     let issueLayoutManager = null;
 
@@ -208,6 +295,10 @@
       // Default direction
       return "asc";
     }
+    function capitalizeFirstChar(str) {
+      if (str.length === 0) return str;
+      return str.charAt(0).toUpperCase() + str.slice(1);
+    }
 
     // Issue layout manager class
     class IssueLayoutManager {
@@ -217,11 +308,12 @@
         enableFloatingSubmitButtonInEditForm,
         enableFloatingSubmitButtonInNewForm,
         enableResizableAttachmentTable,
-        enableCorrectAttributesPositionInEditView,
+        attributeLayoutTypeInEditView,
         isDescriptionEditFieldOpenByDefault,
         enableFixedIssueSubject,
         enableFixedIssueSubjectInIframe,
-        sideBySideModeBreakpointWidth
+        sideBySideModeBreakpointWidth,
+        attributeSeparatorColors,
       ) {
         this.tabViewEnabled = isShowView && (enableTabView ?? true);
         this.sideBySideModeEnabled =
@@ -232,9 +324,8 @@
           isNewForm && (enableFloatingSubmitButtonInNewForm ?? true);
         this.resizableAttachmentTableEnabled =
           isShowView && (enableResizableAttachmentTable ?? true);
-        this.correctAttributesPositionInEditViewEnabled =
-          (isEditable || isNewForm) &&
-          (enableCorrectAttributesPositionInEditView ?? true);
+        this.attributeLayoutTypeInEditView =
+          isEditable || isNewForm ? attributeLayoutTypeInEditView : null;
         this.isDescriptionEditFieldOpenByDefault =
           isEditable &&
           !isNewForm &&
@@ -245,6 +336,7 @@
           isShowView && (enableFixedIssueSubjectInIframe ?? false);
         this.sideBySideModeBreakpointWidth =
           sideBySideModeBreakpointWidth ?? 1280;
+        this.attrSepColors = attributeSeparatorColors || {};
         this.hasHistoryData = $("#history>p.nodata").length === 0;
 
         $("#update").prev().addClass("update-prev-marker");
@@ -281,20 +373,33 @@
         this.#setupShowDescriptionEditFieldOpenByDefault();
         this.#setupFormChangeDetection();
         this.#setupFixedIssueSubject();
+        this.#setupAttributeSeparatorColor();
       }
 
       sideBySideProperty = {
         get enabled() {
-          return localStorage.getItem("side-by-side-enabled") === "true";
+          return (
+            localStorage.getItem(
+              localStorageKeyPrefix + "side-by-side-enabled",
+            ) === "true"
+          );
         },
         set enabled(value) {
-          localStorage.setItem("side-by-side-enabled", value);
+          localStorage.setItem(
+            localStorageKeyPrefix + "side-by-side-enabled",
+            value,
+          );
         },
         get issueContainerWidth() {
-          return localStorage.getItem("side-by-side-issue-container-width");
+          return localStorage.getItem(
+            localStorageKeyPrefix + "side-by-side-issue-container-width",
+          );
         },
         set issueContainerWidth(value) {
-          localStorage.setItem("side-by-side-issue-container-width", value);
+          localStorage.setItem(
+            localStorageKeyPrefix + "side-by-side-issue-container-width",
+            value,
+          );
         },
       };
 
@@ -328,7 +433,7 @@
               e.preventDefault();
               e.stopPropagation();
             })
-            .addClass("selected")
+            .addClass("selected"),
         );
         this.$issueTabEdit = !isEditable
           ? null
@@ -344,13 +449,13 @@
                     "edit",
                     issueUrl + "/edit",
                     issueUrl + "?tab=edit",
-                    true
+                    true,
                   );
                   e.preventDefault();
                   e.stopPropagation();
 
                   this.resetForm();
-                })
+                }),
             );
       }
 
@@ -368,7 +473,7 @@
           .append(
             $("<label>")
               .attr({ for: "enableSideBySideMode" })
-              .html(resources.sideBySideMode)
+              .html(resources.sideBySideMode),
           )
           .attr({ title: resources.helpSideBySideMode });
 
@@ -378,7 +483,7 @@
             $("#wrapper").addClass("side-by-side");
             this.$issueContainer.css(
               "width",
-              this.sideBySideProperty.issueContainerWidth
+              this.sideBySideProperty.issueContainerWidth,
             );
           } else {
             $("#wrapper").removeClass("side-by-side");
@@ -509,11 +614,11 @@
           !this.sideBySideModeEnabled
         ) {
           $("#wrapper.side-by-side-mode-enabled").removeClass(
-            "side-by-side-mode-enabled"
+            "side-by-side-mode-enabled",
           );
         } else {
           $("#wrapper:not(.side-by-side-mode-enabled)").addClass(
-            "side-by-side-mode-enabled"
+            "side-by-side-mode-enabled",
           );
         }
       }
@@ -568,7 +673,7 @@
 
         // Restore add_attachments
         $("#add_attachments").appendTo(
-          $("#issue-form>.box.filedroplistner:last")
+          $("#issue-form>.box.filedroplistner:last"),
         );
 
         // Restore #issue_notes textarea rows
@@ -576,6 +681,11 @@
 
         // Restore add_notes legend
         $("#add_notes>legend:first").text(addNotesLegendDefault);
+        // Add svg icon to legend if available
+        this.toggleFieldSet(
+          $("#add_notes>legend:first"),
+          $("#add_notes").hasClass("collapsed"),
+        );
 
         // Reset height for history and quick notes2
         $("#history").css("height", "");
@@ -604,11 +714,11 @@
         let isEditMode = false;
         if (e === undefined) {
           isEditMode = /tab=edit/.test(location.search);
-        } else if ($(e.target).length > 0) {
+        } else if ($(e.currentTarget).length > 0) {
           isEditMode =
-            $(e.target).attr("id") === "tab-issue-edit" ||
+            $(e.currentTarget).attr("id") === "tab-issue-edit" ||
             new RegExp(`/issues/${issueId}/edit`).test(
-              $(e.target).attr("href")
+              $(e.currentTarget).attr("href"),
             );
         }
 
@@ -690,11 +800,12 @@
       }
 
       #setupCorrectAttributesPositionInEditView() {
-        if (!this.correctAttributesPositionInEditViewEnabled) return;
+        if (!this.attributeLayoutTypeInEditView) return;
 
         // Replace updateIssueFrom function
         const updateIssueFromOrg = updateIssueFrom;
         updateIssueFrom = (url, el) => {
+          this.resetAttributesPosition();
           return updateIssueFromOrg(url, el).then(() => {
             this.correctAttributesPositionInEditView();
           });
@@ -703,46 +814,55 @@
         this.correctAttributesPositionInEditView();
       }
 
-      // Correcting the placement of attributes in the edit view
       correctAttributesPositionInEditView() {
         if (!(isEditable || isNewForm)) return;
-        if (!this.correctAttributesPositionInEditViewEnabled) return;
+        switch (this.attributeLayoutTypeInEditView) {
+          case 1:
+            this.attributeLayoutTypeInEditView1();
+            break;
+          case 2:
+            this.attributeLayoutTypeInEditView2();
+            break;
+        }
+      }
 
-        // Move hidden attributes to top
+      // Correcting the placement of attributes in the edit view
+      attributeLayoutTypeInEditView1() {
+        // Change attributes order
         $("#all_attributes")
           .prepend(
-            $("#issue_parent_issue_id").parent().addClass("header_attribute")
+            $("#issue_parent_issue_id")
+              .parent()
+              .addClass("header_attribute")
+              .addClass("header_attribute_float-inline-end"),
+          )
+          .prepend(
+            $("#issue_subject")
+              .parent()
+              .addClass("header_attribute")
+              .addClass("header_attribute_float-inline-start"),
           )
           .prepend(
             $("#issue_tracker_id")
               .parent()
               .addClass("header_attribute")
-              .addClass("header_attribute_float-" + (isRtl ? "right" : "left"))
-              .css({ clear: "none" })
+              .addClass("header_attribute_float-inline-start")
+              .css({ clear: "none" }),
           )
           .prepend(
             $("#issue_project_id")
               .parent()
               .addClass("header_attribute")
-              .addClass("header_attribute_float-" + (isRtl ? "right" : "left"))
-          );
-
-        $("#attributes").css("clear: both");
-
-        // Move subject and is_private checkbox
-        $("#all_attributes")
-          .prepend(
-            $("#issue_subject")
-              .parent()
-              .addClass("header_attribute")
-              .addClass("header_attribute_float-" + (isRtl ? "right" : "left"))
+              .addClass("header_attribute_float-inline-start"),
           )
           .prepend(
             $("#issue_is_private")
               .parent()
               .css({ clear: "both", paddingLeft: 0 })
-              .addClass("header_attribute")
+              .addClass("header_attribute"),
           );
+
+        $("#attributes").css("clear: both");
 
         // Move estimated_time
         $("#issue_estimated_hours")
@@ -752,25 +872,324 @@
 
         // Move description attribute to after the #attributes
         const $descriptionAttribute = $(
-          "label[for=issue_description]"
+          "label[for=issue_description]",
         ).parent();
         $("div#attributes").after($descriptionAttribute);
 
         // Add <hr>
-        if ($("#attributes").prev()[0]?.nodeName !== "HR") {
+        const previousAttributesCount =
+          $("#all_attributes > *:has(:is(input, textarea, select)):visible")
+            .map((i, e) => ($(e).attr("id") === "attributes" ? i : 0))
+            .toArray()
+            .filter((i) => i > 0)[0] || 0;
+        if (
+          previousAttributesCount > 0 &&
+          $("#attributes").prev()[0]?.nodeName !== "HR"
+        ) {
           $("#attributes").before($("<hr>"));
         }
         $("#attributes>.splitcontent").each((_, el) => {
-          if ($(el).next()[0]?.nodeName !== "HR") {
+          if (
+            $(el).next().is(":visible") &&
+            $(el).next()[0]?.nodeName !== "HR"
+          ) {
             $(el).after($("<hr>"));
           }
         });
+        const postAttributeCount = $(
+          "#attributes ~ *:has(:is(input, textarea, select)):visible",
+        ).length;
+        if (postAttributeCount > 0) {
+          $("#attributes").after($("<hr>"));
+        }
 
         // Fix placement of "assign to me" button
         $("#issue_assigned_to_id").after($("<br>"));
 
         // Add class for CSS adjustment
-        $("#all_attributes").addClass("corrected_attributes_position");
+        $("#all_attributes").addClass("attribute_layout_type-1");
+      }
+
+      loadFieldsetCollapsedState() {
+        return (
+          JSON.parse(
+            localStorage.getItem(
+              localStorageKeyPrefix + "custom-issue-fieldset-collapsed-state",
+            ),
+          ) || {}
+        );
+      }
+
+      saveFieldsetCollapsedState(fieldsetId, isCollapsed) {
+        const fieldsetCollapsedState = this.loadFieldsetCollapsedState();
+
+        fieldsetCollapsedState[fieldsetId] = isCollapsed;
+        localStorage.setItem(
+          localStorageKeyPrefix + "custom-issue-fieldset-collapsed-state",
+          JSON.stringify(fieldsetCollapsedState),
+        );
+      }
+
+      toggleFieldSet($legend, state = null) {
+        if (this.attributeLayoutTypeInEditView !== 2) return;
+
+        const $fieldset = $legend.parent();
+        const isCollapsed =
+          typeof state === "boolean" ? !state : $fieldset.hasClass("collapsed");
+        $fieldset.toggleClass("collapsed", !isCollapsed);
+        $legend.toggleClass("icon-expanded", isCollapsed);
+        $legend.toggleClass("icon-collapsed", !isCollapsed);
+        if ($legend.find("svg").length > 0) {
+          $legend.find("svg").remove();
+        }
+
+        if (isCollapsed) {
+          if (svgIcons.angleDown) {
+            $legend.prepend(svgIcons.angleDown.clone());
+          }
+        } else {
+          if (svgIcons.angleRight) {
+            $legend.prepend(svgIcons.angleRight.clone());
+          }
+        }
+
+        this.saveFieldsetCollapsedState($fieldset.attr("id"), !isCollapsed);
+        this.updateSubmitButtonPosition();
+      }
+
+      attributeLayoutTypeInEditView2() {
+        // Future implementation for version 2
+
+        function generateFieldSet(id, legend) {
+          $("#" + id).remove(); // Remove if it already exists
+          return $("<fieldset>")
+            .attr("id", id)
+            .append($("<legend>").append(legend));
+        }
+
+        function generateSplitContent() {
+          return $("<div>")
+            .addClass("splitcontent")
+            .append($("<div>").addClass("splitcontentleft"))
+            .append($("<div>").addClass("splitcontentright"));
+        }
+
+        // Append date info fieldset
+        const $dateInfoFieldSet = generateFieldSet(
+          "date_info_fieldset",
+          resources.labelDateInfo,
+        );
+        const $dateInfoFieldsContainer = generateSplitContent();
+        $dateInfoFieldsContainer
+          .children(".splitcontentleft")
+          .append($("#issue_start_date").closest("p"))
+          .end()
+          .children(".splitcontentright")
+          .append($("#issue_due_date").closest("p"));
+        if ($("#actual_dates_data").length > 0) {
+          // Support for Actual Dates plugin
+          const { actualStartDateElem, actualEndDateElem } =
+            this.getActualDateElems();
+          if (actualStartDateElem) {
+            $dateInfoFieldsContainer
+              .children(".splitcontentleft")
+              .append(actualStartDateElem.closest("p"));
+          }
+          if (actualEndDateElem) {
+            $dateInfoFieldsContainer
+              .children(".splitcontentright")
+              .append(actualEndDateElem.closest("p"));
+          }
+        }
+        if ($dateInfoFieldsContainer.find("input, select").length > 0) {
+          $dateInfoFieldSet
+            .addClass("tabular")
+            .append($dateInfoFieldsContainer)
+            .prependTo($("#all_attributes").closest("div.box"));
+        }
+
+        // Append issue basic information fieldset
+        const $issueBasicInfoFieldSet = generateFieldSet(
+          "issue_basic_info_fieldset",
+          resources.labelBasicInfo,
+        );
+        const $issueBasicInfoContainer = generateSplitContent();
+        const statusLabel = $(
+          ".issue.details .attributes .status.attribute .label",
+        )
+          .text()
+          .slice(0, -1);
+        const $statusAttr =
+          $("#issue_status_id").length > 0
+            ? $("#issue_status_id").closest("p")
+            : $("#all_attributes label")
+                .filter((_, el) => $(el).text() === statusLabel)
+                .addClass("status")
+                .parent();
+        $issueBasicInfoContainer
+          .children(".splitcontentleft")
+          .append($statusAttr)
+          .append($("#issue_priority_id").closest("p"))
+          .append($("#issue_assigned_to_id").closest("p"))
+          .append($("#issue_category_id").closest("p"))
+          .append($("#issue_fixed_version_id").closest("p"))
+          .end()
+          .children(".splitcontentright")
+          .append($("#issue_done_ratio").closest("p"))
+          .append($("#issue_estimated_hours").closest("p"))
+          .append($("#issue_author_id").closest("p")); // Support for Additionals plugin
+        if (
+          $issueBasicInfoContainer.find("input, select, label.status").length >
+          0
+        ) {
+          $issueBasicInfoFieldSet
+            .addClass("tabular")
+            .append($issueBasicInfoContainer)
+            .prependTo($("#all_attributes").closest("div.box"));
+        }
+
+        // Append issue settings fieldset
+        const $issueSettingsFieldSet = generateFieldSet(
+          "issue_settings_fieldset",
+          resources.labelIssueSettings,
+        );
+        const $issueSettingsContainer = generateSplitContent();
+        $issueSettingsContainer
+          .children(".splitcontentleft")
+          .append($("#issue_project_id").closest("p"))
+          .append($("#issue_tracker_id").closest("p"))
+          .end()
+          .children(".splitcontentright")
+          .append($("#issue_is_private").closest("p"))
+          .append($("#issue_parent_issue_id").closest("p"));
+        if ($issueSettingsContainer.find("input, select").length > 0) {
+          $issueSettingsFieldSet
+            .addClass("tabular")
+            .append($issueSettingsContainer)
+            .prependTo($("#all_attributes").closest("div.box"));
+        }
+
+        // Append subject fieldset
+        const $subjectField = $("#issue_subject").parent();
+        const subjectFieldSetId = "subject_fieldset";
+        const $subjectFieldSet = generateFieldSet(
+          subjectFieldSetId,
+          $subjectField.find("label"),
+        );
+        if ($subjectField.length > 0) {
+          $subjectFieldSet
+            .append($subjectField)
+            .prependTo($("#all_attributes").closest("div.box"));
+        }
+
+        // Move description attribute to after the date information fieldset
+        if (action !== "new" && action !== "create") {
+          const $descriptionAttribute = $(
+            "#issue_description_and_toolbar",
+          ).closest("p");
+          const $descriptionFieldSet = generateFieldSet(
+            "description_fieldset",
+            $descriptionAttribute.find("label[for=issue_description]"),
+          );
+          if ($descriptionAttribute.length > 0) {
+            $descriptionFieldSet
+              .append($descriptionAttribute)
+              .insertAfter($("#all_attributes").closest("fieldset"));
+          }
+        }
+
+        // Setup collapsible fieldsets
+        if (action !== "new" && action !== "create") {
+          const fieldsetCollapsedState = this.loadFieldsetCollapsedState();
+          $("#issue-form")
+            .find("fieldset>legend")
+            .addClass("icon")
+            .each((_, e) => {
+              const $fieldset = $(e).parent();
+              const isCollapsed =
+                fieldsetCollapsedState[$fieldset.attr("id")] ?? false;
+              this.toggleFieldSet($(e), isCollapsed);
+            })
+            .off("click.toggleFieldSet")
+            .on("click.toggleFieldSet", (e) => {
+              if ($(e.target).is("#notes-dialog-pop-out-button")) return;
+              if ($(e.target).closest("#quick_notes2").length) return;
+              this.toggleFieldSet($(e.currentTarget));
+            });
+        }
+
+        // Add class for CSS adjustment
+        $("#issue-form").addClass("attribute_layout_type-2");
+      }
+
+      resetAttributesPosition() {
+        if ($("#issue-form").hasClass("attribute_layout_type-2")) {
+          // Keep added fieldset heights for type2
+          [
+            "subject_fieldset",
+            "issue_settings_fieldset",
+            "issue_basic_info_fieldset",
+            "date_info_fieldset",
+            "description_fieldset",
+          ].forEach((id) => {
+            const $fieldset = $("#" + id);
+            if ($fieldset.length === 0) return;
+            $fieldset.css("height", $fieldset.height());
+          });
+
+          // Restore original attributes to #all_attributes
+          [
+            "#issue_subject",
+            "#issue_project_id",
+            "#issue_tracker_id",
+            "#issue_is_private",
+            "#issue_parent_issue_id",
+            "#issue_status_id",
+            "#issue_priority_id",
+            "#issue_assigned_to_id",
+            "#issue_category_id",
+            "#issue_fixed_version_id",
+            "#issue_done_ratio",
+            "#issue_estimated_hours",
+            "#issue_author_id", // Support for Additionals plugin
+            "#issue_start_date",
+            "#issue_due_date",
+            "#issue_description_and_toolbar",
+          ].forEach((id) => {
+            const $element = $(id);
+            if ($element.length === 0) return;
+            $element.closest("p").hide().appendTo($("#all_attributes"));
+          });
+
+          // Restore Actual Dates fields
+          const { actualStartDateElem, actualEndDateElem } =
+            this.getActualDateElems();
+          [actualStartDateElem, actualEndDateElem]
+            .filter(Boolean)
+            .forEach((elem) =>
+              elem.closest("p").hide().appendTo($("#all_attributes")),
+            );
+
+          // Note: The fieldsets that are added are removed by updateIssueFrom replacement.
+        }
+      }
+
+      getActualDateElems() {
+        if ($("#actual_dates_data").length === 0) {
+          return {};
+        }
+        // Support for Actual Dates plugin
+        const ActualDates = JSON.parse($("#actual_dates_data").text());
+        const actualStartDateCfId = ActualDates["cfId"]["start"];
+        const actualEndDateCfId = ActualDates["cfId"]["end"];
+        return {
+          actualStartDateElem: actualStartDateCfId
+            ? $(`#issue_custom_field_values_${actualStartDateCfId}`)
+            : null,
+          actualEndDateElem: actualEndDateCfId
+            ? $(`#issue_custom_field_values_${actualEndDateCfId}`)
+            : null,
+        };
       }
 
       #setupShowDescriptionEditFieldOpenByDefault() {
@@ -793,23 +1212,19 @@
         if (!this.isDescriptionEditFieldOpenByDefault) return;
 
         $("#issue_description_and_toolbar").show();
-        const descriptionDrawLink = $("label[for=issue_description]")
-          .parent()
-          .children("a")
-          .eq(0)
-          .hide();
+        $("#issue-form").addClass("description-edit-field-opened");
       }
 
       updateFormCore(data, updateHistory = true) {
         // Update csrf-token
         $("head meta[name='csrf-token']").attr(
           "content",
-          $("head meta[name='csrf-token']", data).attr("content")
+          $("head meta[name='csrf-token']", data).attr("content"),
         );
 
         // Update issue lock version
         $("#issue-form>input#issue_lock_version").val(
-          $("#issue-form>input#issue_lock_version", data).val()
+          $("#issue-form>input#issue_lock_version", data).val(),
         );
 
         // Update last journal ID
@@ -817,7 +1232,7 @@
 
         // Update issue edit form authenticity token
         $("#issue-form input[name=authenticity_token]").val(
-          $("#issue-form input[name=authenticity_token]", data).val()
+          $("#issue-form input[name=authenticity_token]", data).val(),
         );
 
         // Update content history tab
@@ -923,7 +1338,7 @@
           const $sideBySideSwitchBox = $("#content>#side-by-side-switch-box");
 
           // Support for Theme Bleuclair
-          const $sidebarSwitchPanel = $("#sidebar-switch-panel");
+          const $sidebarSwitchPanel = $("#content>#sidebar-switch-panel");
 
           $contentHeader
             .insertAfter($issueTopMenu)
@@ -935,12 +1350,15 @@
 
           // Add line break after issue title
           $headerTitle[0].insertAdjacentText("afterend", "\n");
+
+          // Add class for #main
+          $("#main").addClass("fixed-issue-subject-enabled");
         }
 
         function calcBaseTop() {
           baseTop =
             ($("#header").outerHeight() ?? 0) +
-            (isMobile() ? 0 : $("#top-menu").outerHeight() ?? 0);
+            (isMobile() ? 0 : ($("#top-menu").outerHeight() ?? 0));
         }
 
         function updateMarginTop() {
@@ -951,10 +1369,11 @@
 
         function handleScroll() {
           const scrollTop = $(window).scrollTop();
-          // 20px tolerance prevents fixed/unfixed state flickering
-          // caused by #content-header height change
-          // (padding: 10px adds ~20px when fixed)
-          const tolerance = 20;
+          // Add px tolerance to prevent flickering between fixed/unfixed states
+          // due to changes in body scrollHeight
+          // (Note: 10px padding increases #content-header height by ~20px when
+          //        fixed)
+          const tolerance = $("#content-header").height() + 20;
 
           if (scrollTop > baseTop) {
             if ($contentHeader.hasClass("fixed")) return;
@@ -1040,22 +1459,70 @@
         $(".subject-clone").remove();
 
         const $headerTitle = $("#content>h2:first, #content-header>h2:first");
-        const $subject = $("div.issue.details>.subject h3:last");
+        const $subject = $("div.issue.details .subject:first h3:last");
         const $subjectClone = $("<span>")
           .addClass("subject-clone")
           .text(": " + $subject.text().trim());
         $headerTitle.append($subjectClone).attr({ title: $headerTitle.text() });
+      }
+
+      #setupAttributeSeparatorColor() {
+        function appendStyleToHead(targetSelector, color) {
+          $("<style>")
+            .prop("type", "text/css")
+            .html(`${targetSelector} {background-color: ${color};}`)
+            .appendTo("head");
+        }
+
+        // For issue show view and edit/new form view
+        if (this.attrSepColors.show) {
+          appendStyleToHead(".issue.details hr", this.attrSepColors.show);
+        }
+
+        // For edit form view
+        if (this.attrSepColors.edit && isEditable) {
+          appendStyleToHead("#all_attributes hr", this.attrSepColors.edit);
+        }
+
+        // For new form view
+        if (this.attrSepColors.new && isNewForm) {
+          appendStyleToHead("#all_attributes hr", this.attrSepColors.new);
+        }
       }
     }
 
     // Quick Notes 2
     class QuickNotes2 {
       #$elem = null;
-      constructor(enableInlineNotes) {
+      #settingsManager = null;
+      constructor(enableInlineNotes, settingsManager = null) {
         this.enableInlineNotes = enableInlineNotes;
+        this.#settingsManager = settingsManager;
         if ($("form.edit_issue").length > 0) {
-          this.position =
-            detectHistoryDirection() === "desc" ? "top" : "bottom";
+          const positionSetting = settingsManager
+            ? settingsManager.getSetting("quickNotesPosition")
+            : "auto";
+
+          // Determine initial position
+          if (positionSetting === "auto") {
+            if (detectHistoryDirection() === "desc") {
+              this.position = "top";
+            } else {
+              this.position = "bottom";
+            }
+          } else if (positionSetting === "top") {
+            this.position = "top";
+          } else if (positionSetting === "bottom") {
+            this.position = "bottom";
+          } else {
+            // Handle unexpected values by falling back to auto-detection
+            if (detectHistoryDirection() === "desc") {
+              this.position = "top";
+            } else {
+              this.position = "bottom";
+            }
+          }
+
           this.#init();
         }
       }
@@ -1075,6 +1542,11 @@
             alsoResize: "#quick_notes2 .wiki-preview",
           });
           this.position = "top";
+          // Save the user's manual selection to top
+          if (this.#settingsManager) {
+            this.#settingsManager.setSetting("quickNotesPosition", "top");
+            this.#settingsManager.saveSettings();
+          }
         } else {
           this.#$elem.insertAfter($history);
           this.#$elem.resizable({
@@ -1082,6 +1554,11 @@
             alsoResize: "#quick_notes2 .wiki-preview",
           });
           this.position = "bottom";
+          // Save the user's manual selection to bottom
+          if (this.#settingsManager) {
+            this.#settingsManager.setSetting("quickNotesPosition", "bottom");
+            this.#settingsManager.saveSettings();
+          }
         }
       }
       show() {
@@ -1209,13 +1686,13 @@
         this.$dialog.dialog(
           "option",
           "width",
-          Math.min(activeWidth, window.innerWidth)
+          Math.min(activeWidth, window.innerWidth),
         );
         const activeHeight = this.$dialog.dialog("option", "height");
         this.$dialog.dialog(
           "option",
           "height",
-          Math.min(activeHeight, window.innerHeight)
+          Math.min(activeHeight, window.innerHeight),
         );
       }
       open(title) {
@@ -1256,7 +1733,7 @@
         this.$dialog.dialog(
           "option",
           "buttons",
-          buttons.concat($dialogButtons)
+          buttons.concat($dialogButtons),
         );
       }
 
@@ -1292,7 +1769,7 @@
                 e.preventDefault();
                 const currentContent = this.$dialog.dialog(
                   "option",
-                  "appendTo"
+                  "appendTo",
                 );
                 const baseContent = "#content";
                 const contentPosition = {
@@ -1460,7 +1937,7 @@
         // Remove unnecessary elements to simplify the layout
         $contents
           .find(
-            "#wrapper>div.flyout-menu, #top-menu, #header, #footer, #sidebar"
+            "#wrapper>div.flyout-menu, #top-menu, #header, #footer, #sidebar",
           )
           .remove();
 
@@ -1591,7 +2068,9 @@
           $("#content .attachments>.contextual").after(
             $("#content .attachments>table", data)
               .css({ maxHeight: 100 })
-              .addClass(this.resizableAttachmentTableEnabled ? "resizable" : "")
+              .addClass(
+                this.resizableAttachmentTableEnabled ? "resizable" : "",
+              ),
           );
           issueLayoutManager?.resetHeightOfAttachmentTable();
         });
@@ -1646,13 +2125,13 @@
                   }
                 }
               }
-              `)
+              `),
         );
       }
 
       createSubmitButtons($contents) {
         const $attachmentsSubmitButton = $contents.find(
-          "form div.box.attachments+p input[type=submit]"
+          "form div.box.attachments+p input[type=submit]",
         );
         if ($attachmentsSubmitButton.length > 0) {
           this.appendButtons([
@@ -1739,7 +2218,7 @@
         const $cancelButton = $contents
           .find(
             "#content>form.new_time_entry>input[type=submit]+a, " +
-              "#content>form.edit_time_entry>input[type=submit]+a"
+              "#content>form.edit_time_entry>input[type=submit]+a",
           )
           .hide()
           .on("click", (e) => {
@@ -1753,7 +2232,7 @@
         const submitButtons = $contents
           .find(
             "#content>form.new_time_entry>input[type=submit], " +
-              "#content>form.edit_time_entry>input[type=submit]"
+              "#content>form.edit_time_entry>input[type=submit]",
           )
           .hide()
           .on("submit", (e) => {
@@ -1781,7 +2260,7 @@
       constructor(
         enableAddChildIssueDialog,
         enableEditAttachmentsDialog,
-        enableTimeEntryDialog
+        enableTimeEntryDialog,
       ) {
         this.addChildIssueDialog = null;
         this.editAttachmentsDialog = null;
@@ -1807,7 +2286,7 @@
           .off("click.addChildIssueDialog", "#issue_tree>.contextual>a")
           .on("click.addChildIssueDialog", "#issue_tree>.contextual>a", (e) => {
             e.preventDefault();
-            this.addChildIssueDialog.open($(e.target).attr("href"));
+            this.addChildIssueDialog.open($(e.currentTarget).attr("href"));
           })
           .addClass("prevent-popup-anywhere");
       }
@@ -1820,7 +2299,7 @@
         $("#content")
           .off(
             "click.editAttachmentsDialog",
-            '.attachments .contextual a[href$="edit"]'
+            '.attachments .contextual a[href$="edit"]',
           )
           .on(
             "click.editAttachmentsDialog",
@@ -1828,10 +2307,10 @@
             (e) => {
               e.preventDefault();
               this.editAttachmentsDialog.open(
-                $(e.target).attr("href"),
-                $(e.target).text()
+                $(e.currentTarget).attr("href"),
+                $(e.currentTarget).text(),
               );
-            }
+            },
           )
           .find('.attachments .contextual a[href$="edit"]')
           .addClass("prevent-popup-anywhere");
@@ -1847,8 +2326,8 @@
           .on("click.timeEntryDialog", (e) => {
             e.preventDefault();
             this.timeEntryDialog.open(
-              $(e.target).attr("href"),
-              $(e.target).text()
+              $(e.currentTarget).attr("href"),
+              $(e.currentTarget).text(),
             );
           })
           .addClass("prevent-popup-anywhere");
@@ -1859,8 +2338,8 @@
           .on("click.timeEntryDialog", '.contextual a[href$="/edit"]', (e) => {
             e.preventDefault();
             this.timeEntryDialog.open(
-              $(e.target).attr("href"),
-              $(e.target).text()
+              $(e.currentTarget).attr("href"),
+              $(e.currentTarget).text(),
             );
           });
       }
@@ -1901,7 +2380,7 @@
             if (this.quickNotes2) this.quickNotes2.resetHeight();
 
             const $dialogCloseButton = this.$dialogRoot.find(
-              ".ui-dialog-titlebar-close"
+              ".ui-dialog-titlebar-close",
             );
 
             // Open notes dialog
@@ -1922,7 +2401,7 @@
               this.$dialog.dialog(
                 "option",
                 "appendTo",
-                "#issue-form > .box.filedroplistner"
+                "#issue-form > .box.filedroplistner",
               );
               $("<div>")
                 .addClass("box")
@@ -1946,7 +2425,7 @@
             this.$dialog.dialog(
               "option",
               "position",
-              this.$dialog.dialog("option", "position")
+              this.$dialog.dialog("option", "position"),
             );
 
             issueLayoutManager?.updateSubmitButtonPosition();
@@ -2035,7 +2514,7 @@
                 if (!notesManager.dialogNotes.isOpen()) {
                   $("html, body").animate(
                     { scrollTop: $("#add_notes").offset().top },
-                    100
+                    100,
                   );
                 }
                 return;
@@ -2056,12 +2535,16 @@
 
     // Notes manager class
     class NotesManager {
-      constructor(enableDialogNotes, enableQuickNotes2) {
+      constructor(
+        enableDialogNotes,
+        enableQuickNotes2,
+        settingsManager = null,
+      ) {
         if (!isEditable) return;
         this.quickNotes2 = enableQuickNotes2
           ? new QuickNotes2(() => {
               this.enableInlineNotes();
-            })
+            }, settingsManager)
           : null;
         this.dialogNotes = enableDialogNotes
           ? new NotesDialog(
@@ -2071,7 +2554,7 @@
                 enableInlineNotes: () => {
                   this.enableInlineNotes();
                 },
-              }
+              },
             )
           : null;
 
@@ -2114,13 +2597,17 @@
         if (!this.quickNotes2 || !this.quickNotes2.initialized()) return;
 
         // Replace edit-notes link in history
-        $("#history").on("click", ".journal-actions>a.icon-comment", () => {
-          if (!$("#update").is(":visible")) {
-            if (!$("#notes-dialog-content").dialog("isOpen")) {
-              this.enableInlineNotes();
+        $("#history").on(
+          "click",
+          ".journal-actions>a.icon-comment" + ", .journal-actions>a.icon-quote",
+          () => {
+            if (!$("#update").is(":visible")) {
+              if (!$("#notes-dialog-content").dialog("isOpen")) {
+                this.enableInlineNotes();
+              }
             }
-          }
-        });
+          },
+        );
 
         // Replace quoted link
         $("#issue-container").on(
@@ -2133,7 +2620,7 @@
             ) {
               this.enableInlineNotes();
             }
-          }
+          },
         );
       }
 
@@ -2152,11 +2639,11 @@
           .on("click", (e) => {
             e.preventDefault();
             const isOpenedFromInlineNotes =
-              $(e.target).closest("#quick_notes2").length > 0;
+              $(e.currentTarget).closest("#quick_notes2").length > 0;
             issueLayoutManager.resetForm();
             this.enableDialogNotes(true, isOpenedFromInlineNotes);
           })
-          .prependTo($("#add_notes>legend"));
+          .appendTo($("#add_notes>legend"));
       }
     }
 
@@ -2170,7 +2657,9 @@
       loadSettings() {
         // Load settings from localStorage or use default values
         const storedSettings = JSON.parse(
-          localStorage.getItem("custom_issue_view_settings") ?? "{}"
+          localStorage.getItem(
+            localStorageKeyPrefix + "custom_issue_view_settings",
+          ) ?? "{}",
         );
 
         Object.keys(this.#settings).forEach((key) => {
@@ -2179,13 +2668,21 @@
               ? storedSettings[key]
               : this.#settings[key];
         });
+
+        // Migrate old settings if necessary
+        if (
+          storedSettings.enableCorrectAttributesPositionInEditView !== undefined
+        ) {
+          this.#settings.attributeLayoutTypeInEditView =
+            storedSettings.enableCorrectAttributesPositionInEditView ? 1 : 0;
+        }
       }
 
       saveSettings() {
         // Save settings to localStorage
         localStorage.setItem(
-          "custom_issue_view_settings",
-          JSON.stringify(this.#settings)
+          localStorageKeyPrefix + "custom_issue_view_settings",
+          JSON.stringify(this.#settings),
         );
       }
 
@@ -2206,8 +2703,8 @@
       constructor(settingsManager, config = {}) {
         super({
           title: resources.labelCustomIssueViewSettings,
-          width: 400,
-          height: 520,
+          width: 480,
+          height: 600,
           modal: true,
           autoOpen: false,
           ...config,
@@ -2221,7 +2718,6 @@
       setupSettingsMenu() {
         const $settingsMenuItem = $("<a>")
           .addClass("custom-issue-view-settings-menu-item icon icon-settings")
-          .text(resources.labelIssueViewSettings)
           .on("click", (e) => {
             e.preventDefault();
             this.open();
@@ -2230,6 +2726,18 @@
             cursor: "pointer",
           })
           .appendTo("#content>.contextual .drdn-items");
+
+        if (svgIcons.settings) {
+          $settingsMenuItem
+            .append(svgIcons.settings)
+            .append(
+              $("<span>")
+                .addClass("icon-label")
+                .text(resources.labelIssueViewSettings),
+            );
+        } else {
+          $settingsMenuItem.text(resources.labelIssueViewSettings);
+        }
       }
 
       setupDialog() {
@@ -2237,12 +2745,18 @@
 
         this.$settingsPanel = $("<div>").attr(
           "id",
-          "custom-issue-view-settings-panel-content"
+          "custom-issue-view-settings-panel-content",
         );
         this.$dialog = this.$settingsPanel.dialog(this.config);
         this.$dialogRoot = this.$dialog.parent();
 
         this.appendButtons([
+          {
+            text: resources.labelResetAndReload,
+            click: () => {
+              this.restoreDefaults();
+            },
+          },
           {
             text: resources.labelSaveAndReload,
             click: () => {
@@ -2263,45 +2777,132 @@
         this.loadSettingsToPanel(this.settingsManager.settings);
       }
 
-      loadSettingsToPanel(settings) {
-        this.$settingsPanel.empty();
+      loadSettingsToPanel(settings, $target = null, parentKeys = []) {
+        if ($target === null) {
+          $target = this.$settingsPanel;
+          $target.empty();
+        }
+
+        function getDefaultValue(key) {
+          let def = defaultSettings;
+          parentKeys.forEach((parentKey) => {
+            def = def[parentKey];
+          });
+          return def[key];
+        }
 
         Object.keys(settings).forEach((key) => {
           const value = settings[key];
-          const defaultValue = defaultSettings[key];
-          const $input = $("<input>").attr("id", `setting-${key}`);
+          const defaultValue = getDefaultValue(key);
+          const keyLabel =
+            parentKeys.map((k) => capitalizeFirstChar(k)).join("") +
+            capitalizeFirstChar(key);
 
-          if (typeof defaultValue === "boolean") {
-            $input.attr("type", "checkbox").prop("checked", value);
-          } else if (key === "sideBySideModeBreakpointWidth") {
-            $input.attr({ type: "number", min: 0, step: 1 }).val(value);
-          } else if (typeof defaultValue === "number") {
-            $input.attr("type", "number").val(value);
+          if (typeof defaultValue === "object") {
+            const $fieldset = $("<fieldset>").addClass("setting-fieldset");
+            const resourceFieldsetLegendKey = `legendSetting${keyLabel}`;
+            const $legend = $("<legend>")
+              .text(
+                resources[resourceFieldsetLegendKey] ??
+                  key.replace(/([A-Z])/g, " $1").trimStart(),
+              )
+              .appendTo($fieldset);
+            this.loadSettingsToPanel({ ...defaultValue, ...value }, $fieldset, [
+              ...parentKeys,
+              key,
+            ]);
+            $target.append($fieldset);
           } else {
-            $input.attr("type", "text").val(value);
-          }
+            let $input = null;
+            if (key === "attributeLayoutTypeInEditView") {
+              // Special handling for attributeLayoutTypeInEditView
+              const $select = $("<select>").attr(
+                "id",
+                `setting-${[...parentKeys, key].join("-")}`,
+              );
+              [0, 1, 2].forEach((option) => {
+                const $option = $("<option>")
+                  .attr("value", option)
+                  .text(option === 0 ? "Default" : option);
+                if (value === option) {
+                  $option.prop("selected", true);
+                }
+                $select.append($option);
+              });
+              $input = $select;
+            } else if (key === "quickNotesPosition") {
+              // Special handling for quickNotesPosition
+              const $select = $("<select>").attr(
+                "id",
+                `setting-${[...parentKeys, key].join("-")}`,
+              );
+              [
+                {
+                  value: "auto",
+                  label: resources.labelSettingQuickNotesPositionAuto,
+                },
+                {
+                  value: "top",
+                  label: resources.labelSettingQuickNotesPositionTop,
+                },
+                {
+                  value: "bottom",
+                  label: resources.labelSettingQuickNotesPositionBottom,
+                },
+              ].forEach((option) => {
+                const $option = $("<option>")
+                  .attr("value", option.value)
+                  .text(option.label);
+                if (value === option.value) {
+                  $option.prop("selected", true);
+                }
+                $select.append($option);
+              });
+              $input = $select;
+            } else {
+              $input = $("<input>").attr(
+                "id",
+                `setting-${[...parentKeys, key].join("-")}`,
+              );
 
-          const resourceLabelKey = `labelSetting${key
-            .charAt(0)
-            .toUpperCase()}${key.slice(1)}`;
-          const resourceMessageKey = `messageSetting${key
-            .charAt(0)
-            .toUpperCase()}${key.slice(1)}`;
-          const $label = $("<label>")
-            .attr("for", `setting-${key}`)
-            .attr("title", resources[resourceMessageKey] ?? "")
-            .text(
-              resources[resourceLabelKey] ??
-                key.replace(/([A-Z])/g, " $1").trimStart()
-            );
-          const $settingItem = $("<div>").addClass("setting-item");
+              if (typeof defaultValue === "boolean") {
+                $input.attr("type", "checkbox").prop("checked", value);
+              } else if (key === "sideBySideModeBreakpointWidth") {
+                $input
+                  .attr({
+                    type: "number",
+                    min: 0,
+                    step: 1,
+                    placeholder: defaultValue,
+                  })
+                  .val(value);
+              } else if (typeof defaultValue === "number") {
+                $input
+                  .attr({ type: "number", placeholder: defaultValue })
+                  .val(value);
+              } else {
+                $input
+                  .attr({ type: "text", placeholder: defaultValue })
+                  .val(value);
+              }
+            }
 
-          if (typeof defaultValue === "boolean") {
-            $settingItem.append($input).append($label);
-          } else {
-            $settingItem.append($label).append($input);
+            const resourceLabelKey = `labelSetting${keyLabel}`;
+            const resourceMessageKey = `messageSetting${keyLabel}`;
+            const $label = $("<label>")
+              .attr("for", `setting-${[...parentKeys, key].join("-")}`)
+              .attr("title", resources[resourceMessageKey] ?? "")
+              .text(
+                resources[resourceLabelKey] ??
+                  key.replace(/([A-Z])/g, " $1").trimStart(),
+              );
+            const $settingItem = $("<div>")
+              .addClass("setting-item")
+              .append($label)
+              .append($input);
+
+            $target.append($settingItem);
           }
-          this.$settingsPanel.append($settingItem);
         });
       }
 
@@ -2310,25 +2911,47 @@
         Object.keys(this.settingsManager.settings).forEach((key) => {
           const defaultValue = defaultSettings[key];
 
-          const $input = $(`#setting-${key}`);
-          if (typeof defaultValue === "boolean") {
-            const isChecked = $input.is(":checked");
-            this.settingsManager.setSetting(key, isChecked);
-          } else if (typeof defaultValue === "number") {
-            const inputValue = $input.val();
-            const numberValue = Number(inputValue);
-            this.settingsManager.setSetting(
-              key,
-              isNaN(numberValue) ? 0 : numberValue
-            );
+          if (typeof defaultValue === "object") {
+            // Note: Only one level of sub-settings is supported
+            const subSettings = {};
+            Object.keys(defaultValue).forEach((subKey) => {
+              const $subInput = $(`#setting-${key}-${subKey}`);
+              const subDefaultValue = defaultValue[subKey];
+              subSettings[subKey] =
+                typeof subDefaultValue === "boolean"
+                  ? $subInput.is(":checked")
+                  : typeof subDefaultValue === "number"
+                    ? Number($subInput.val()) || 0
+                    : $subInput.val();
+            });
+            this.settingsManager.setSetting(key, subSettings);
           } else {
-            this.settingsManager.setSetting(key, $input.val());
+            const $input = $(`#setting-${key}`);
+            const value =
+              typeof defaultValue === "boolean"
+                ? $input.is(":checked")
+                : typeof defaultValue === "number"
+                  ? Number($input.val()) || 0
+                  : $input.val();
+            this.settingsManager.setSetting(key, value);
           }
         });
         this.settingsManager.saveSettings();
 
         // Reload page to apply settings
         location.reload();
+      }
+
+      restoreDefaults() {
+        if (confirm(resources.messageConfirmRestoreDefaults)) {
+          // Clear settings from localStorage
+          localStorage.removeItem(
+            localStorageKeyPrefix + "custom_issue_view_settings",
+          );
+
+          // Reload page to apply default settings
+          location.reload();
+        }
       }
 
       closeEvent() {}
@@ -2343,8 +2966,8 @@
           .find("input, textarea")
           .filter((_, e) =>
             ["utf8", "_method", "authenticity_token"].includes(
-              $(e).attr("name")
-            )
+              $(e).attr("name"),
+            ),
           )
           .serialize() +
         "&" +
@@ -2393,11 +3016,11 @@
       settings.search = settings.noSearch
         ? ""
         : settings.search[0] === "?"
-        ? settings.search
-        : "?" +
-          (settings.search[0] === "&"
-            ? settings.search.slice(1)
-            : settings.search);
+          ? settings.search
+          : "?" +
+            (settings.search[0] === "&"
+              ? settings.search.slice(1)
+              : settings.search);
 
       const url = location.origin + location.pathname + settings.search;
 
@@ -2418,23 +3041,25 @@
         settingsManager.settings.enableFloatingSubmitButtonInEditForm,
         settingsManager.settings.enableFloatingSubmitButtonInNewForm,
         settingsManager.settings.enableResizableAttachmentTable,
-        settingsManager.settings.enableCorrectAttributesPositionInEditView,
+        settingsManager.settings.attributeLayoutTypeInEditView,
         settingsManager.settings.isDescriptionEditFieldOpenByDefault,
         settingsManager.settings.enableFixedIssueSubject,
         settingsManager.settings.enableFixedIssueSubjectInIframe,
-        settingsManager.settings.sideBySideModeBreakpointWidth
+        settingsManager.settings.sideBySideModeBreakpointWidth,
+        settingsManager.settings.attributeSeparatorColors,
       );
 
       if (isEditable) {
         notesManager = new NotesManager(
           settingsManager.settings.enablePopupNotes,
-          settingsManager.settings.enableInlineNotes
+          settingsManager.settings.enableInlineNotes,
+          settingsManager,
         );
 
         const dialogManager = new DialogManager(
           settingsManager.settings.enableAddChildIssueDialog,
           settingsManager.settings.enableEditAttachmentsDialog,
-          settingsManager.settings.enableTimeEntryDialog
+          settingsManager.settings.enableTimeEntryDialog,
         );
 
         // Fix height of wiki-preview with scrollbar
@@ -2515,16 +3140,27 @@
       }
     }
   }
-  #wrapper.side-by-side-mode-enabled.side-by-side
+  #wrapper.side-by-side-mode-enabled.side-by-side {
     #container
-    #update
-    #issue-form.edit_issue:not(.floating-submit-button-enabled)
-    > div.box {
-    margin-bottom: 10px;
-    height: calc(100% - 50px);
+      #update
+      #issue-form.edit_issue:not(.floating-submit-button-enabled)
+      > div.box {
+      margin-bottom: 10px;
+      height: calc(100% - 50px);
+    }
+    #content:has(#content-header) {
+      display: flex;
+      flex-direction: column;
+      #container {
+        height: 100%;
+      }
+    }
   }
 
-  #notes-dialog-content #update div.box fieldset.tabular {
+  #notes-dialog-content
+    #update
+    div.box
+    fieldset:not(:is(#add_notes, #add_attachments)) {
     display: none;
   }
 
@@ -2542,44 +3178,130 @@
     display: none;
   }
 
-  #parent_issue {
-    clear: none;
-    margin-bottom: 6px;
+  /* Arrange attributes position */
+  #all_attributes.attribute_layout_type-1 {
+    #parent_issue {
+      clear: none;
+      margin-bottom: 6px;
+    }
+
+    #issue_subject {
+      font-size: 1.2em;
+    }
+
+    @media screen and (max-width: 899px) {
+      #issue_is_private_wrap {
+        margin-left: auto;
+        margin-right: 0;
+        width: max-content;
+      }
+
+      #parent_issue {
+        float: left;
+      }
+
+      #content > .contextual > a.icon-comment,
+      #notes-dialog-pop-out-button {
+        display: none;
+      }
+    }
+
+    @media screen and (min-width: 900px) {
+      .header_attribute :where(select, input) {
+        max-width: 100%;
+      }
+
+      .header_attribute_float-inline-start {
+        float: inline-start;
+      }
+
+      .header_attribute_float-inline-end {
+        float: inline-end;
+      }
+
+      #issue_is_private_wrap {
+        margin-left: 1em;
+      }
+
+      p:has(#issue_subject) {
+        box-sizing: border-box;
+        width: 95%;
+        padding-top: 1em;
+        padding-bottom: 1em;
+        #issue_subject {
+          max-width: 100%;
+          width: 100%;
+        }
+      }
+
+      #parent_issue {
+        margin-right: 5%;
+      }
+    }
   }
 
-  @media screen and (max-width: 899px) {
-    .header_attribute
-      :where(select, input, input#issue_subject, input#document_title),
-    #all_attributes .header_attribute select#issue_tracker_id {
-      width: 100%;
+  #issue-form.attribute_layout_type-2 {
+    #issue_subject {
+      font-size: 1.2em;
     }
 
-    #parent_issue {
-      float: left;
+    fieldset.collapsed > *:not(legend) {
+      display: none !important;
     }
 
-    #content > .contextual > a.icon-comment,
-    #notes-dialog-pop-out-button {
+    #notes-dialog-content fieldset.collapsed#add_notes > *:not(legend) {
+      display: revert !important;
+
+      /* Support for Redmine silencer plugin */
+      &.plugin_redmine_silencer {
+        display: inline-block !important;
+      }
+    }
+
+    fieldset {
+      margin-bottom: 5px;
+      & > legend,
+      & > legend label {
+        cursor: pointer;
+        width: auto;
+      }
+      & > legend {
+        user-select: none;
+        padding-right: 5px;
+        border-radius: 5px;
+        &:hover {
+          background-color: rgba(0, 0, 0, 0.1);
+        }
+        &.icon:not(:has(svg)) {
+          background-position-x: 3px;
+        }
+      }
+    }
+
+    #description_fieldset > p {
+      margin: 0;
+    }
+
+    label[for="issue_subject"] {
+      float: none;
+      margin: auto;
+      font-weight: normal;
+    }
+
+    #issue_is_private_wrap {
+      padding-left: 10px;
+    }
+
+    fieldset:has(#all_attributes):not(
+        :has(:is(input:not([type="hidden"]), textarea, select))
+      ) {
       display: none;
     }
   }
 
-  @media screen and (min-width: 900px) {
-    .header_attribute :where(select, input) {
-      max-width: 100%;
-    }
-
-    .header_attribute_float-left {
-      float: left;
-    }
-
-    .header_attribute_float-right {
-      float: right;
-    }
-
-    #parent_issue {
-      clear: right;
-      float: right;
+  #issue-form.description-edit-field-opened {
+    #issue_description_and_toolbar + a {
+      display: none;
     }
   }
 
@@ -2602,6 +3324,10 @@
   #wrapper.side-by-side-mode-enabled {
     #side-by-side-switch-box {
       display: inline;
+      /* Adjust to badge position */
+      vertical-align: middle;
+      position: relative;
+      bottom: 6px;
       & > * {
         cursor: pointer;
       }
@@ -2686,6 +3412,9 @@
             overflow: auto;
             margin: 0;
             padding: 10px;
+            border-width: 0 1px 1px;
+            border-color: #ddd;
+            border-style: solid;
           }
         }
 
@@ -2736,6 +3465,16 @@
     }
   }
 
+  /* Fix tab style in Redmine 5 */
+  #history:not(.journals) {
+    & > .tabs {
+      margin-bottom: 0;
+    }
+    & > .tab-content {
+      padding-top: 10px;
+    }
+  }
+
   #quick_notes2 {
     background-color: #f4f7f9;
     display: flex;
@@ -2779,6 +3518,18 @@
           .wiki-preview {
             box-sizing: border-box;
           }
+        }
+      }
+    }
+
+    #add_notes,
+    #add_attachments {
+      legend {
+        background-image: none;
+        padding-left: revert;
+
+        svg {
+          display: none;
         }
       }
     }
@@ -2890,7 +3641,11 @@
     &:not(.ui-dialog-resizing):not(.ui-dialog-dragging):not(
         .ui-dialog-position-changing
       ) {
-      transition: width 0.5s, height 0.5s, top 0.5s, left 0.5s;
+      transition:
+        width 0.5s,
+        height 0.5s,
+        top 0.5s,
+        left 0.5s;
     }
 
     & > .ui-dialog-titlebar {
@@ -2986,7 +3741,7 @@
       }
     }
 
-    #issue-form input[type="submit"] {
+    #issue-form > input[type="submit"] {
       display: none;
 
       /* Always hide the cancel button */
@@ -3052,7 +3807,6 @@
   #notes-dialog-pop-out-button {
     cursor: pointer;
     opacity: 0.3;
-    float: right;
     margin: auto;
 
     &:hover {
@@ -3104,7 +3858,9 @@
       padding-bottom: var(--floating-button-area-height);
     }
 
-    input[type="submit"],
+    /* Note: Use child combinator for submit button to avoid conflicting styles
+       on the issue conflict page */
+    & > input[type="submit"],
     .save-draft-button {
       position: absolute;
       border-radius: 50%;
@@ -3263,22 +4019,33 @@
 
   /* Support Redmine theme Bleuclair */
   body.theme-Bleuclair {
+    #main:is(.collapsiblesidebar, .nosidebar) {
+      /* Support for Redmine 6+ */
+      .fixed-position:is(body.action-show #issue-form > input[type="submit"]) {
+        --floating-button-offset: 26px;
+      }
+      --floating-button-offset-with-draft-fixed: 106px;
+    }
+
     #update #issue-form.floating-submit-button-enabled > div.box {
       padding-bottom: 90px;
     }
     #issue-form.floating-submit-button-enabled
-      :where(input[type="submit"], .save-draft-button):not(.fixed-position) {
+      :where(& > input[type="submit"], .save-draft-button):not(
+        .fixed-position
+      ) {
       margin-top: -110px;
     }
 
     #wrapper.side-by-side-mode-enabled.side-by-side
       #issue-form.floating-submit-button-enabled
-      :where(input[type="submit"], .save-draft-button):not(.fixed-position) {
+      :where(& > input[type="submit"], .save-draft-button):not(
+        .fixed-position
+      ) {
       margin-top: -80px;
     }
 
-    :is(&.action-new, &.action-create)
-      #all_attributes.corrected_attributes_position {
+    :is(&.action-new, &.action-create) #all_attributes.attribute_layout_type-1 {
       & > hr,
       & > div > hr {
         background-color: #eee;
@@ -3330,12 +4097,33 @@
     }
   }
 
+  .custom-issue-view-settings-menu-item {
+    svg {
+      stroke: currentColor;
+    }
+  }
+
   #custom-issue-view-settings-panel-content {
+    box-sizing: border-box;
     label {
       margin-right: 0.5em;
     }
     #setting-sideBySideModeBreakpointWidth {
       width: 6em;
+    }
+    #setting-attributeLayoutTypeInEditView {
+      min-width: 6em;
+    }
+    .setting-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      & + .setting-item {
+        border-top: 1px solid #ddd;
+      }
+      &:hover {
+        background-color: #f9f9f9;
+      }
     }
   }
 
@@ -3378,6 +4166,16 @@
     &:not(.fixed) {
       margin-top: 0 !important;
     }
+
+    & > h2 {
+      max-width: 100%;
+      text-overflow: ellipsis;
+      overflow: hidden;
+      box-sizing: border-box;
+      white-space: nowrap;
+      vertical-align: middle;
+    }
+
     &.fixed {
       position: fixed;
       top: 0;
@@ -3386,6 +4184,14 @@
       box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
       padding: 10px;
       z-index: 10;
+
+      & > h2 {
+        margin-bottom: 0;
+      }
+
+      & > .badge {
+        bottom: 0;
+      }
     }
 
     @media screen and (max-width: 899px) {
@@ -3418,5 +4224,10 @@
   #add_notes .plugin_redmine_silencer {
     display: inline-block;
     margin: 0 1em;
+  }
+
+  /* Hide original sticky issue header */
+  #main.fixed-issue-subject-enabled #sticky-issue-header {
+    display: none;
   }
 </style>

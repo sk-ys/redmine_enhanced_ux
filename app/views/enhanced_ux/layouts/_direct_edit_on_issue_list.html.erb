@@ -25,9 +25,15 @@
       ...(resourcesAll[document.documentElement.lang] || {}),
     };
 
-    const homeUrl = $("link[href*='favicon.ico']")
-      .attr("href")
-      .split("favicon.ico")[0];
+    const homeUrl =
+      ["login", "logout"]
+        .map(
+          (key) =>
+            $("." + key)
+              .attr("href")
+              ?.split(key)[0]
+        )
+        .filter((i) => i)[0] || "/";
 
     const supportedFields = [
       "status",
@@ -175,7 +181,7 @@
 
         const $container = $("<div>")
           .attr("id", "context-input-form")
-          .css({ position: "fixed" })
+          .css({ position: "absolute" })
           .append(this.$input)
           .append(this.$applyButton)
           .append(this.$cancelButton)
@@ -188,7 +194,8 @@
 
       #generateUrl(form, key, value) {
         const $form = $(form);
-        const backUrl = $form.find("input[name=back_url]").val();
+        const backUrl =
+          $form.find("input[name=back_url]").val() || location.href;
         const $selectedIssueIds = $form.find('input[name="ids[]"]:checked');
         const issueIdsParams = $selectedIssueIds.serialize();
 
@@ -469,12 +476,7 @@
   });
 </script>
 <style>
-  div#context-menu {
-    position: fixed;
-  }
-
   #context-input-form {
-    /* position: fixed; */
     display: flex;
     flex-direction: row;
     background-color: #ddd;
@@ -497,6 +499,10 @@
       &.cancel {
         margin-left: 0;
       }
+    }
+
+    &:where(#content:has(table.list.issues.eux-custom-issue-list) *) {
+      position: fixed !important;
     }
   }
 </style>

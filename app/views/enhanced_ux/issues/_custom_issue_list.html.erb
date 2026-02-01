@@ -39,9 +39,44 @@
       ...(resourcesAll[document.documentElement.lang] || {}),
     };
 
-    const homeUrl = $("link[href*='favicon.ico']")
-      .attr("href")
-      .split("favicon.ico")[0];
+    const homeUrl =
+      ["login", "logout"]
+        .map(
+          (key) =>
+            $("." + key)
+              .attr("href")
+              ?.split(key)[0],
+        )
+        .filter((i) => i)[0] || "/";
+    const localStorageKeyPrefix = homeUrl.slice(1).replaceAll("/", ".");
+
+    const svgIcons = new (class SVGIcons {
+      constructor() {
+        const extractedPath = this.#extractIconPath();
+        this.basePath = extractedPath ? homeUrl + extractedPath : null;
+      }
+      #extractIconPath() {
+        const $elem = $("use[href*='/assets/icons-'][href*='.svg#']").first();
+        const match = $elem
+          .attr("href")
+          ?.match(/\/(assets\/icons-[a-f0-9]+\.svg)#/);
+        return match ? match[1] : null;
+      }
+      generateSvgIconTag(key) {
+        if (!this.basePath) return null;
+        return $(
+          `<svg class="s18 icon-svg" aria-hidden="true">` +
+            `<use href="${this.basePath}#${key}"></use>` +
+            `</svg>`,
+        );
+      }
+      get magnifier() {
+        return this.generateSvgIconTag("icon--search");
+      }
+      get close() {
+        return this.generateSvgIconTag("icon--close");
+      }
+    })();
 
     let collapsedGroups = new Set();
 
@@ -57,7 +92,7 @@
     }
 
     const columnWidth = {
-      key: "issue-list-column-width",
+      key: localStorageKeyPrefix + "issue-list-column-width",
       getElemName: (elem) => {
         return $(elem).attr("class").split(" ")[0];
       },
@@ -136,7 +171,7 @@
 
       // Replace anchor tag action
       $("table.list.issues>thead>tr>th>a").on("click", (e) =>
-        replaceAnchorTagAction(e)
+        replaceAnchorTagAction(e),
       );
     }
 
@@ -147,11 +182,11 @@
       settings.search = settings.noSearch
         ? ""
         : settings.search[0] === "?"
-        ? settings.search
-        : "?" +
-          (settings.search[0] === "&"
-            ? settings.search.slice(1)
-            : settings.search);
+          ? settings.search
+          : "?" +
+            (settings.search[0] === "&"
+              ? settings.search.slice(1)
+              : settings.search);
 
       const url = location.origin + location.pathname + settings.search;
 
@@ -213,7 +248,15 @@
         $("head>title").text($("head>title", data).text());
 
         // Update sidebar
-        $("#sidebar").empty().append($("#sidebar", htmlString).children());
+        if ($("#sidebar-wrapper").length === 0) {
+          // Support for Redmine earlier than 5
+          $("#sidebar").empty().append($("#sidebar", htmlString).children());
+        } else {
+          // Support for Redmine 6 and later
+          $("#sidebar-wrapper")
+            .empty()
+            .append($("#sidebar-wrapper", htmlString).children());
+        }
 
         // Support for RedmineUp issue_tags plugin
         if (typeof setSelect2Filter) {
@@ -265,7 +308,7 @@
         // Update CSV export form
         $("#csv-export-form > input").remove();
         $("#csv-export-form").prepend(
-          $("#csv-export-form > input", htmlString)
+          $("#csv-export-form > input", htmlString),
         );
 
         setUpIssueListHeader();
@@ -274,7 +317,7 @@
         // Restore original toggleIssuesSelection change event.
         $("input[type=checkbox].toggle-selection").on(
           "change",
-          toggleIssuesSelection
+          toggleIssuesSelection,
         );
       } catch (error) {
         console.error("Fetch error:", error);
@@ -307,7 +350,6 @@
         .attr("id", "query_form_open_button")
         .addClass("icon")
         .text(resources.labelCriteria)
-        .css({ backgroundImage: `url(${homeUrl}images/magnifier.png)` })
         .on("click", (e) => {
           e.preventDefault();
           $("#query_form").show();
@@ -316,6 +358,12 @@
           $("#query_form").show();
         })
         .appendTo("#content>h2:first");
+
+      if (svgIcons.magnifier) {
+        $queryFormOpenButton.prepend(svgIcons.magnifier);
+      } else {
+        $queryFormOpenButton.addClass("icon-magnifier");
+      }
 
       // Close the query form when the outside of the form is clicked
       $(document).click((e) => {
@@ -338,15 +386,21 @@
 
     function setUpQueryFormButtons() {
       // Add cancel button to query form.
-      $("#query_form_with_buttons>.buttons").append(
-        $("<a>")
-          .text(resources.labelCancel)
-          .addClass("icon icon-close query_form_cancel")
-          .css("cursor", "pointer")
-          .on("click", () => {
-            $("#query_form").hide();
-          })
-      );
+      const $cancelButton = $("<a>")
+        .text(resources.labelCancel)
+        .addClass("icon query_form_cancel")
+        .css("cursor", "pointer")
+        .on("click", () => {
+          $("#query_form").hide();
+        });
+
+      if (svgIcons.close) {
+        $cancelButton.prepend(svgIcons.close);
+      } else {
+        $cancelButton.addClass("icon-close");
+      }
+
+      $("#query_form_with_buttons>.buttons").append($cancelButton);
 
       // Add label for display settings
       $("<label>")
@@ -378,14 +432,14 @@
           if (e.ctrlKey) return;
           e.preventDefault();
           ajaxUpdateIssueList({
-            search: extractSearch($(e.target).attr("href")),
+            search: extractSearch($(e.currentTarget).attr("href")),
           });
         });
 
       // Remove the ReplaceQueryFormSubmission function before the click event
       // in the capturing phase.
       $(
-        "#query_form_with_buttons p.buttons > a.icon.icon-save"
+        "#query_form_with_buttons p.buttons > a.icon.icon-save",
       )[0]?.addEventListener("click", removeReplaceQueryFormSubmission, {
         capture: true,
       });
@@ -403,12 +457,14 @@
       if (e.ctrlKey) return;
 
       e.preventDefault();
-      ajaxUpdateIssueList({ search: extractSearch($(e.target).attr("href")) });
+      ajaxUpdateIssueList({
+        search: extractSearch($(e.currentTarget).attr("href")),
+      });
     }
 
     function displayDoneRatioText() {
       const $doneRatioElements = $(
-        "table.list.issues > tbody > tr.issue > td.done_ratio"
+        "table.list.issues > tbody > tr.issue > td.done_ratio",
       );
       if ($doneRatioElements.length === 0) return;
 
@@ -457,9 +513,9 @@
         $("table.list.issues > tbody > tr.group:not(.open)")
           .map(
             (_, e) =>
-              $(e).find(".name a")?.attr("href") || $(e).find(".name").text()
+              $(e).find(".name a")?.attr("href") || $(e).find(".name").text(),
           )
-          .get()
+          .get(),
       );
     }
 
@@ -483,6 +539,9 @@
 
       // Replace pagination anchor tag action
       $("span.pagination").on("click", "a", (e) => replaceAnchorTagAction(e));
+
+      // Add class for enhanced UX issue list
+      $("table.list.issues").addClass("eux-custom-issue-list");
     }
 
     initialize();
@@ -490,7 +549,7 @@
 </script>
 <style>
   #context-menu {
-    position: fixed;
+    position: fixed !important;
   }
 
   #query_form_open_button {
@@ -606,7 +665,7 @@
       margin: 15px 0 0;
       display: flex;
       justify-content: flex-end;
-      align-items: baseline;
+      align-items: center;
     }
 
     #query_form_content fieldset {
@@ -721,24 +780,18 @@
 
   /* Display fixed width indicator */
   table.list tr:hover th[style*="width"]:not(.buttons)::after {
-    width: 16px;
-    height: 16px;
     display: block;
     position: absolute;
-    top: 0;
-    opacity: 30%;
-    left: 5px;
-    transform: rotate(90deg);
-    filter: hue-rotate(180deg);
-    filter: grayscale(1);
+    font-size: 12px;
+    top: -3px;
+    left: 8px;
+    content: "⬄";
+    opacity: 50%;
   }
-  body[class*="project-"] table.list tr:hover th::after {
-    background-image: url(../../images/reorder.png);
-    content: "";
-  }
-  body:not([class*="project-"]) table.list tr:hover th::after {
-    background-image: url(../images/reorder.png);
-    content: "";
+
+  /* Fix context menu position */
+  div#context-menu {
+    position: fixed;
   }
 
   /* Support for Redmine theme "farend bleuclair" */
@@ -750,14 +803,18 @@
         right: 45px;
       }
     }
-    @media screen and (min-height: 400px) {
-      #sidebar-switch-panel {
-        position: absolute;
-        top: 5px;
-        left: auto;
-        right: 4px;
+    #sidebar:not(:has(#sidebar-wrapper)) ~ #content {
+      /* Support for Redmine earlier than 5 */
+      @media screen and (min-height: 400px) {
+        #sidebar-switch-panel {
+          position: absolute;
+          top: 5px;
+          left: auto;
+          right: 4px;
+        }
       }
     }
+
     table.list.issues > tbody > tr.issue > td.done_ratio > p.percent {
       top: 2px;
       align-items: start;
