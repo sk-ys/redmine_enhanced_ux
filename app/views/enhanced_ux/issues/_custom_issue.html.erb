@@ -123,6 +123,9 @@
         labelSettingQuickNotesPosition: "Quick notes position",
         messageSettingQuickNotesPosition:
           "Select where to display quick notes: auto (based on history direction), top, or bottom",
+        labelSettingQuickNotesPositionAuto: "Auto",
+        labelSettingQuickNotesPositionTop: "Top",
+        labelSettingQuickNotesPositionBottom: "Bottom",
         messageSettingEnableSideBySideMode:
           "⚠️To enable side-by-side mode, issue tab view must be enabled",
         legendSettingAttributeSeparatorColors: "Attribute separator colors",
@@ -194,6 +197,9 @@
         labelSettingQuickNotesPosition: "クイックコメントの位置",
         messageSettingQuickNotesPosition:
           "クイックコメントを表示する位置を選択: auto (履歴の方向に基づく)、top、または bottom",
+        labelSettingQuickNotesPositionAuto: "自動",
+        labelSettingQuickNotesPositionTop: "上",
+        labelSettingQuickNotesPositionBottom: "下",
         messageSettingEnableSideBySideMode:
           "⚠️左右に並べて表示を有効にするにはチケットタブ表示を有効にする必要があります",
         legendSettingAttributeSeparatorColors: "項目区切り線の色設定",
@@ -2830,11 +2836,24 @@
                 "id",
                 `setting-${[...parentKeys, key].join("-")}`,
               );
-              ["auto", "top", "bottom"].forEach((option) => {
+              [
+                {
+                  value: "auto",
+                  label: resources.labelSettingQuickNotesPositionAuto,
+                },
+                {
+                  value: "top",
+                  label: resources.labelSettingQuickNotesPositionTop,
+                },
+                {
+                  value: "bottom",
+                  label: resources.labelSettingQuickNotesPositionBottom,
+                },
+              ].forEach((option) => {
                 const $option = $("<option>")
-                  .attr("value", option)
-                  .text(option.charAt(0).toUpperCase() + option.slice(1));
-                if (value === option) {
+                  .attr("value", option.value)
+                  .text(option.label);
+                if (value === option.value) {
                   $option.prop("selected", true);
                 }
                 $select.append($option);
