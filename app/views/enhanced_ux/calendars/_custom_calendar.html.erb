@@ -37,7 +37,7 @@
           (key) =>
             $("." + key)
               .attr("href")
-              ?.split(key)[0]
+              ?.split(key)[0],
         )
         .filter((i) => i)[0] || "/";
 
@@ -58,7 +58,7 @@
         return $(
           `<svg class="s18 icon-svg" aria-hidden="true">` +
             `<use href="${this.basePath}#${key}"></use>` +
-            `</svg>`
+            `</svg>`,
         );
       }
       get magnifier() {
@@ -211,7 +211,7 @@
       // Remove the ReplaceQueryFormSubmission function before the click event
       // in the capturing phase.
       $(
-        "#query_form_with_buttons p.buttons > a.icon.icon-save"
+        "#query_form_with_buttons p.buttons > a.icon.icon-save",
       )[0]?.addEventListener("click", removeReplaceQueryFormSubmission, {
         capture: true,
       });
@@ -254,7 +254,7 @@
           .remove()
           .end()
           .text()
-          .trim()
+          .trim(),
       );
 
       if ($calbody.hasClass("odd")) {
@@ -435,7 +435,7 @@
               ajaxUpdateIssueList({ search: extractSearch(this.startedAtUrl) });
             } else {
               $(
-                "#content ul.cal li.calbody :is(div.issue, span.icon-package)"
+                "#content ul.cal li.calbody :is(div.issue, span.icon-package)",
               ).show();
             }
           }
@@ -488,8 +488,8 @@
                 ? "⇦"
                 : "⇨"
               : direction === "next"
-              ? "⇨"
-              : "⇦"
+                ? "⇨"
+                : "⇦",
           );
           $("#countdown_timer").show();
           $(document).on("mousemove.countdown_timer", (e) => {
@@ -541,7 +541,7 @@
           if (!$dSwitchPrev.droppable("instance").isover) return;
           ajaxUpdateIssueList({
             search: extractSearch(
-              $(".contextual .pages .previous a").attr("href")
+              $(".contextual .pages .previous a").attr("href"),
             ),
           });
         } else if (direction === "next") {
@@ -568,7 +568,7 @@
       // Add adding new issue link
       if ($("#content > .contextual a.new-issue").length === 0) {
         const $newIssueLinkInMenu = $(
-          "#main-menu a[href$='/issues/new']:first"
+          "#main-menu a[href$='/issues/new']:first",
         );
 
         // Check access to the new issue page
@@ -584,7 +584,7 @@
               .append(
                 $("<span>")
                   .addClass("icon-label")
-                  .text($newIssueLinkInMenu.text())
+                  .text($newIssueLinkInMenu.text()),
               );
           } else {
             $newIssueLink.text($newIssueLinkInMenu.text());
@@ -607,11 +607,11 @@
       settings.search = settings.noSearch
         ? ""
         : settings.search[0] === "?"
-        ? settings.search
-        : "?" +
-          (settings.search[0] === "&"
-            ? settings.search.slice(1)
-            : settings.search);
+          ? settings.search
+          : "?" +
+            (settings.search[0] === "&"
+              ? settings.search.slice(1)
+              : settings.search);
 
       const url = location.origin + location.pathname + settings.search;
 
@@ -667,7 +667,15 @@
         $("head>title").text($("title", data).text());
 
         // Update sidebar
-        $("#sidebar").empty().append($("#sidebar", htmlString).children());
+        if ($("#sidebar-wrapper").length === 0) {
+          // Support for Redmine earlier than 5
+          $("#sidebar").empty().append($("#sidebar", htmlString).children());
+        } else {
+          // Support for Redmine 6 and later
+          $("#sidebar-wrapper")
+            .empty()
+            .append($("#sidebar-wrapper", htmlString).children());
+        }
 
         // Support for RedmineUp issue_tags plugin
         if (typeof setSelect2Filter) {
@@ -683,7 +691,7 @@
         console.debug("Start updating the calendar");
 
         const grabbedItem = $("#content ul.cal li.calbody").sortable(
-          "instance"
+          "instance",
         )?.grabbedItem;
 
         if (
@@ -737,7 +745,7 @@
 
         // Update calendar
         $(updatingTargetSelector).append(
-          $(updatingTargetSelector, data).children()
+          $(updatingTargetSelector, data).children(),
         );
 
         console.debug("Calendar update completed");
@@ -746,7 +754,7 @@
       } catch (error) {
         console.error(
           "There has been a problem with your fetch operation:",
-          error
+          error,
         );
         alert(error);
       } finally {

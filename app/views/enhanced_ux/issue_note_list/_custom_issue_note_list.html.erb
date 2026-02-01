@@ -35,7 +35,7 @@
           (key) =>
             $("." + key)
               .attr("href")
-              ?.split(key)[0]
+              ?.split(key)[0],
         )
         .filter((i) => i)[0] || "/";
 
@@ -56,7 +56,7 @@
         return $(
           `<svg class="s18 icon-svg" aria-hidden="true">` +
             `<use href="${this.basePath}#${key}"></use>` +
-            `</svg>`
+            `</svg>`,
         );
       }
       get magnifier() {
@@ -123,11 +123,11 @@
       settings.search = settings.noSearch
         ? ""
         : settings.search[0] === "?"
-        ? settings.search
-        : "?" +
-          (settings.search[0] === "&"
-            ? settings.search.slice(1)
-            : settings.search);
+          ? settings.search
+          : "?" +
+            (settings.search[0] === "&"
+              ? settings.search.slice(1)
+              : settings.search);
 
       const url = location.origin + location.pathname + settings.search;
 
@@ -175,7 +175,15 @@
         $("#query_form+p.query-totals", htmlString).insertAfter("#query_form");
 
         // Update sidebar
-        $("#sidebar").empty().append($("#sidebar", htmlString).children());
+        if ($("#sidebar-wrapper").length === 0) {
+          // Support for Redmine earlier than 5
+          $("#sidebar").empty().append($("#sidebar", htmlString).children());
+        } else {
+          // Support for Redmine 6 and later
+          $("#sidebar-wrapper")
+            .empty()
+            .append($("#sidebar-wrapper", htmlString).children());
+        }
 
         // Support for RedmineUp issue_tags plugin
         if (typeof setSelect2Filter) {
@@ -208,11 +216,11 @@
         // Set form state
         IssueNoteList.fn.collapseNoteRow(
           "all",
-          $("#enable_compact_mode").prop("checked")
+          $("#enable_compact_mode").prop("checked"),
         );
         IssueNoteList.fn.setNoteHeightVariable(
           "all",
-          $("#enable_variable_height").prop("checked")
+          $("#enable_variable_height").prop("checked"),
         );
 
         // Restore group collapse state
@@ -242,13 +250,13 @@
         // Update CSV export form
         $("#csv-export-form > input").remove();
         $("#csv-export-form").prepend(
-          $("#csv-export-form > input", htmlString)
+          $("#csv-export-form > input", htmlString),
         );
 
         // Restore original toggleIssuesSelection change event.
         $("input[type=checkbox].toggle-selection").on(
           "change",
-          toggleIssuesSelection
+          toggleIssuesSelection,
         );
 
         // Reload Lightbox plugin
@@ -378,7 +386,7 @@
       // Remove the ReplaceQueryFormSubmission function before the click event
       // in the capturing phase.
       $(
-        "#query_form_with_buttons p.buttons > a.icon.icon-save"
+        "#query_form_with_buttons p.buttons > a.icon.icon-save",
       )[0]?.addEventListener("click", removeReplaceQueryFormSubmission, {
         capture: true,
       });
@@ -436,9 +444,9 @@
         $("table.list.issues > tbody > tr.group:not(.open)")
           .map(
             (_, e) =>
-              $(e).find(".name a")?.attr("href") || $(e).find(".name").text()
+              $(e).find(".name a")?.attr("href") || $(e).find(".name").text(),
           )
-          .get()
+          .get(),
       );
     }
 
