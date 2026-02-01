@@ -36,9 +36,15 @@ window.addEventListener("DOMContentLoaded", () => {
       const text = textarea.value;
       
       const lineStart = text.lastIndexOf('\n', start - 1) + 1;
-      const lineEnd = text.indexOf('\n', end - 1);
-      const actualLineEnd = lineEnd === -1 ? text.length : text.indexOf('\n', end);
-      const finalLineEnd = actualLineEnd === -1 ? text.length : actualLineEnd;
+      let lineEnd = text.indexOf('\n', end - 1);
+      
+      // If no newline found before end, search from end position
+      if (lineEnd === -1 || lineEnd < end - 1) {
+        lineEnd = text.indexOf('\n', end);
+      }
+      
+      // If still no newline found, use end of text
+      const finalLineEnd = lineEnd === -1 ? text.length : lineEnd;
       
       return {
         lineStart,
