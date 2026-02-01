@@ -51,6 +51,7 @@
       enableFixedIssueSubject: true,
       enableFixedIssueSubjectInIframe: false,
       sideBySideModeBreakpointWidth: 1280,
+      quickNotesPosition: "auto",
       attributeSeparatorColors: {
         show: "rgba(0, 0, 0, 0.1)",
         edit: "rgba(0, 0, 0, 0.1)",
@@ -119,6 +120,9 @@
           "Enable fixed issue subject in iframe",
         labelSettingSideBySideModeBreakpointWidth:
           "Minimum screen width for side-by-side mode",
+        labelSettingQuickNotesPosition: "Quick notes position",
+        messageSettingQuickNotesPosition:
+          "Select where to display quick notes: auto (based on history direction), top, or bottom",
         messageSettingEnableSideBySideMode:
           "⚠️To enable side-by-side mode, issue tab view must be enabled",
         legendSettingAttributeSeparatorColors: "Attribute separator colors",
@@ -187,6 +191,9 @@
           "iframe内でチケットの件名を固定表示する",
         labelSettingSideBySideModeBreakpointWidth:
           "左右に並べて表示を有効にする最小の画面幅",
+        labelSettingQuickNotesPosition: "クイックコメントの位置",
+        messageSettingQuickNotesPosition:
+          "クイックコメントを表示する位置を選択: auto (履歴の方向に基づく)、top、または bottom",
         messageSettingEnableSideBySideMode:
           "⚠️左右に並べて表示を有効にするにはチケットタブ表示を有効にする必要があります",
         legendSettingAttributeSeparatorColors: "項目区切り線の色設定",
@@ -1481,11 +1488,22 @@
     // Quick Notes 2
     class QuickNotes2 {
       #$elem = null;
-      constructor(enableInlineNotes) {
+      #settingsManager = null;
+      constructor(enableInlineNotes, settingsManager = null) {
         this.enableInlineNotes = enableInlineNotes;
+        this.#settingsManager = settingsManager;
         if ($("form.edit_issue").length > 0) {
+          const positionSetting = settingsManager
+            ? settingsManager.getSetting("quickNotesPosition")
+            : "auto";
           this.position =
-            detectHistoryDirection() === "desc" ? "top" : "bottom";
+            positionSetting === "auto"
+              ? detectHistoryDirection() === "desc"
+                ? "top"
+                : "bottom"
+              : positionSetting === "top"
+                ? "top"
+                : "bottom";
           this.#init();
         }
       }
@@ -1512,6 +1530,11 @@
             alsoResize: "#quick_notes2 .wiki-preview",
           });
           this.position = "bottom";
+        }
+        // Save the user's manual selection
+        if (this.#settingsManager) {
+          this.#settingsManager.setSetting("quickNotesPosition", this.position);
+          this.#settingsManager.saveSettings();
         }
       }
       show() {
@@ -2488,12 +2511,12 @@
 
     // Notes manager class
     class NotesManager {
-      constructor(enableDialogNotes, enableQuickNotes2) {
+      constructor(enableDialogNotes, enableQuickNotes2, settingsManager = null) {
         if (!isEditable) return;
         this.quickNotes2 = enableQuickNotes2
           ? new QuickNotes2(() => {
               this.enableInlineNotes();
-            })
+            }, settingsManager)
           : null;
         this.dialogNotes = enableDialogNotes
           ? new NotesDialog(
@@ -2779,6 +2802,22 @@
                 $select.append($option);
               });
               $input = $select;
+            } else if (key === "quickNotesPosition") {
+              // Special handling for quickNotesPosition
+              const $select = $("<select>").attr(
+                "id",
+                `setting-${[...parentKeys, key].join("-")}`,
+              );
+              ["auto", "top", "bottom"].forEach((option) => {
+                const $option = $("<option>")
+                  .attr("value", option)
+                  .text(option.charAt(0).toUpperCase() + option.slice(1));
+                if (value === option) {
+                  $option.prop("selected", true);
+                }
+                $select.append($option);
+              });
+              $input = $select;
             } else {
               $input = $("<input>").attr(
                 "id",
@@ -2973,6 +3012,7 @@
         notesManager = new NotesManager(
           settingsManager.settings.enablePopupNotes,
           settingsManager.settings.enableInlineNotes,
+          settingsManager,
         );
 
         const dialogManager = new DialogManager(
