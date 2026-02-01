@@ -36,10 +36,11 @@ window.addEventListener("DOMContentLoaded", () => {
       const lineStart = text.lastIndexOf('\n', start - 1) + 1;
       
       // Find the end of the line containing the selection end
-      // If end is at position 0 or right after a newline, we need to handle it carefully
+      // Special case: if cursor is at the very beginning of a line (right after a newline),
+      // we exclude that line from the selection to match editor behavior
       let lineEnd;
       if (end === 0 || (end > 0 && text[end - 1] === '\n')) {
-        // Cursor is at the beginning of a line, use previous character's line end
+        // Cursor is at line start, use the position before the newline
         lineEnd = end > 0 ? end - 1 : 0;
       } else {
         // Find the newline at or after the end position
@@ -127,11 +128,15 @@ window.addEventListener("DOMContentLoaded", () => {
       const prevLineStart = info.text.lastIndexOf('\n', prevLineEnd - 1) + 1;
       const prevLineText = info.text.substring(prevLineStart, prevLineEnd);
       
+      // Determine if we need to preserve the trailing newline
+      const hasTrailingNewline = info.lineEnd < info.text.length;
+      
       // Swap the lines
       const newValue = info.text.substring(0, prevLineStart) +
-                      info.linesText + '\n' +
-                      prevLineText + 
-                      (info.lineEnd < info.text.length ? info.text.substring(info.lineEnd) : '');
+                      info.linesText + 
+                      (hasTrailingNewline ? '\n' : '') +
+                      prevLineText + '\n' +
+                      (hasTrailingNewline ? info.text.substring(info.lineEnd + 1) : '');
       
       const offset = prevLineText.length + 1;
       const newStart = info.start - offset;
@@ -152,15 +157,16 @@ window.addEventListener("DOMContentLoaded", () => {
       const nextLineEnd = info.text.indexOf('\n', nextLineStart);
       const actualNextLineEnd = nextLineEnd === -1 ? info.text.length : nextLineEnd;
       const nextLineText = info.text.substring(nextLineStart, actualNextLineEnd);
+      const nextLineHasNewline = actualNextLineEnd < info.text.length;
       
       // Swap the lines
       const beforeLines = info.text.substring(0, info.lineStart);
-      const afterLines = actualNextLineEnd < info.text.length ? info.text.substring(actualNextLineEnd) : '';
+      const afterLines = nextLineHasNewline ? info.text.substring(actualNextLineEnd) : '';
       
       const newValue = beforeLines +
                       nextLineText + '\n' +
                       info.linesText +
-                      afterLines;
+                      (nextLineHasNewline ? afterLines : '');
       
       const offset = nextLineText.length + 1;
       const newStart = info.start + offset;
@@ -174,6 +180,7 @@ window.addEventListener("DOMContentLoaded", () => {
       const info = LineHelpers.getSelectedLines(textarea);
       
       // Insert a copy of the selected lines above
+      // Always add newline after the copied lines since they're being inserted above
       const newValue = info.text.substring(0, info.lineStart) +
                       info.linesText + '\n' +
                       info.text.substring(info.lineStart);
