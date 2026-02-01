@@ -38,6 +38,7 @@
               ?.split(key)[0],
         )
         .filter((i) => i)[0] || "/";
+    const localStorageKeyPrefix = homeUrl.slice(1).replaceAll("/", ".");
 
     const svgIcons = new (class SVGIcons {
       constructor() {
@@ -81,7 +82,7 @@
     }
 
     const columnWidth = {
-      key: "issue-list-column-width",
+      key: localStorageKeyPrefix + "issue-list-column-width",
       getElemName: (elem) => {
         return $(elem).attr("class").split(" ")[0];
       },

@@ -71,6 +71,17 @@
     const resources =
       resourcesAll[document.documentElement.lang] || resourcesAll["en"];
 
+    const homeUrl =
+      ["login", "logout"]
+        .map(
+          (key) =>
+            $("." + key)
+              .attr("href")
+              ?.split(key)[0],
+        )
+        .filter((i) => i)[0] || "/";
+    const localStorageKeyPrefix = homeUrl.slice(1).replaceAll("/", ".");
+    
     const settingsDefault = {
       availableIntervalMins: [0.25, 0.5, 1, 3, 5, 10, 15, 30, 60],
       defaultIntervalMin: 1,
@@ -89,7 +100,10 @@
 
     const settings = {
       ...settingsDefault,
-      ...JSON.parse(localStorage.getItem("autoReloadSettings") || "{}"),
+      ...JSON.parse(
+        localStorage.getItem(localStorageKeyPrefix + "autoReloadSettings") ||
+          "{}",
+      ),
     };
 
     const controller = [...document.body.classList]
@@ -110,15 +124,6 @@
     const minimalIntervalMin = Math.min(...settings.availableIntervalMins);
     const maximalIntervalMin = Math.max(...settings.availableIntervalMins);
 
-    const homeUrl =
-      ["login", "logout"]
-        .map(
-          (key) =>
-            $("." + key)
-              .attr("href")
-              ?.split(key)[0],
-        )
-        .filter((i) => i)[0] || "/";
     const svgIcons = new (class SVGIcons {
       constructor() {
         const extractedPath = this.#extractIconPath();
@@ -156,7 +161,10 @@
     let intervalMin = null; // Store the interval for resuming
 
     function saveSettings() {
-      localStorage.setItem("autoReloadSettings", JSON.stringify(settings));
+      localStorage.setItem(
+        localStorageKeyPrefix + "autoReloadSettings",
+        JSON.stringify(settings),
+      );
     }
 
     // Page Visibility API: Handle background/foreground state

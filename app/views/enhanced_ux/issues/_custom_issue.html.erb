@@ -229,6 +229,7 @@
               ?.split(key)[0],
         )
         .filter((i) => i)[0] || "/";
+    const localStorageKeyPrefix = homeUrl.slice(1).replaceAll("/", ".");
     const svgIcons = new (class SVGIcons {
       constructor() {
         const extractedPath = this.#extractIconPath();
@@ -364,16 +365,28 @@
 
       sideBySideProperty = {
         get enabled() {
-          return localStorage.getItem("side-by-side-enabled") === "true";
+          return (
+            localStorage.getItem(
+              localStorageKeyPrefix + "side-by-side-enabled",
+            ) === "true"
+          );
         },
         set enabled(value) {
-          localStorage.setItem("side-by-side-enabled", value);
+          localStorage.setItem(
+            localStorageKeyPrefix + "side-by-side-enabled",
+            value,
+          );
         },
         get issueContainerWidth() {
-          return localStorage.getItem("side-by-side-issue-container-width");
+          return localStorage.getItem(
+            localStorageKeyPrefix + "side-by-side-issue-container-width",
+          );
         },
         set issueContainerWidth(value) {
-          localStorage.setItem("side-by-side-issue-container-width", value);
+          localStorage.setItem(
+            localStorageKeyPrefix + "side-by-side-issue-container-width",
+            value,
+          );
         },
       };
 
@@ -887,7 +900,9 @@
       loadFieldsetCollapsedState() {
         return (
           JSON.parse(
-            localStorage.getItem("custom-issue-fieldset-collapsed-state"),
+            localStorage.getItem(
+              localStorageKeyPrefix + "custom-issue-fieldset-collapsed-state",
+            ),
           ) || {}
         );
       }
@@ -897,7 +912,7 @@
 
         fieldsetCollapsedState[fieldsetId] = isCollapsed;
         localStorage.setItem(
-          "custom-issue-fieldset-collapsed-state",
+          localStorageKeyPrefix + "custom-issue-fieldset-collapsed-state",
           JSON.stringify(fieldsetCollapsedState),
         );
       }
@@ -2591,7 +2606,9 @@
       loadSettings() {
         // Load settings from localStorage or use default values
         const storedSettings = JSON.parse(
-          localStorage.getItem("custom_issue_view_settings") ?? "{}",
+          localStorage.getItem(
+            localStorageKeyPrefix + "custom_issue_view_settings",
+          ) ?? "{}",
         );
 
         Object.keys(this.#settings).forEach((key) => {
@@ -2613,7 +2630,7 @@
       saveSettings() {
         // Save settings to localStorage
         localStorage.setItem(
-          "custom_issue_view_settings",
+          localStorageKeyPrefix + "custom_issue_view_settings",
           JSON.stringify(this.#settings),
         );
       }
@@ -2848,7 +2865,9 @@
       restoreDefaults() {
         if (confirm(resources.messageConfirmRestoreDefaults)) {
           // Clear settings from localStorage
-          localStorage.removeItem("custom_issue_view_settings");
+          localStorage.removeItem(
+            localStorageKeyPrefix + "custom_issue_view_settings",
+          );
 
           // Reload page to apply default settings
           location.reload();
