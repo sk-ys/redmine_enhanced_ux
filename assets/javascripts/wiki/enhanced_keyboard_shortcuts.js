@@ -3,13 +3,10 @@
 // Type:               JavaScript
 // Comment:            Enhanced keyboard shortcuts
 window.addEventListener("DOMContentLoaded", () => {
-  $("#main").on("keydown", "textarea", (e) => {
-    const textarea = e.target;
-    const isMac = /Mac/.test(navigator.platform);
-    const ctrlOrCmd = isMac ? e.metaKey : e.ctrlKey;
-    
+  // Helper functions for line operations
+  const LineHelpers = {
     // Get current line information
-    function getCurrentLineInfo() {
+    getCurrentLineInfo(textarea) {
       const start = textarea.selectionStart;
       const end = textarea.selectionEnd;
       const text = textarea.value;
@@ -27,10 +24,10 @@ window.addEventListener("DOMContentLoaded", () => {
         end,
         text
       };
-    }
+    },
     
     // Get all selected lines
-    function getSelectedLines() {
+    getSelectedLines(textarea) {
       const start = textarea.selectionStart;
       const end = textarea.selectionEnd;
       const text = textarea.value;
@@ -54,15 +51,21 @@ window.addEventListener("DOMContentLoaded", () => {
         end,
         text
       };
-    }
+    },
     
     // Update textarea value and selection
-    function updateTextarea(newValue, newStart, newEnd) {
+    updateTextarea(textarea, newValue, newStart, newEnd) {
       textarea.value = newValue;
       textarea.setSelectionRange(newStart, newEnd);
       // Trigger input event for compatibility
       textarea.dispatchEvent(new Event('input', { bubbles: true }));
     }
+  };
+
+  $("#main").on("keydown", "textarea", (e) => {
+    const textarea = e.target;
+    const isMac = /Mac/.test(navigator.platform);
+    const ctrlOrCmd = isMac ? e.metaKey : e.ctrlKey;
     
     // Cut line (empty selection) - Ctrl+X / ⌘X
     if (ctrlOrCmd && e.key === 'x' && !e.shiftKey && !e.altKey) {
@@ -71,7 +74,7 @@ window.addEventListener("DOMContentLoaded", () => {
       
       if (start === end) {
         e.preventDefault();
-        const info = getCurrentLineInfo();
+        const info = LineHelpers.getCurrentLineInfo(textarea);
         
         // Copy line to clipboard
         const lineToCopy = info.lineText + '\n';
@@ -84,7 +87,7 @@ window.addEventListener("DOMContentLoaded", () => {
         const newValue = info.text.substring(0, info.lineStart) + 
                         info.text.substring(info.lineEnd + (info.lineEnd < info.text.length ? 1 : 0));
         const newStart = Math.min(info.lineStart, newValue.length);
-        updateTextarea(newValue, newStart, newStart);
+        LineHelpers.updateTextarea(textarea, newValue, newStart, newStart);
       }
     }
     
@@ -95,7 +98,7 @@ window.addEventListener("DOMContentLoaded", () => {
       
       if (start === end) {
         e.preventDefault();
-        const info = getCurrentLineInfo();
+        const info = LineHelpers.getCurrentLineInfo(textarea);
         
         // Copy line to clipboard
         const lineToCopy = info.lineText + '\n';
@@ -108,7 +111,7 @@ window.addEventListener("DOMContentLoaded", () => {
     // Move line up - Alt+↑ / ⌥↑
     if (e.altKey && e.key === 'ArrowUp' && !ctrlOrCmd && !e.shiftKey) {
       e.preventDefault();
-      const info = getSelectedLines();
+      const info = LineHelpers.getSelectedLines(textarea);
       
       // Can't move if already at the top
       if (info.lineStart === 0) return;
@@ -127,13 +130,13 @@ window.addEventListener("DOMContentLoaded", () => {
       const offset = prevLineText.length + 1;
       const newStart = info.start - offset;
       const newEnd = info.end - offset;
-      updateTextarea(newValue, newStart, newEnd);
+      LineHelpers.updateTextarea(textarea, newValue, newStart, newEnd);
     }
     
     // Move line down - Alt+↓ / ⌥↓
     if (e.altKey && e.key === 'ArrowDown' && !ctrlOrCmd && !e.shiftKey) {
       e.preventDefault();
-      const info = getSelectedLines();
+      const info = LineHelpers.getSelectedLines(textarea);
       
       // Can't move if already at the bottom
       if (info.lineEnd >= info.text.length) return;
@@ -156,26 +159,26 @@ window.addEventListener("DOMContentLoaded", () => {
       const offset = nextLineText.length + 1;
       const newStart = info.start + offset;
       const newEnd = info.end + offset;
-      updateTextarea(newValue, newStart, newEnd);
+      LineHelpers.updateTextarea(textarea, newValue, newStart, newEnd);
     }
     
     // Copy line up - Shift+Alt+↑ / ⇧⌥↑
     if (e.shiftKey && e.altKey && e.key === 'ArrowUp' && !ctrlOrCmd) {
       e.preventDefault();
-      const info = getSelectedLines();
+      const info = LineHelpers.getSelectedLines(textarea);
       
       // Insert a copy of the selected lines above
       const newValue = info.text.substring(0, info.lineStart) +
                       info.linesText + '\n' +
                       info.text.substring(info.lineStart);
       
-      updateTextarea(newValue, info.start, info.end);
+      LineHelpers.updateTextarea(textarea, newValue, info.start, info.end);
     }
     
     // Copy line down - Shift+Alt+↓ / ⇧⌥↓
     if (e.shiftKey && e.altKey && e.key === 'ArrowDown' && !ctrlOrCmd) {
       e.preventDefault();
-      const info = getSelectedLines();
+      const info = LineHelpers.getSelectedLines(textarea);
       
       // Insert a copy of the selected lines below
       const newValue = info.text.substring(0, info.lineEnd) +
@@ -186,19 +189,19 @@ window.addEventListener("DOMContentLoaded", () => {
       const offset = info.linesText.length + 1;
       const newStart = info.start + offset;
       const newEnd = info.end + offset;
-      updateTextarea(newValue, newStart, newEnd);
+      LineHelpers.updateTextarea(textarea, newValue, newStart, newEnd);
     }
     
     // Delete line - Ctrl+Shift+K / ⌘⇧K
-    if (ctrlOrCmd && e.shiftKey && e.key === 'K') {
+    if (ctrlOrCmd && e.shiftKey && (e.key === 'k' || e.key === 'K')) {
       e.preventDefault();
-      const info = getSelectedLines();
+      const info = LineHelpers.getSelectedLines(textarea);
       
       // Remove the selected lines
       const newValue = info.text.substring(0, info.lineStart) +
                       info.text.substring(info.lineEnd + (info.lineEnd < info.text.length ? 1 : 0));
       const newStart = Math.min(info.lineStart, newValue.length);
-      updateTextarea(newValue, newStart, newStart);
+      LineHelpers.updateTextarea(textarea, newValue, newStart, newStart);
     }
   });
 });
