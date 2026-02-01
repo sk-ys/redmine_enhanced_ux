@@ -1496,7 +1496,7 @@
           const positionSetting = settingsManager
             ? settingsManager.getSetting("quickNotesPosition")
             : "auto";
-          
+
           // Determine initial position
           if (positionSetting === "auto") {
             if (detectHistoryDirection() === "desc") {
@@ -1516,7 +1516,7 @@
               this.position = "bottom";
             }
           }
-          
+
           this.#init();
         }
       }
@@ -2529,7 +2529,11 @@
 
     // Notes manager class
     class NotesManager {
-      constructor(enableDialogNotes, enableQuickNotes2, settingsManager = null) {
+      constructor(
+        enableDialogNotes,
+        enableQuickNotes2,
+        settingsManager = null,
+      ) {
         if (!isEditable) return;
         this.quickNotes2 = enableQuickNotes2
           ? new QuickNotes2(() => {
