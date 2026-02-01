@@ -287,7 +287,15 @@
         $("head>title").text($headData.find("title").text());
 
         // Update sidebar
-        $("#sidebar").empty().append($("#sidebar", htmlString).children());
+        if ($("#sidebar-wrapper").length === 0) {
+          // Support for Redmine earlier than 5
+          $("#sidebar").empty().append($("#sidebar", htmlString).children());
+        } else {
+          // Support for Redmine 6 and later
+          $("#sidebar-wrapper")
+            .empty()
+            .append($("#sidebar-wrapper", htmlString).children());
+        }
 
         // Support for RedmineUp issue_tags plugin
         if (typeof setSelect2Filter) {
