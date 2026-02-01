@@ -168,7 +168,7 @@ window.addEventListener("DOMContentLoaded", () => {
       
       // Insert a copy of the selected lines below
       const newValue = info.text.substring(0, info.lineEnd) +
-                      (info.lineEnd < info.text.length ? '\n' : '\n') +
+                      '\n' +
                       info.linesText +
                       info.text.substring(info.lineEnd);
       
