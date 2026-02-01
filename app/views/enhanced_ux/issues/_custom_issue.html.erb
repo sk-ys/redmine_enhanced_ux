@@ -1496,14 +1496,16 @@
           const positionSetting = settingsManager
             ? settingsManager.getSetting("quickNotesPosition")
             : "auto";
-          this.position =
-            positionSetting === "auto"
-              ? detectHistoryDirection() === "desc"
-                ? "top"
-                : "bottom"
-              : positionSetting === "top"
-                ? "top"
-                : "bottom";
+          
+          // Determine initial position
+          if (positionSetting === "auto") {
+            this.position = detectHistoryDirection() === "desc" ? "top" : "bottom";
+          } else if (positionSetting === "top") {
+            this.position = "top";
+          } else {
+            this.position = "bottom";
+          }
+          
           this.#init();
         }
       }
@@ -1523,6 +1525,11 @@
             alsoResize: "#quick_notes2 .wiki-preview",
           });
           this.position = "top";
+          // Save the user's manual selection to top
+          if (this.#settingsManager) {
+            this.#settingsManager.setSetting("quickNotesPosition", "top");
+            this.#settingsManager.saveSettings();
+          }
         } else {
           this.#$elem.insertAfter($history);
           this.#$elem.resizable({
@@ -1530,11 +1537,11 @@
             alsoResize: "#quick_notes2 .wiki-preview",
           });
           this.position = "bottom";
-        }
-        // Save the user's manual selection
-        if (this.#settingsManager) {
-          this.#settingsManager.setSetting("quickNotesPosition", this.position);
-          this.#settingsManager.saveSettings();
+          // Save the user's manual selection to bottom
+          if (this.#settingsManager) {
+            this.#settingsManager.setSetting("quickNotesPosition", "bottom");
+            this.#settingsManager.saveSettings();
+          }
         }
       }
       show() {
