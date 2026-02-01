@@ -69,7 +69,10 @@ window.addEventListener("DOMContentLoaded", () => {
         
         // Copy line to clipboard
         const lineToCopy = info.lineText + '\n';
-        navigator.clipboard.writeText(lineToCopy);
+        navigator.clipboard.writeText(lineToCopy).catch(() => {
+          // Silently fail if clipboard access is denied
+          // The line will still be cut as a fallback behavior
+        });
         
         // Remove the line
         const newValue = info.text.substring(0, info.lineStart) + 
@@ -90,7 +93,9 @@ window.addEventListener("DOMContentLoaded", () => {
         
         // Copy line to clipboard
         const lineToCopy = info.lineText + '\n';
-        navigator.clipboard.writeText(lineToCopy);
+        navigator.clipboard.writeText(lineToCopy).catch(() => {
+          // Silently fail if clipboard access is denied
+        });
       }
     }
     
