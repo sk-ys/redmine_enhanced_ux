@@ -91,6 +91,9 @@ module EnhancedUx
               tags << controller.render_to_string(partial: 'enhanced_ux/wiki/add_copy_button_to_the_pre_block')
             end
           end
+          if Setting.plugin_redmine_enhanced_ux[:enhanced_keyboard_shortcuts] == '1'
+            tags << javascript_include_tag("wiki/enhanced_keyboard_shortcuts", :plugin => "redmine_enhanced_ux")
+          end
           if Setting.plugin_redmine_enhanced_ux[:enhanced_list_button] == '1'
             tags << javascript_include_tag("wiki/enhanced_list_button", :plugin => "redmine_enhanced_ux")
           end

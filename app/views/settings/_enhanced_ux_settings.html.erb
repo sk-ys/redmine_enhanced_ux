@@ -331,6 +331,14 @@
       </div>
       <% end %>
 
+      <div class="feature-card" data-feature="enhanced_keyboard_shortcuts">
+        <div class="feature-header">
+          <input type="hidden" name="settings[enhanced_keyboard_shortcuts]" value="0">
+          <%= check_box_tag 'settings[enhanced_keyboard_shortcuts]', '1', @settings[:enhanced_keyboard_shortcuts] == '1', class: 'feature-checkbox' %>
+          <label class="feature-title" for="settings_enhanced_keyboard_shortcuts">Enhanced keyboard shortcuts</label>
+        </div>
+      </div>
+
       <div class="feature-card" data-feature="enhanced_list_button">
         <div class="feature-header">
           <input type="hidden" name="settings[enhanced_list_button]" value="0">

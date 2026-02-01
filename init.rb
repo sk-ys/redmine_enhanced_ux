@@ -36,6 +36,7 @@ Redmine::Plugin.register :redmine_enhanced_ux do
         fixes_for_rtl_design: '1',
         local_storage_manager: '1',
         update_relative_time_in_realtime: '1',
+        enhanced_keyboard_shortcuts: '1',
       },
       partial: 'settings/enhanced_ux_settings'
 end
