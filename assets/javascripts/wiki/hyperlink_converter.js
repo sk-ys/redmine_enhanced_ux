@@ -25,15 +25,21 @@
 
   // Convert link to Markdown format
   function toMarkdown(url, text) {
-    // Escape square brackets in text
-    const escapedText = text.replace(/\[/g, '\\[').replace(/\]/g, '\\]');
+    // Escape Markdown special characters in text: [], \, and `
+    // We don't escape () because they can appear in link text without breaking the format
+    const escapedText = text
+      .replace(/\\/g, '\\\\')  // Backslash must be escaped first
+      .replace(/\[/g, '\\[')
+      .replace(/\]/g, '\\]')
+      .replace(/`/g, '\\`');
     return `[${escapedText}](${url})`;
   }
 
   // Convert link to Textile format
   function toTextile(url, text) {
-    // Escape quotes in text
-    const escapedText = text.replace(/"/g, '\\"');
+    // Escape Textile special characters in text
+    // In Textile, quotes in link text need to be escaped
+    const escapedText = text.replace(/"/g, '&quot;');
     return `"${escapedText}":${url}`;
   }
 
