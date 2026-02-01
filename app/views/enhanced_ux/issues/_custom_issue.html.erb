@@ -1499,11 +1499,22 @@
           
           // Determine initial position
           if (positionSetting === "auto") {
-            this.position = detectHistoryDirection() === "desc" ? "top" : "bottom";
+            if (detectHistoryDirection() === "desc") {
+              this.position = "top";
+            } else {
+              this.position = "bottom";
+            }
           } else if (positionSetting === "top") {
             this.position = "top";
-          } else {
+          } else if (positionSetting === "bottom") {
             this.position = "bottom";
+          } else {
+            // Handle unexpected values by falling back to auto-detection
+            if (detectHistoryDirection() === "desc") {
+              this.position = "top";
+            } else {
+              this.position = "bottom";
+            }
           }
           
           this.#init();
