@@ -25,20 +25,16 @@
 
   // Convert link to Markdown format
   function toMarkdown(url, text) {
-    // If text is the same as URL, just use the URL
-    if (text === url) {
-      return url;
-    }
-    return `[${text}](${url})`;
+    // Escape square brackets in text
+    const escapedText = text.replace(/\[/g, '\\[').replace(/\]/g, '\\]');
+    return `[${escapedText}](${url})`;
   }
 
   // Convert link to Textile format
   function toTextile(url, text) {
-    // If text is the same as URL, just use the URL
-    if (text === url) {
-      return url;
-    }
-    return `"${text}":${url}`;
+    // Escape quotes in text
+    const escapedText = text.replace(/"/g, '\\"');
+    return `"${escapedText}":${url}`;
   }
 
   function setupPasteHandler() {
@@ -54,7 +50,16 @@
         jsToolBarInstance.help_link
       );
 
-      jsToolBarInstance.textarea.addEventListener("paste", (e) => {
+      // Remove any existing paste handler to avoid duplicates
+      if (jsToolBarInstance.textarea._hyperlinkPasteHandler) {
+        jsToolBarInstance.textarea.removeEventListener(
+          "paste",
+          jsToolBarInstance.textarea._hyperlinkPasteHandler
+        );
+      }
+
+      // Create the paste handler
+      const pasteHandler = (e) => {
         // Get clipboard data
         const clipboardData = e.clipboardData || window.clipboardData;
         if (!clipboardData) return;
@@ -92,7 +97,11 @@
 
         // Trigger input event for any listeners
         textarea.dispatchEvent(new Event('input', { bubbles: true }));
-      });
+      };
+
+      // Store reference and add listener
+      jsToolBarInstance.textarea._hyperlinkPasteHandler = pasteHandler;
+      jsToolBarInstance.textarea.addEventListener("paste", pasteHandler);
     };
 
     return true;
