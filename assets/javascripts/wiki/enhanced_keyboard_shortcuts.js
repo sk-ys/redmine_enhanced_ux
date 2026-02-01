@@ -32,21 +32,27 @@ window.addEventListener("DOMContentLoaded", () => {
       const end = textarea.selectionEnd;
       const text = textarea.value;
       
+      // Find the start of the line containing the selection start
       const lineStart = text.lastIndexOf('\n', start - 1) + 1;
-      let lineEnd = text.indexOf('\n', end - 1);
       
-      // If no newline found before end, search from end position
-      if (lineEnd === -1 || lineEnd < end - 1) {
+      // Find the end of the line containing the selection end
+      // If end is at position 0 or right after a newline, we need to handle it carefully
+      let lineEnd;
+      if (end === 0 || (end > 0 && text[end - 1] === '\n')) {
+        // Cursor is at the beginning of a line, use previous character's line end
+        lineEnd = end > 0 ? end - 1 : 0;
+      } else {
+        // Find the newline at or after the end position
         lineEnd = text.indexOf('\n', end);
+        if (lineEnd === -1) {
+          lineEnd = text.length;
+        }
       }
-      
-      // If still no newline found, use end of text
-      const finalLineEnd = lineEnd === -1 ? text.length : lineEnd;
       
       return {
         lineStart,
-        lineEnd: finalLineEnd,
-        linesText: text.substring(lineStart, finalLineEnd),
+        lineEnd,
+        linesText: text.substring(lineStart, lineEnd),
         start,
         end,
         text
@@ -80,7 +86,7 @@ window.addEventListener("DOMContentLoaded", () => {
         const lineToCopy = info.lineText + '\n';
         navigator.clipboard.writeText(lineToCopy).catch(() => {
           // Silently fail if clipboard access is denied
-          // The line will still be cut as a fallback behavior
+          // The cut operation proceeds regardless of clipboard status
         });
         
         // Remove the line
