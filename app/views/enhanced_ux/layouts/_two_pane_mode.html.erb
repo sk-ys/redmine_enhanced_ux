@@ -21,6 +21,7 @@
               ?.split(key)[0]
         )
         .filter((i) => i)[0] || "/";
+    const localStorageKeyPrefix = homeUrl.slice(1).replaceAll("/", ".");
     const pageType = (() => {
       const key1 = location.pathname.split("/").slice(-1)[0];
       const key2 = location.pathname.split("/").slice(-2)[0];
@@ -34,8 +35,8 @@
       "calendar",
       "issue_note_list",
     ];
-    const storageNameForSrc = "2-pane-mode-src";
-    const storageNameForEachPage = "2-pane-mode-" + pageType;
+    const storageNameForSrc = localStorageKeyPrefix + "2-pane-mode-src";
+    const storageNameForEachPage = localStorageKeyPrefix + "2-pane-mode-" + pageType;
     const classNameForOpenedItem = "two-pane-mode-opened-item";
     const newIssueSelector = "a[href*='/issues/new']";
 

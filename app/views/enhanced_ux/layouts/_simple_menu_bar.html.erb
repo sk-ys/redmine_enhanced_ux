@@ -6,10 +6,21 @@
 -->
 <script>
   //<![CDATA[
+  // Detect home URL from the responsive CSS link tag
+  const homeUrl =
+    $("link[href*='/responsive'][href*='.css']")
+      .map((i, e) =>
+        e
+          .href
+          .replace(/(assets|stylesheets)\/responsive.*/, "")
+          .replace(location.origin, "")
+      )[0] || "/";
+  const localStorageKeyPrefix = homeUrl.slice(1).replaceAll("/", ".");
   // If the saved visibility setting is false, apply the following style that
   // hides the header.
   // This style is then removed when the DOM finishes loading.
-  if (localStorage.getItem("header-visibility") === "false") {
+  if (localStorage.getItem(
+    localStorageKeyPrefix + "header-visibility") === "false") {
     $("head").append(
       '<style class="simple-menu-bar">#header{display: none;}</style>',
     );
@@ -47,15 +58,7 @@
     const $adminMenu = $topMenuWithFlyoutMenu.find("a.administration:first");
     const $helpMenu = $topMenuWithFlyoutMenu.find("ul li a.help:first");
     const $sideBarChildren = $("#sidebar, .js-sidebar").children();
-    const homeUrl =
-      ["login", "logout"]
-        .map(
-          (key) =>
-            $("." + key)
-              .attr("href")
-              ?.split(key)[0],
-        )
-        .filter((i) => i)[0] || "/";
+
     const projectIdentifier = $("body")
       .attr("class")
       .split(" ")
@@ -479,7 +482,8 @@
           });
         }
         setTopMenuPositionFixed(!state);
-        localStorage.setItem("header-visibility", state);
+        localStorage.setItem(
+          localStorageKeyPrefix + "header-visibility", state);
       }
 
       let defaultTopMenuHeight = null;
@@ -595,7 +599,8 @@
       $btn
         .click(() => {
           setHeaderVisibility(
-            localStorage.getItem("header-visibility") === "false" ||
+            localStorage.getItem(
+              localStorageKeyPrefix + "header-visibility") === "false" ||
               $header.hasClass("fixed"),
           );
         })
@@ -608,7 +613,8 @@
 
       // Load settings from local storage
       setHeaderVisibility(
-        !(localStorage.getItem("header-visibility") === "false"),
+        !(localStorage.getItem(
+          localStorageKeyPrefix + "header-visibility") === "false"),
       );
     }
 

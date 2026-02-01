@@ -42,6 +42,7 @@
               ?.split(key)[0],
         )
         .filter((i) => i)[0] || "/";
+    const localStorageKeyPrefix = homeUrl.slice(1).replaceAll("/", ".");
 
     const svgIcons = new (class SVGIcons {
       constructor() {
@@ -445,7 +446,7 @@
     });
 
     const ganttCollapseExpandState = {
-      localStorageKey: "gantt-closed-items",
+      localStorageKey: localStorageKeyPrefix + "gantt-closed-items",
       getCollapsableElements: (context) => {
         return $(".gantt_subjects>form>div", context).filter(
           (_, e) => $(e).find("span.expander").length > 0,
@@ -605,7 +606,7 @@
     };
 
     const ganttColumnWidth = {
-      localStorageKey: "gantt-column-width",
+      localStorageKey: localStorageKeyPrefix + "gantt-column-width",
       getColumnName: (elem) => {
         return $(elem)
           .attr("class")

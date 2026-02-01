@@ -34,6 +34,7 @@
               ?.split(key)[0]
         )
         .filter((i) => i)[0] || "/";
+    const localStorageKeyPrefix = homeUrl.slice(1).replaceAll("/", ".");
 
     // i18n
     const resourcesAll = {
@@ -885,26 +886,30 @@
     class PopUp {
       static size = {
         get width() {
-          const states =
-            JSON.parse(localStorage.getItem("popup-anywhere-state")) || {};
+          const states = JSON.parse(localStorage.getItem(
+            localStorageKeyPrefix + "popup-anywhere-state")) || {};
           return states["_default-width"] ?? initialWidth;
         },
         set width(value) {
-          const states =
-            JSON.parse(localStorage.getItem("popup-anywhere-state")) || {};
+          const states = JSON.parse(localStorage.getItem(
+              localStorageKeyPrefix + "popup-anywhere-state")) || {};
           states["_default-width"] = value;
-          localStorage.setItem("popup-anywhere-state", JSON.stringify(states));
+          localStorage.setItem(
+            localStorageKeyPrefix + "popup-anywhere-state",
+            JSON.stringify(states));
         },
         get height() {
-          const states =
-            JSON.parse(localStorage.getItem("popup-anywhere-state")) || {};
+          const states = JSON.parse(localStorage.getItem(
+            localStorageKeyPrefix + "popup-anywhere-state")) || {};
           return states["_default-height"] ?? initialHeight;
         },
         set height(value) {
-          const states =
-            JSON.parse(localStorage.getItem("popup-anywhere-state")) || {};
+          const states = JSON.parse(localStorage.getItem(
+            localStorageKeyPrefix + "popup-anywhere-state")) || {};
           states["_default-height"] = value;
-          localStorage.setItem("popup-anywhere-state", JSON.stringify(states));
+          localStorage.setItem(
+            localStorageKeyPrefix + "popup-anywhere-state",
+            JSON.stringify(states));
         },
       };
 
@@ -946,7 +951,8 @@
 
       static saveDialogState() {
         const states =
-          JSON.parse(localStorage.getItem("popup-anywhere-state")) || {};
+          JSON.parse(localStorage.getItem(
+            localStorageKeyPrefix + "popup-anywhere-state")) || {};
 
         if (PopUp.getActiveDialogs().length === 0) {
           delete states[location.pathname];
@@ -1020,11 +1026,14 @@
           delete states[location.pathname];
         }
 
-        localStorage.setItem("popup-anywhere-state", JSON.stringify(states));
+        localStorage.setItem(
+          localStorageKeyPrefix + "popup-anywhere-state",
+          JSON.stringify(states));
       }
 
       static restoreDialogState() {
-        const states = JSON.parse(localStorage.getItem("popup-anywhere-state"));
+        const states = JSON.parse(localStorage.getItem(
+          localStorageKeyPrefix + "popup-anywhere-state"));
         if (states === null || states[location.pathname] === undefined) return;
         const state = states[location.pathname];
         state.dialogs
