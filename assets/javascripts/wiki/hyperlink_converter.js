@@ -52,9 +52,11 @@
       jsToolBarDrawOrg.call(jsToolBarInstance);
 
       // Determine if using Textile or Markdown
-      const isTextile = /^\/help.*\/wiki_syntax_textile/.test(
-        jsToolBarInstance.help_link
-      );
+      // Redmine 6+ provides data-text-formatting attribute on body element
+      const dataTextFormatting = document.body.getAttribute('data-text-formatting');
+      const isTextile = dataTextFormatting
+        ? dataTextFormatting === 'textile'
+        : /^\/help.*\/wiki_syntax_textile/.test(jsToolBarInstance.help_link);
 
       // Remove any existing paste handler to avoid duplicates
       if (jsToolBarInstance.textarea._hyperlinkPasteHandler) {
