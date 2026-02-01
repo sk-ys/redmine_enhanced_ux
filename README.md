@@ -64,6 +64,7 @@ This is a plugin for Redmine. This plugin is designed to improve the user experi
 - Two pane mode - Split the screen into two panes for easier multitasking.
 - Auto reload - Automatically reload the page at the specified interval. Supports URL parameter `auto_reload` to enable auto-reload with a custom interval (e.g., `?auto_reload=0.5` for 30-second intervals).
 - Fixes for RTL design - RTL design fixes for some pages (excluding Gantt chart).
+- Update relative time in realtime - Automatically updates timestamps (e.g., "2 minutes ago") on the page without reload.
 
 ## Installation
 ### When using git
