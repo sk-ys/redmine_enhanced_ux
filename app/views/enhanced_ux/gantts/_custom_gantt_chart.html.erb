@@ -39,7 +39,7 @@
           (key) =>
             $("." + key)
               .attr("href")
-              ?.split(key)[0]
+              ?.split(key)[0],
         )
         .filter((i) => i)[0] || "/";
 
@@ -60,7 +60,7 @@
         return $(
           `<svg class="s18 icon-svg" aria-hidden="true">` +
             `<use href="${this.basePath}#${key}"></use>` +
-            `</svg>`
+            `</svg>`,
         );
       }
       get magnifier() {
@@ -168,7 +168,7 @@
         .remove()
         .end()
         .append(
-          $("#query_form_with_buttons > p.contextual", htmlString).children()
+          $("#query_form_with_buttons > p.contextual", htmlString).children(),
         )
         .find("a")
         .addClass("prevent-popup-anywhere");
@@ -200,7 +200,7 @@
       window.resizableSubjectColumn && resizableSubjectColumn();
       window.drawSelectedColumns && drawSelectedColumns();
       $("#draw_relations, #draw_progress_line, #draw_selected_columns").change(
-        drawGanttHandler
+        drawGanttHandler,
       );
       $("div.gantt_subjects .expander").on("click", ganttEntryClick);
     }
@@ -216,11 +216,11 @@
       settings.search = settings.noSearch
         ? ""
         : settings.search[0] === "?"
-        ? settings.search
-        : "?" +
-          (settings.search[0] === "&"
-            ? settings.search.slice(1)
-            : settings.search);
+          ? settings.search
+          : "?" +
+            (settings.search[0] === "&"
+              ? settings.search.slice(1)
+              : settings.search);
 
       const url = location.origin + location.pathname + settings.search;
 
@@ -317,8 +317,8 @@
           left: $(settings.target).parent().hasClass("previous page")
             ? $(scrollTargetSelector).width()
             : $(settings.target).parent().hasClass("next page")
-            ? 0
-            : $(scrollTargetSelector).scrollLeft(),
+              ? 0
+              : $(scrollTargetSelector).scrollLeft(),
         };
 
         const $ganttTable = $("table.gantt-table");
@@ -354,7 +354,7 @@
         const scriptTag = $(".gantt-table~script", data)
           .toArray()
           .filter((e) =>
-            $(e).text().includes("disable_unavailable_columns")
+            $(e).text().includes("disable_unavailable_columns"),
           )[0];
         const regexExtractUnavailableColumns =
           /disable_unavailable_columns\(\s*'([^']+)'\.split\(\s*','\)/;
@@ -415,7 +415,7 @@
         .find(
           ".gantt_subjects_container, " +
             ".gantt_selected_column_container, " +
-            "#gantt_area"
+            "#gantt_area",
         )
         .height(100)
         .height(
@@ -427,10 +427,10 @@
             // do the following
             $("table.gantt-table:not(.cloned) #gantt_draw_area").height() +
               $(
-                "table.gantt-table:not(.cloned) #gantt_area div.gantt_hdr:first"
+                "table.gantt-table:not(.cloned) #gantt_area div.gantt_hdr:first",
               ).height() +
-              1
-          )
+              1,
+          ),
         );
 
       $("table.gantt-table:not(.cloned)")
@@ -448,7 +448,7 @@
       localStorageKey: "gantt-closed-items",
       getCollapsableElements: (context) => {
         return $(".gantt_subjects>form>div", context).filter(
-          (_, e) => $(e).find("span.expander").length > 0
+          (_, e) => $(e).find("span.expander").length > 0,
         );
       },
       getClosedElements: (context) => {
@@ -486,13 +486,13 @@
       load: () => {
         return (
           JSON.parse(
-            localStorage.getItem(ganttCollapseExpandState.localStorageKey)
+            localStorage.getItem(ganttCollapseExpandState.localStorageKey),
           ) || {}
         );
       },
       save: (target, collapseWithChildren = false, context = null) => {
         const $parent = $(target).closest(
-          ".project-name, .version-name, .issue-subject"
+          ".project-name, .version-name, .issue-subject",
         );
         const $anchor = $parent.find("a");
         const states = ganttCollapseExpandState.load();
@@ -513,7 +513,7 @@
 
           if (collapseWithChildren) {
             closedItems = closedItems.filter(
-              (item) => !childElements.includes(item)
+              (item) => !childElements.includes(item),
             );
           }
         } else {
@@ -547,7 +547,7 @@
             const maxTimeStamp = Math.max(
               ...Object.values(states).map((s) => {
                 Number(s.timeStamp);
-              })
+              }),
             );
 
             for (const [key, value] of Object.entries(states)) {
@@ -561,7 +561,7 @@
 
         localStorage.setItem(
           ganttCollapseExpandState.localStorageKey,
-          JSON.stringify(states)
+          JSON.stringify(states),
         );
       },
       /**
@@ -585,7 +585,7 @@
                 state.closedItems.includes($(e).find("a").attr("href")) &&
                 $(e)
                   .closest(".project-name, .version-name, .issue-subject")
-                  .hasClass("open")
+                  .hasClass("open"),
             )
             .map((e) => ({
               elem: e,
@@ -614,7 +614,7 @@
       },
       loadList: () => {
         return JSON.parse(
-          localStorage.getItem(ganttColumnWidth.localStorageKey) || "{}"
+          localStorage.getItem(ganttColumnWidth.localStorageKey) || "{}",
         );
       },
       saveList: (elem) => {
@@ -630,13 +630,13 @@
 
         localStorage.setItem(
           ganttColumnWidth.localStorageKey,
-          JSON.stringify(ganttColumnWidthList)
+          JSON.stringify(ganttColumnWidthList),
         );
       },
       restoreAll: () => {
         const ganttColumnWidthList = ganttColumnWidth.loadList();
         for (const [columnName, columnWidth] of Object.entries(
-          ganttColumnWidthList
+          ganttColumnWidthList,
         )) {
           ganttColumnWidth.set(columnName, columnWidth);
         }
@@ -653,7 +653,7 @@
             ".gantt_hdr, " +
               ".gantt_subjects .project-name, " +
               ".gantt_subjects .issue-subject, " +
-              ".gantt_subjects .version-name"
+              ".gantt_subjects .version-name",
           )
           .each((_, e) => $(e).width($(e).width() + diffWidth));
       },
@@ -676,7 +676,7 @@
 
         localStorage.setItem(
           ganttColumnWidth.localStorageKey,
-          JSON.stringify(ganttColumnWidthList)
+          JSON.stringify(ganttColumnWidthList),
         );
       },
     };
@@ -687,7 +687,7 @@
     ganttEntryClick = (e) => {
       ganttEntryClickOrg(e);
       setTimeout(() =>
-        ganttCollapseExpandState.save(e.currentTarget, e.ctrlKey)
+        ganttCollapseExpandState.save(e.currentTarget, e.ctrlKey),
       );
     };
 
@@ -813,7 +813,7 @@
       // Remove the ReplaceQueryFormSubmission function before the click event
       // in the capturing phase.
       $(
-        "#query_form_with_buttons p.buttons > a.icon.icon-save"
+        "#query_form_with_buttons p.buttons > a.icon.icon-save",
       )[0]?.addEventListener("click", removeReplaceQueryFormSubmission, {
         capture: true,
       });
@@ -874,12 +874,12 @@
       const $fixedGanttHeader = $("<div>")
         .attr("id", "gantt_header_cloned")
         .append(
-          $("table.gantt-table:not(.cloned) #gantt_area div.gantt_hdr").clone()
+          $("table.gantt-table:not(.cloned) #gantt_area div.gantt_hdr").clone(),
         )
         .css({
           height:
             $(
-              "table.gantt-table:not(.cloned) #gantt_area div.gantt_hdr:first"
+              "table.gantt-table:not(.cloned) #gantt_area div.gantt_hdr:first",
             ).height() + 1,
         })
         .prependTo("table.gantt-table:not(.cloned) #gantt_area");
@@ -888,7 +888,7 @@
       $("table.gantt-table:not(.cloned) #gantt_area").on("scroll", () => {
         // Scroll subjects and selected columns
         $(
-          ".gantt_subjects_container, .gantt_selected_column_container"
+          ".gantt_subjects_container, .gantt_selected_column_container",
         ).scrollTop($("#gantt_area").scrollTop());
 
         // Scroll gantt header
@@ -900,11 +900,11 @@
         .find(
           "td.gantt_subjects_column, " +
             "td.gantt_project_column, " +
-            "td.gantt_selected_column"
+            "td.gantt_selected_column",
         )
         .on("wheel", (e) => {
           $("#gantt_area").scrollTop(
-            $("#gantt_area").scrollTop() + e.originalEvent.deltaY
+            $("#gantt_area").scrollTop() + e.originalEvent.deltaY,
           );
         });
 
@@ -929,7 +929,7 @@
           null,
           function () {
             $(this).css({ opacity: "" });
-          }
+          },
         );
       });
 
@@ -978,7 +978,7 @@
             .append(
               $("<span>")
                 .addClass("icon-label")
-                .text($newIssueLinkInMenu.text())
+                .text($newIssueLinkInMenu.text()),
             );
         } else {
           $newIssueLink.text($newIssueLinkInMenu.text());
@@ -1164,9 +1164,9 @@
   /* Hide gantt items until loading is complete. */
   table.gantt-table:not(.restored) {
     :is(
-        div.gantt_subjects_container > div.gantt_subjects,
-        form[data-cm-url$="/issues/context_menu"]
-      ) {
+      div.gantt_subjects_container > div.gantt_subjects,
+      form[data-cm-url$="/issues/context_menu"]
+    ) {
       opacity: 0.1;
     }
 

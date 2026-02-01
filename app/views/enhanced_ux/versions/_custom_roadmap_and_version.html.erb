@@ -19,14 +19,14 @@
           (key) =>
             $("." + key)
               .attr("href")
-              ?.split(key)[0]
+              ?.split(key)[0],
         )
         .filter((i) => i)[0] || "/");
     const pageType = /\/roadmap/.test(location.pathname)
       ? "roadmap"
       : /\/versions\/[0-9]+$/.test(location.pathname)
-      ? "versions"
-      : undefined;
+        ? "versions"
+        : undefined;
     if (pageType === undefined) return;
 
     const resourcesAll = {
@@ -243,7 +243,7 @@
               .find(
                 "#content " +
                   ":is(form.edit_version, form.new_version) " +
-                  "input[type=submit]"
+                  "input[type=submit]",
               )
               .hide()
               .toArray()
@@ -261,7 +261,7 @@
               .dialog(
                 "option",
                 "buttons",
-                submitButtons.concat(dialogCancelButton)
+                submitButtons.concat(dialogCancelButton),
               )
               .dialog("option", "title", $contents[0].title);
           });
@@ -309,7 +309,7 @@
         const bottomOfLastElem = Math.max(
           ...$("#content > *")
             .map((i, e) => e.getBoundingClientRect().bottom)
-            .toArray()
+            .toArray(),
         );
 
         const contentPaddingY =
