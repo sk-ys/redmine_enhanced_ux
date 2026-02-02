@@ -25,6 +25,7 @@ Redmine::Plugin.register :redmine_enhanced_ux do
         image_insertion_modal: '1',
         insert_attachment_tag: '1',
         responsive_table_scroll: '1',
+        hyperlink_converter: '1',
         compact_notice_bar: '1',
         direct_edit_on_issue_list: '1',
         fix_tooltip_position: '1',

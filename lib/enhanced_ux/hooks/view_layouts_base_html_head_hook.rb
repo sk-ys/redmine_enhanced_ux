@@ -106,6 +106,9 @@ module EnhancedUx
           if Setting.plugin_redmine_enhanced_ux[:responsive_table_scroll] == '1'
             tags << javascript_include_tag("wiki/responsive_table_scroll", :plugin => "redmine_enhanced_ux")
           end
+          if Setting.plugin_redmine_enhanced_ux[:hyperlink_converter] == '1'
+            tags << javascript_include_tag("wiki/hyperlink_converter", :plugin => "redmine_enhanced_ux")
+          end
 
           if /\/issues(|\/new|\/[0-9]+\/copy)$/.match?(path)
             if Setting.plugin_redmine_enhanced_ux[:copy_issue_form_link_with_data] == '1'
