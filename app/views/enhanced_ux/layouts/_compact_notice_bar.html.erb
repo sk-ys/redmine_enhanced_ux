@@ -151,7 +151,7 @@
       mutations.forEach((mutation) => {
         if (mutation.addedNodes.length > 0) {
           mutation.addedNodes.forEach((node) => {
-            if ($(node).hasClass("flash")) {
+            if ($(node).hasClass("flash notice")) {
               invoke(node);
             }
           });
@@ -162,7 +162,7 @@
       childList: true,
     });
 
-    invoke($("#content > div.flash"));
+    invoke($("#content > div.flash.notice"));
   });
 </script>
 <style>
