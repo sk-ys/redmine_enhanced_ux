@@ -590,6 +590,8 @@
           padding: 0;
           margin: 0;
           grid-template-columns: 1fr auto;
+          border-top: 1px solid #d0d7de;
+          border-bottom: 1px solid #d0d7de;
         }
       }
     }
@@ -597,10 +599,16 @@
     table.list.issues {
       overflow: auto;
       margin: 0;
+      border: none;
       & > thead {
         position: sticky;
         top: 0;
         z-index: 20;
+        box-shadow: inset 0px 0px 0px 1px #d0d7de;
+        th {
+          border-top: 0;
+          border-bottom: 0;
+        }
       }
     }
   }
