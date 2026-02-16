@@ -210,16 +210,15 @@
         const isCustomField = key.startsWith("cf_");
         const cfId = isCustomField ? key.split("_")[1] : null;
 
+        const paramKey = isCustomField
+          ? `issue[custom_field_values][${cfId}]`
+          : `issue[${key}]`;
+
         return (
           `${homeUrl}issues/${actionOrIssueId}?` +
           `back_url=${encodeURIComponent(backUrl)}&` +
           (actionOrIssueId === "bulk_update" ? `${issueIdsParams}&` : "") +
-          encodeURI(
-            isCustomField
-              ? `issue[custom_field_values[${cfId}]]=`
-              : `issue[${key}]=`
-          ) +
-          encodeURIComponent(value)
+          `${encodeURIComponent(paramKey)}=${encodeURIComponent(value)}`
         );
       }
 
