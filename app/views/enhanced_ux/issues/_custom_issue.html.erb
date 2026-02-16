@@ -3155,6 +3155,20 @@
         height: 100%;
       }
     }
+    #sidebar {
+      display: flex;
+      flex-direction: column;
+      padding-bottom: 10px;
+    }
+    #sidebar-wrapper {
+      overflow-y: auto;
+      scrollbar-color: rgba(0, 0, 0, 0.1) transparent;
+      scrollbar-width: thin;
+
+      &:hover {
+        scrollbar-color: rgba(0, 0, 0, 0.5) transparent;
+      }
+    }
   }
 
   #notes-dialog-content
