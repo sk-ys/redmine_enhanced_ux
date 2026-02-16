@@ -31,7 +31,7 @@
           (key) =>
             $("." + key)
               .attr("href")
-              ?.split(key)[0]
+              ?.split(key)[0],
         )
         .filter((i) => i)[0] || "/";
 
@@ -78,8 +78,8 @@
     $("head").append(
       $("<style>").text(
         "table.list.issues>tbody>tr.issue>td.selected " +
-          "{box-shadow: inset #ffd 0px 0px 3px 0px;}"
-      )
+          "{box-shadow: inset #ffd 0px 0px 3px 0px;}",
+      ),
     );
 
     class ContextInputForm {
@@ -124,8 +124,8 @@
                 ? new Date(initialValue).toLocaleDateString("sv-SE")
                 : new Date().toLocaleDateString("sv-SE")
               : field === "estimated_hours" && initialValue.includes(":")
-              ? timeStringToDecimal(initialValue)
-              : initialValue
+                ? timeStringToDecimal(initialValue)
+                : initialValue,
           );
 
         return this.$input;
@@ -210,16 +210,15 @@
         const isCustomField = key.startsWith("cf_");
         const cfId = isCustomField ? key.split("_")[1] : null;
 
+        const paramKey = isCustomField
+          ? `issue[custom_field_values][${cfId}]`
+          : `issue[${key}]`;
+
         return (
           `${homeUrl}issues/${actionOrIssueId}?` +
           `back_url=${encodeURIComponent(backUrl)}&` +
           (actionOrIssueId === "bulk_update" ? `${issueIdsParams}&` : "") +
-          encodeURI(
-            isCustomField
-              ? `issue[custom_field_values[${cfId}]]=`
-              : `issue[${key}]=`
-          ) +
-          encodeURIComponent(value)
+          `${encodeURIComponent(paramKey)}=${encodeURIComponent(value)}`
         );
       }
 
@@ -235,7 +234,7 @@
           field.includes("cf_")
             ? field.split(" ").filter((i) => i.startsWith("cf_"))[0]
             : field,
-          value
+          value,
         );
 
         return this.$applyButton.attr("href", url || "#");
@@ -256,10 +255,10 @@
             if (!$(e.target).closest("#context-input-form").length) {
               $("#context-input-form").hide();
               $("table.list.issues>tbody>tr.issue>td.selected").removeClass(
-                "selected"
+                "selected",
               );
             }
-          }
+          },
         );
       }
     }
@@ -314,12 +313,12 @@
         field === "tags"
           ? "tags"
           : field.includes("date")
-          ? "date"
-          : field.includes("int")
-          ? "int"
-          : field.includes("float") || field.includes("estimated_hours")
-          ? "float"
-          : "text";
+            ? "date"
+            : field.includes("int")
+              ? "int"
+              : field.includes("float") || field.includes("estimated_hours")
+                ? "float"
+                : "text";
 
       if (
         [
@@ -341,7 +340,7 @@
             // Remove subject's header if owned.
             if (new RegExp(anchorText + ": (.+)").test(currentText)) {
               currentText = new RegExp(anchorText + ": (.+)").exec(
-                currentText
+                currentText,
               )[1];
             }
           }
@@ -353,7 +352,7 @@
           form,
           field,
           fieldType,
-          currentText
+          currentText,
         );
       } else {
         const url = $(form).data("cm-url");
@@ -377,9 +376,9 @@
                   return Array.from(url.searchParams.keys()).some((key) =>
                     searchParamsKeys.some((searchParamsKey) =>
                       new RegExp(
-                        searchParamsKey.replace(/[\[\]]/g, "\\$&")
-                      ).test(key)
-                    )
+                        searchParamsKey.replace(/[\[\]]/g, "\\$&"),
+                      ).test(key),
+                    ),
                   );
                 })
                 .closest("li.folder")
@@ -448,7 +447,7 @@
           // values for the same key are required.
           // body: JSON.stringify(Object.fromEntries(formData)),
           redirect: "manual",
-        }
+        },
       )
         .then(async (response) => {
           if (response.type === "opaqueredirect" || response.ok) {
@@ -464,7 +463,7 @@
             console.error(
               "Request failed:",
               response.statusText,
-              response.status
+              response.status,
             );
             alert(`Request failed: ${response.statusText}[${response.status}]`);
           }
