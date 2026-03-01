@@ -323,8 +323,9 @@
         console.error("Fetch error:", error);
       }
 
+      // Regenerate GLightbox if exists
       if (window.redmineGLightbox) {
-        await window.redmineGLightbox.regenerate();
+        window.redmineGLightbox.regenerate();
       }
     };
 
