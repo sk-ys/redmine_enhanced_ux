@@ -231,7 +231,7 @@
     const addNotesLegendDefault = $("#add_notes>legend:first").text();
     const $submitButton = $('#issue-form input[type="submit"]');
     const $history = $("#history");
-    const enableRedmineRT = $("#quick_notes").length > 0;
+    const redmineRTEnabled = $("#quick_notes").length > 0;
     const isInIframe = window.self !== window.top;
     const homeUrl =
       ["login", "logout"]
@@ -278,7 +278,7 @@
 
     // Utils
     function detectHistoryDirection() {
-      if (enableRedmineRT) {
+      if (redmineRTEnabled) {
         return $history.data("comment_sorting") === "desc" ? "desc" : "asc";
       }
 
@@ -2993,12 +2993,12 @@
             $("#issue_notes").val("").removeData("changed");
             $("#new-attachments .attachments_fields").empty();
 
-            issueLayoutManager.updateFormCore(data, !enableRedmineRT);
+            issueLayoutManager.updateFormCore(data, !redmineRTEnabled);
 
             // Change tab to edit
             $("#add_notes .tab-edit")[0].click();
 
-            if (!enableRedmineRT) {
+            if (!redmineRTEnabled) {
               issueLayoutManager?.resetHeightOfAttachmentTable();
             }
             resolve(data);
