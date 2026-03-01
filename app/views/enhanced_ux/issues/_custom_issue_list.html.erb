@@ -322,6 +322,10 @@
       } catch (error) {
         console.error("Fetch error:", error);
       }
+
+      if (window.redmineGLightbox) {
+        await window.redmineGLightbox.regenerate();
+      }
     };
 
     function ajaxUpdateIssueListWithQuery(target) {
