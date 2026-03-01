@@ -267,6 +267,11 @@
             .attr("src", lightBoxScriptTag.attr("src"))
             .appendTo("head");
         }
+
+        // Regenerate GLightbox if exists
+        if (window.redmineGLightbox) {
+          window.redmineGLightbox.regenerate();
+        }
       } catch (error) {
         console.error("Fetch error:", error);
       }
