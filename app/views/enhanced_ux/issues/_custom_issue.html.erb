@@ -7,24 +7,7 @@
 <script>
   var ajaxUpdateIssueList;
 
-  window.addEventListener("DOMContentLoaded", function () {
-    const controller = [...document.body.classList]
-      .filter((i) => i.startsWith("controller"))[0]
-      .split("-")[1];
-    const action = [...document.body.classList]
-      .filter((i) => i.startsWith("action"))[0]
-      .split("-")[1];
-    if (
-      controller !== "issues" ||
-      (action !== "show" &&
-        action !== "edit" &&
-        action !== "update" &&
-        action !== "new" &&
-        action !== "create")
-    ) {
-      return;
-    }
-
+  (() => {
     // ----- settings start -----
     const dialogBaseConfig = {
       minWidth: 400,
@@ -217,11 +200,104 @@
       ...resourcesAll["en"],
       ...(resourcesAll[document.documentElement.lang] || {}),
     };
-    const isRtl = $('head link[rel="stylesheet"][href*="/rtl"]').length > 0;
+
     const issuePathname = location.pathname;
     const issueUrl = location.origin + issuePathname;
     const issueEditUrl = issueUrl + "/edit";
     const issueIdMatch = issuePathname.match(/\/issues\/([0-9]+)\/{0,1}$/);
+    const isInIframe = window.self !== window.top;
+    const homeUrl =
+      $("script[src*='/assets/responsive'][src*='.js']")
+        .attr("src")
+        ?.split("assets/responsive")[0] || "/";
+    const localStorageKeyPrefix = homeUrl.slice(1).replaceAll("/", ".");
+    let notesManager = null;
+    let issueLayoutManager = null;
+
+    class SettingsManager {
+      #settings = {};
+
+      constructor(settings) {
+        this.#settings = { ...defaultSettings, ...settings };
+      }
+
+      loadSettings() {
+        // Load settings from localStorage or use default values
+        const storedSettings = JSON.parse(
+          localStorage.getItem(
+            localStorageKeyPrefix + "custom_issue_view_settings",
+          ) ?? "{}",
+        );
+
+        Object.keys(this.#settings).forEach((key) => {
+          this.#settings[key] =
+            storedSettings[key] !== undefined
+              ? storedSettings[key]
+              : this.#settings[key];
+        });
+
+        // Migrate old settings if necessary
+        if (
+          storedSettings.enableCorrectAttributesPositionInEditView !== undefined
+        ) {
+          this.#settings.attributeLayoutTypeInEditView =
+            storedSettings.enableCorrectAttributesPositionInEditView ? 1 : 0;
+        }
+      }
+
+      saveSettings() {
+        // Save settings to localStorage
+        localStorage.setItem(
+          localStorageKeyPrefix + "custom_issue_view_settings",
+          JSON.stringify(this.#settings),
+        );
+      }
+
+      getSetting(key) {
+        return this.#settings[key];
+      }
+
+      setSetting(key, value) {
+        this.#settings[key] = value;
+      }
+
+      get settings() {
+        return this.#settings;
+      }
+    }
+    const settingsManager = new SettingsManager();
+    settingsManager.loadSettings();
+
+    if (settingsManager.getSetting("attributeLayoutTypeInEditView") === 2) {
+      // Compatible with Redmine Actual date plugin
+      window.actualDatePlugin = window.actualDatePlugin || {};
+      window.actualDatePlugin.config = {
+        ...window.actualDatePlugin.config, ...{
+          enableReorganizationForEditForm: false,
+          enableReorganizationForNewForm: false,
+        }
+      };
+    }
+
+  window.addEventListener("DOMContentLoaded", function () {
+    const controller = [...document.body.classList]
+      .filter((i) => i.startsWith("controller"))[0]
+      .split("-")[1];
+    const action = [...document.body.classList]
+      .filter((i) => i.startsWith("action"))[0]
+      .split("-")[1];
+    if (
+      controller !== "issues" ||
+      (action !== "show" &&
+        action !== "edit" &&
+        action !== "update" &&
+        action !== "new" &&
+        action !== "create")
+    ) {
+      return;
+    }
+
+    const isRtl = $('head link[rel="stylesheet"][href*="/rtl"]').length > 0;
     const issueId = issueIdMatch ? Number(issueIdMatch[1]) : null;
     const isNewForm = ["new", "create"].includes(action);
     const isEditOrUpdateOrCreateView = ["edit", "update"].includes(action);
@@ -232,17 +308,6 @@
     const $submitButton = $('#issue-form input[type="submit"]');
     const $history = $("#history");
     const redmineRTEnabled = $("#quick_notes").length > 0;
-    const isInIframe = window.self !== window.top;
-    const homeUrl =
-      ["login", "logout"]
-        .map(
-          (key) =>
-            $("." + key)
-              .attr("href")
-              ?.split(key)[0],
-        )
-        .filter((i) => i)[0] || "/";
-    const localStorageKeyPrefix = homeUrl.slice(1).replaceAll("/", ".");
     const svgIcons = new (class SVGIcons {
       constructor() {
         const extractedPath = this.#extractIconPath();
@@ -273,8 +338,6 @@
         return this.generateSvgIconTag("icon--angle-right");
       }
     })();
-    let notesManager = null;
-    let issueLayoutManager = null;
 
     // Utils
     function detectHistoryDirection() {
@@ -2652,58 +2715,6 @@
       }
     }
 
-    class SettingsManager {
-      #settings = {};
-
-      constructor(settings) {
-        this.#settings = { ...defaultSettings, ...settings };
-      }
-
-      loadSettings() {
-        // Load settings from localStorage or use default values
-        const storedSettings = JSON.parse(
-          localStorage.getItem(
-            localStorageKeyPrefix + "custom_issue_view_settings",
-          ) ?? "{}",
-        );
-
-        Object.keys(this.#settings).forEach((key) => {
-          this.#settings[key] =
-            storedSettings[key] !== undefined
-              ? storedSettings[key]
-              : this.#settings[key];
-        });
-
-        // Migrate old settings if necessary
-        if (
-          storedSettings.enableCorrectAttributesPositionInEditView !== undefined
-        ) {
-          this.#settings.attributeLayoutTypeInEditView =
-            storedSettings.enableCorrectAttributesPositionInEditView ? 1 : 0;
-        }
-      }
-
-      saveSettings() {
-        // Save settings to localStorage
-        localStorage.setItem(
-          localStorageKeyPrefix + "custom_issue_view_settings",
-          JSON.stringify(this.#settings),
-        );
-      }
-
-      getSetting(key) {
-        return this.#settings[key];
-      }
-
-      setSetting(key, value) {
-        this.#settings[key] = value;
-      }
-
-      get settings() {
-        return this.#settings;
-      }
-    }
-
     class SettingsPanel extends BaseDialog {
       constructor(settingsManager, config = {}) {
         super({
@@ -3035,9 +3046,6 @@
     };
 
     function initialize() {
-      const settingsManager = new SettingsManager();
-      settingsManager.loadSettings();
-
       const settingsPanel = new SettingsPanel(settingsManager);
 
       issueLayoutManager = new IssueLayoutManager(
@@ -3094,6 +3102,7 @@
 
     initialize();
   });
+  })();
 </script>
 <style>
   /* CSS variables for consistent values */
