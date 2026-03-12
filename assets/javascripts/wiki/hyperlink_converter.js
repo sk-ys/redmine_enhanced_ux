@@ -12,11 +12,21 @@
     // Try to parse as HTML to extract link and text
     const parser = new DOMParser();
     const doc = parser.parseFromString(html, "text/html");
-    const anchor = doc.querySelector("a");
+    const anchors = doc.body.querySelectorAll("a[href]");
+
+    // Convert only when a single standalone link is pasted.
+    // If the link is embedded in surrounding sentence text, skip conversion.
+    if (anchors.length !== 1) return null;
+
+    const anchor = anchors[0];
 
     if (anchor && anchor.href) {
       const url = anchor.href;
       const text = anchor.textContent.trim() || url;
+
+      const bodyText = doc.body.textContent.trim();
+      if (bodyText !== text) return null;
+
       return { url, text };
     }
 
