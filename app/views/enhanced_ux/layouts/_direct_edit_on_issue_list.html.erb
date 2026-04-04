@@ -56,6 +56,7 @@
       "start_date",
       "due_date",
       "date",
+      "datetime",
       "estimated_hours",
       "tags",
     ];
@@ -123,6 +124,10 @@
               ? initialValue
                 ? new Date(initialValue).toLocaleDateString("sv-SE")
                 : new Date().toLocaleDateString("sv-SE")
+              : fieldType === "datetime-local"
+                ? initialValue
+                  ? new Date(initialValue).toLocaleString("sv-SE").slice(0, 16).replace(" ", "T")
+                  : new Date().toLocaleString("sv-SE").slice(0, 16).replace(" ", "T")
               : field === "estimated_hours" && initialValue.includes(":")
                 ? timeStringToDecimal(initialValue)
                 : initialValue,
@@ -312,6 +317,8 @@
       const fieldType =
         field === "tags"
           ? "tags"
+          : field.includes("datetime")
+            ? "datetime-local"
           : field.includes("date")
             ? "date"
             : field.includes("int")
@@ -323,6 +330,7 @@
       if (
         [
           "date",
+          "datetime-local",
           "subject",
           "string",
           "link",
@@ -482,7 +490,7 @@
     padding: 1px 2px 1px 8px;
     border-radius: 2px;
     box-shadow: #0005 2px 2px 2px;
-    width: 200px;
+    width: 220px;
     box-sizing: border-box;
     cursor: move;
 
