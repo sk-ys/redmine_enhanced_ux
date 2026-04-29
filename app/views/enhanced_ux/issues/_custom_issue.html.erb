@@ -870,10 +870,15 @@
           // Replace updateIssueFrom function
           const updateIssueFromOrg = updateIssueFrom;
           updateIssueFrom = (url, el) => {
-            this.resetAttributesPosition();
-            return updateIssueFromOrg(url, el).then(() => {
-              this.correctAttributesPositionInEditView();
-            });
+            const jqXHR = updateIssueFromOrg(url, el);
+
+            if (jqXHR?.done) {
+              jqXHR.done(() => {
+                this.correctAttributesPositionInEditView();
+              });
+            }
+
+            return jqXHR;
           };
 
           this.correctAttributesPositionInEditView();
@@ -1265,11 +1270,17 @@
           // Replace updateIssueFrom function
           const updateIssueFromOrg = updateIssueFrom;
           updateIssueFrom = (url, el) => {
-            return updateIssueFromOrg(url, el).then(() => {
-              setTimeout(() => {
-                this.showDescriptionEditField();
+            const jqXHR = updateIssueFromOrg(url, el);
+
+            if (jqXHR?.done) {
+              jqXHR.done(() => {
+                setTimeout(() => {
+                  this.showDescriptionEditField();
+                });
               });
-            });
+            }
+
+            return jqXHR;
           };
 
           this.showDescriptionEditField();
@@ -2584,9 +2595,15 @@
         #replaceUpdateIssueFromFunction() {
           const updateIssueFromOrg = updateIssueFrom;
           updateIssueFrom = (url, el) => {
-            return updateIssueFromOrg(url, el).then(() => {
-              notesManager?.addNotesDialogPopOutButton();
-            });
+            const jqXHR = updateIssueFromOrg(url, el);
+
+            if (jqXHR?.done) {
+              jqXHR.done(() => {
+                notesManager?.addNotesDialogPopOutButton();
+              });
+            }
+
+            return jqXHR;
           };
         }
 
