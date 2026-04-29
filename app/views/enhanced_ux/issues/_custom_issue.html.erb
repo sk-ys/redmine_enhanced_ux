@@ -948,7 +948,7 @@
 
           // Add <hr>
           const previousAttributesCount =
-            $("#all_attributes > *:has(:is(input, textarea, select)):visible")
+            $("#all_attributes > *:has(:is(input, textarea, select))")
               .map((i, e) => ($(e).attr("id") === "attributes" ? i : 0))
               .toArray()
               .filter((i) => i > 0)[0] || 0;
@@ -959,15 +959,12 @@
             $("#attributes").before($("<hr>"));
           }
           $("#attributes>.splitcontent").each((_, el) => {
-            if (
-              $(el).next().is(":visible") &&
-              $(el).next()[0]?.nodeName !== "HR"
-            ) {
+            if ($(el).next()[0]?.nodeName !== "HR") {
               $(el).after($("<hr>"));
             }
           });
           const postAttributeCount = $(
-            "#attributes ~ *:has(:is(input, textarea, select)):visible",
+            "#attributes ~ *:has(:is(input, textarea, select))",
           ).length;
           if (postAttributeCount > 0) {
             $("#attributes").after($("<hr>"));
