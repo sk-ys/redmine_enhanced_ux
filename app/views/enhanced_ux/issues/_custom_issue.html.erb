@@ -959,12 +959,12 @@
               $(el).after($("<hr>"));
             }
           });
-          const postAttributeCount = $(
-            "#attributes ~ *:has(:is(input, textarea, select))",
-          ).length;
-          if (postAttributeCount > 0) {
-            $("#attributes").after($("<hr>"));
-          }
+          // const postAttributeCount = $(
+          //   "#attributes ~ *:has(:is(input, textarea, select))",
+          // ).length;
+          // if (postAttributeCount > 0) {
+          //   $("#attributes").after($("<hr>"));
+          // }
 
           // Fix placement of "assign to me" button
           $("#issue_assigned_to_id").after($("<br>"));
