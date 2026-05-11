@@ -867,18 +867,14 @@
         #setupCorrectAttributesPositionInEditView() {
           if (!this.attributeLayoutTypeInEditView) return;
 
-          // Replace updateIssueFrom function
-          const updateIssueFromOrg = updateIssueFrom;
-          updateIssueFrom = (url, el) => {
-            const jqXHR = updateIssueFromOrg(url, el);
+          // Replace replaceIssueFormWith function
+          const replaceIssueFormWithOrg = replaceIssueFormWith;
+          replaceIssueFormWith = (html) => {
+            this.resetAttributesPosition();
 
-            if (jqXHR?.done) {
-              jqXHR.done(() => {
-                this.correctAttributesPositionInEditView();
-              });
-            }
+            replaceIssueFormWithOrg(html);
 
-            return jqXHR;
+            this.correctAttributesPositionInEditView();
           };
 
           this.correctAttributesPositionInEditView();
