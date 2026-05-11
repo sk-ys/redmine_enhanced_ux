@@ -3457,6 +3457,8 @@
           height: 100%;
           overflow: hidden;
           flex: 1 1 auto;
+          display: flex;
+          flex-direction: column;
 
           &[data-comment_sorting="desc"] {
             flex: 1 1 auto;
@@ -3468,7 +3470,6 @@
           }
 
           & > .tab-content {
-            max-height: calc(100% - 40px); /* TODO: -40px */
             box-sizing: border-box;
             overflow: auto;
             margin: 0;
