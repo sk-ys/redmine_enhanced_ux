@@ -315,8 +315,10 @@
 
       // Estimating field type
       const fieldType =
-        field === "tags"
-          ? "tags"
+        field.includes("entity-relation") && field.includes("tags")
+          ? "additional-tags"
+          : field.includes("tags")
+            ? "tags"
           : field.includes("datetime")
             ? "datetime-local"
           : field.includes("date")
@@ -374,21 +376,28 @@
           url: url,
           data: $(form).serialize(),
           success: (data) => {
-            if (field === "tags") {
+            if (fieldType === "tags") {
               const tags_anchor = $('a[href*="/edit_issue_tags?"]', data);
-              if (tags_anchor.length > 0) $.ajax({ url: tags_anchor[0].href });
+              if (tags_anchor.length > 0) {
+                $.ajax({ url: tags_anchor[0].href });
+              } else {
+                // Show original context menu
+                contextMenuShowOrg(e);
+              }
             } else {
-              const $fieldMenu = $('a[href][data-method="patch"]', data)
-                .filter((i, e) => {
-                  const url = new URL(getAbsUrl($(e).attr("href")));
-                  return Array.from(url.searchParams.keys()).some((key) =>
-                    searchParamsKeys.some((searchParamsKey) =>
-                      new RegExp(
-                        searchParamsKey.replace(/[\[\]]/g, "\\$&"),
-                      ).test(key),
-                    ),
-                  );
-                })
+              const $fieldMenu = (fieldType === "additional-tags" ?
+                $('a.submenu[href="#"]:has(.icon-tags)', data)
+                : $('a[href][data-method="patch"]', data)
+                  .filter((i, e) => {
+                    const url = new URL(getAbsUrl($(e).attr("href")));
+                    return Array.from(url.searchParams.keys()).some((key) =>
+                      searchParamsKeys.some((searchParamsKey) =>
+                        new RegExp(
+                          searchParamsKey.replace(/[\[\]]/g, "\\$&"),
+                        ).test(key),
+                      ),
+                    );
+                  }))
                 .closest("li.folder")
                 .children("ul");
 
