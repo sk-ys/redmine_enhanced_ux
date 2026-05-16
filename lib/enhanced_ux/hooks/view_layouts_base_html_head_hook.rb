@@ -60,6 +60,12 @@ module EnhancedUx
             end
           end
 
+          if /\/projects$/.match?(path)
+            if Setting.plugin_redmine_enhanced_ux[:custom_project_list] == '1'
+              tags << controller.render_to_string(partial: 'enhanced_ux/projects/custom_project_list')
+            end
+          end
+
           if /\/(roadmap|versions\/[0-9]+$)/.match?(path)
             if Setting.plugin_redmine_enhanced_ux[:custom_roadmap_and_version] == '1'
               tags << controller.render_to_string(partial: 'enhanced_ux/versions/custom_roadmap_and_version')
