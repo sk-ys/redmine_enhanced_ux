@@ -12,7 +12,8 @@
     const minTableHeight = 150;
     // ----- settings end -----
 
-    const homeUrl = ($("[src*='/jquery-'][src*='-ui-'][src*='.js']").attr("src")
+    const homeUrl = ($("head script[src*='/jquery-'][src*='-ui-'][src*='.js']")
+      .attr("src")
       ?.match(/^(.*?)(?:\/javascripts\/|\/assets\/)/)
       ?.[1] || "") + "/";
     const pageType = /\/roadmap/.test(location.pathname)

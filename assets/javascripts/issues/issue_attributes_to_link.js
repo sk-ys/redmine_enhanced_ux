@@ -22,9 +22,10 @@ window.addEventListener("DOMContentLoaded", () => {
     },
   ];
 
-    const homeUrl = ($("[src*='/jquery-'][src*='-ui-'][src*='.js']").attr("src")
-      ?.match(/^(.*?)(?:\/javascripts\/|\/assets\/)/)
-      ?.[1] || "") + "/";
+  const homeUrl = ($("head script[src*='/jquery-'][src*='-ui-'][src*='.js']")
+    .attr("src")
+    ?.match(/^(.*?)(?:\/javascripts\/|\/assets\/)/)
+    ?.[1] || "") + "/";
 
   const projectIdentifier = $("body")
     .attr("class")

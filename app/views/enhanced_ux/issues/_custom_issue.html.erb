@@ -206,7 +206,8 @@
     const issueEditUrl = issueUrl + "/edit";
     const issueIdMatch = issuePathname.match(/\/issues\/([0-9]+)\/{0,1}$/);
     const isInIframe = window.self !== window.top;
-    const homeUrl = ($("[src*='/jquery-'][src*='-ui-'][src*='.js']").attr("src")
+    const homeUrl = ($("head script[src*='/jquery-'][src*='-ui-'][src*='.js']")
+      .attr("src")
       ?.match(/^(.*?)(?:\/javascripts\/|\/assets\/)/)
       ?.[1] || "") + "/";
     const localStorageKeyPrefix = homeUrl.slice(1).replaceAll("/", ".");

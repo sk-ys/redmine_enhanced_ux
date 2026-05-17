@@ -29,7 +29,8 @@
     const resources =
       resourcesAll[document.documentElement.lang] || resourcesAll["en"];
 
-    const homeUrl = ($("[src*='/jquery-'][src*='-ui-'][src*='.js']").attr("src")
+    const homeUrl = ($("head script[src*='/jquery-'][src*='-ui-'][src*='.js']")
+      .attr("src")
       ?.match(/^(.*?)(?:\/javascripts\/|\/assets\/)/)
       ?.[1] || "") + "/";
     const localStorageKeyPrefix = homeUrl.slice(1).replaceAll("/", ".");
