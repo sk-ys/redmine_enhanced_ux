@@ -88,7 +88,7 @@
 
       // Load user settings from localStorage
       const settingsFromLocalStorage = JSON.parse(
-        localStorage.getItem(localStorageKeyPrefix + "custom-project-list-settings") || "{}"
+        localStorage.getItem(localStorageKeyPrefix + "enhancedUxProjectListSettings") || "{}"
       );
 
       // Merge user settings with default settings
@@ -197,7 +197,7 @@
             {
               text: i18n.labelResetAndReload,
               click() {
-                localStorage.removeItem(localStorageKeyPrefix + "custom-project-list-settings");
+                localStorage.removeItem(localStorageKeyPrefix + "enhancedUxProjectListSettings");
                 location.reload();
               },
             },

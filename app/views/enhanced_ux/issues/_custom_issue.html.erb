@@ -225,7 +225,7 @@
         // Load settings from localStorage or use default values
         const storedSettings = JSON.parse(
           localStorage.getItem(
-            localStorageKeyPrefix + "custom-issue-view-settings",
+            localStorageKeyPrefix + "custom_issue_view_settings",
           ) ?? "{}",
         );
 
@@ -248,7 +248,7 @@
       saveSettings() {
         // Save settings to localStorage
         localStorage.setItem(
-          localStorageKeyPrefix + "custom-issue-view-settings",
+          localStorageKeyPrefix + "custom_issue_view_settings",
           JSON.stringify(this.#settings),
         );
       }
