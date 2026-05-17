@@ -1308,9 +1308,27 @@
 
           // Update content history tab
           if (updateHistory) {
-            $("#tab-content-history")
-              .empty()
-              .append($("#tab-content-history", data).children());
+            let $newHistory = $("#tab-content-history", data).children();
+
+            // Support for Lazy Load History plugin
+            $newHistory = $newHistory.filter(":not(.lazy-load-history)")
+
+            $newHistory.each((i, el) => {
+              const $newElem = $(el);
+              const id = $newElem.attr("id");
+              const $currentElem = $("#" + id);
+              if ($currentElem.length > 0) {
+                $currentElem.replaceWith($newElem);
+              } else {
+                // Detect notes order by checking the first history element existence, and insert new history accordingly
+                if (i === 0 && $(".tabs + .lazy-load-history").length === 0) {
+                  $newElem.prependTo("#tab-content-history");
+                } else {
+                  $newElem.appendTo("#tab-content-history");
+                }
+              }
+            });
+
             $("#history>.tabs>ul>li>a.selected").click();
           }
 
