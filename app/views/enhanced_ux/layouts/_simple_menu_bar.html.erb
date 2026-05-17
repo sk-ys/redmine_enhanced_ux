@@ -209,7 +209,9 @@
           .hasClass("contextual");
 
         $simpleSideMenuItems.append(
-          $("<li><div>" + text + "</div></li>").addClass("ui-widget-header"),
+          $("<li />")
+            .append($("<div />").text(text))
+            .addClass("ui-widget-header"),
         );
 
         if (lastItemIsContextual) {
