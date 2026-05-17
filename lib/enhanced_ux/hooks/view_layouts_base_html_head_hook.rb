@@ -81,8 +81,10 @@ module EnhancedUx
           if Setting.plugin_redmine_enhanced_ux[:popup_anywhere] == '1'
             tags << controller.render_to_string(partial: 'enhanced_ux/layouts/popup_anywhere')
           end
-          if Setting.plugin_redmine_enhanced_ux[:show_only_opened_issues] == '1'
-            tags << controller.render_to_string(partial: 'enhanced_ux/layouts/show_only_opened_issues')
+          if /(\/issues\/[0-9]+|\/versions\/[0-9]+|\/roadmap)/.match?(path)
+            if Setting.plugin_redmine_enhanced_ux[:show_only_opened_issues] == '1'
+              tags << controller.render_to_string(partial: 'enhanced_ux/layouts/show_only_opened_issues')
+            end
           end
           if Setting.plugin_redmine_enhanced_ux[:simple_menu_bar] == '1'
             tags << controller.render_to_string(partial: 'enhanced_ux/layouts/simple_menu_bar')
