@@ -12,15 +12,9 @@
     const widthOfWindowToForceSwitchToRowView = 1280;
     // ----- settings end -----
 
-    const homeUrl =
-      ["login", "logout"]
-        .map(
-          (key) =>
-            $("." + key)
-              .attr("href")
-              ?.split(key)[0]
-        )
-        .filter((i) => i)[0] || "/";
+    const homeUrl = ($("[src*='/jquery-'][src*='-ui-'][src*='.js']").attr("src")
+      ?.match(/^(.*?)(?:\/javascripts\/|\/assets\/)/)
+      ?.[1] || "") + "/";
     const localStorageKeyPrefix = homeUrl.slice(1).replaceAll("/", ".");
     const pageType = (() => {
       const key1 = location.pathname.split("/").slice(-1)[0];

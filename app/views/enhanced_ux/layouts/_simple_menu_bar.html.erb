@@ -7,14 +7,9 @@
 <script>
   //<![CDATA[
   // Detect home URL from the responsive CSS link tag
-  const homeUrl =
-    $("link[href*='/responsive'][href*='.css']")
-      .map((i, e) =>
-        e
-          .href
-          .replace(/(assets|stylesheets)\/responsive.*/, "")
-          .replace(location.origin, "")
-      )[0] || "/";
+  const homeUrl = ($("[src*='/jquery-'][src*='-ui-'][src*='.js']").attr("src")
+    ?.match(/^(.*?)(?:\/javascripts\/|\/assets\/)/)
+    ?.[1] || "") + "/";
   const localStorageKeyPrefix = homeUrl.slice(1).replaceAll("/", ".");
   // If the saved visibility setting is false, apply the following style that
   // hides the header.
