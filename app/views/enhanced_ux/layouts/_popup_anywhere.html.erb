@@ -874,7 +874,11 @@
             });
 
             // Hide sticky issue header
-            $contents.find("#sticky-issue-header").css("display", "none");
+            $contents.find("head").append(
+              $("<style>").text(
+                "#sticky-issue-header { display: none !important; }"
+              ).addClass("added-by-popup-anywhere hide-sticky-header")
+            );
 
             $(e.target).css("visibility", "");
           })

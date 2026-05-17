@@ -835,7 +835,11 @@
           }
 
           // Hide sticky issue header
-          $contents.find("#sticky-issue-header").css("display", "none");
+          $contents.find("head").append(
+            $("<style>").text(
+              "#sticky-issue-header { display: none !important; }"
+            ).addClass("added-by-two-pane-mode hide-sticky-header")
+          );
 
           // Show iframe contents
           this.$iframe.css("visibility", "");
