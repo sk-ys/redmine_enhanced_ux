@@ -437,7 +437,13 @@
             projectHref, $projectListHeader.hasClass("collapsed")
           );
 
-          toggleExpendCollapseIcon($iconContainer[0]);
+          // Replace svg icon with appropriate one
+          const $svgIcon = $iconContainer.find("svg use");
+          if ($svgIcon.length > 0) {
+            $svgIcon.remove();
+            const newIconName = $projectListHeader.hasClass("collapsed") ? "icon--angle-right" : "icon--angle-down";
+            insertSvgIcon($iconContainer, newIconName, 18);
+          }
         }
 
         // Add icon to identify all projects
