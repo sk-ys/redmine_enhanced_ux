@@ -88,7 +88,7 @@
 
       // Load user settings from localStorage
       const settingsFromLocalStorage = JSON.parse(
-        localStorage.getItem(localStorageKeyPrefix + "enhancedUxProjectListSettings") || "{}"
+        localStorage.getItem(localStorageKeyPrefix + "custom-project-list-settings") || "{}"
       );
 
       // Merge user settings with default settings
@@ -197,7 +197,7 @@
             {
               text: i18n.labelResetAndReload,
               click() {
-                localStorage.removeItem(localStorageKeyPrefix + "enhancedUxProjectListSettings");
+                localStorage.removeItem(localStorageKeyPrefix + "custom-project-list-settings");
                 location.reload();
               },
             },
@@ -212,7 +212,7 @@
                   toggleDescription: $("#toggle_description_enabled").prop("checked"),
                 };
                 localStorage.setItem(
-                  localStorageKeyPrefix + "enhancedUxProjectListSettings",
+                  localStorageKeyPrefix + "custom-project-list-settings",
                   JSON.stringify({ ...settings, ...newSettings })
                 );
                 location.reload();
