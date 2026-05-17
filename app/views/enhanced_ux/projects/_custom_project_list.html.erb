@@ -424,7 +424,7 @@
 
         const collapsedStateMan = new CollapsedStateManager();
 
-        function toggleExpendCollapse($iconContainer) {
+        function toggleExpandCollapse($iconContainer) {
           if (!$iconContainer || $iconContainer.length === 0) return;
 
           const $projectListHeader = $iconContainer.closest("li.root, li.child");
@@ -470,7 +470,7 @@
             $iconContainer.on("click", (e) => {
               e.preventDefault();
               e.stopPropagation();
-              toggleExpendCollapse($iconContainer);
+              toggleExpandCollapse($iconContainer);
 
               if (e.shiftKey) {
                 // If shift key is pressed, apply the same action to all sub projects
@@ -480,7 +480,7 @@
                   .each((i, el) => {
                     const $subProject = $(el);
                     if ($subProject.hasClass("collapsed") !== $projectListHeader.hasClass("collapsed")) {
-                      toggleExpendCollapse($subProject.find("> .toggle-subprojects"));
+                      toggleExpandCollapse($subProject.find("> .toggle-subprojects"));
                     }
                   });
               }
@@ -501,7 +501,7 @@
               if (href) {
                 projectHrefs.push(href);
                 if (!$(el).hasClass("collapsed")) {
-                  toggleExpendCollapse($(el).find("> .toggle-subprojects"));
+                  toggleExpandCollapse($(el).find("> .toggle-subprojects"));
                 }
               }
             });
@@ -512,7 +512,7 @@
           .addClass("expand-all-button")
           .on("click", () => {
             $projectsIndex.find("li.collapsible.collapsed").each((i, el) => {
-              toggleExpendCollapse($(el).find("> .toggle-subprojects"));
+              toggleExpandCollapse($(el).find("> .toggle-subprojects"));
             });
             collapsedStateMan.bulkSetCollapsed([]);
           });
