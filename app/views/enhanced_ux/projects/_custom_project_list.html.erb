@@ -1,0 +1,828 @@
+<!-- 
+// Path pattern:       /projects$
+// Insertion position: Head of all pages
+// Type:               HTML
+// Comment:            Custom project list
+  -->
+<script>
+  (() => {
+    const defaultSettings = {
+      compactQueryForm: true,
+      projectShortcutMenuEnabled: true,
+      collapsibleSubprojects: true,
+      toggleDescription: true
+    };
+
+    const i18nDict = {
+      en: {
+        labelViewSettings: "View Settings",
+        labelCompactQueryForm: "Compact Query Form",
+        labelProjectShortcutMenu: "Project Shortcut Menu",
+        labelCollapsibleSubprojects: "Collapsible Subprojects",
+        labelToggleDescriptionFeature: "Toggle Description Feature",
+        labelSaveAndReload: "Save and Reload",
+        labelResetAndReload: "Reset and Reload",
+        labelIssues: "Issues",
+        labelNewIssue: "New Issue",
+        labelSettings: "Settings",
+        labelCancel: "Cancel",
+        labelCriteria: "Criteria",
+        labelCollapsedAllProjects: "Collapse All",
+        labelExpandedAllProjects: "Expand All",
+        labelToggleDescription: "Description",
+      },
+      ja: {
+        labelViewSettings: "表示設定",
+        labelCompactQueryForm: "コンパクトな抽出条件",
+        labelProjectShortcutMenu: "プロジェクトショートカットメニュー",
+        labelCollapsibleSubprojects: "サブプロジェクトの折りたたみ",
+        labelToggleDescriptionFeature: "説明の表示切替機能",
+        labelSaveAndReload: "保存して再読み込み",
+        labelResetAndReload: "リセットして再読み込み",
+        labelIssues: "チケット一覧",
+        labelNewIssue: "新規チケット",
+        labelSettings: "設定",
+        labelCancel: "キャンセル",
+        labelCriteria: "抽出条件",
+        labelCollapsedAllProjects: "全て折りたたみ",
+        labelExpandedAllProjects: "全て展開",
+        labelToggleDescription: "説明",
+      },
+    };
+    const i18n = i18nDict[document.documentElement.lang] || i18nDict["en"];
+
+    // Add CSS for collapsible subprojects
+    const $style = $("<style>");
+    $style.text(`
+      #projects-index {
+        opacity: 0;
+        transition: opacity 0.3s ease;
+      }
+    `);
+    $style.addClass("eux-project-list-initial-style");
+    $("head").append($style);
+
+    // Fail-safe to force show the project list in case the script fails partway and leaves the list hidden.
+    const projectListForceShowDelayMs = 3000;
+    let projectListForceShowTimer = null;
+
+    function showProjectList() {
+      $("#projects-index").css("opacity", 1);
+
+      if (projectListForceShowTimer !== null) {
+        clearTimeout(projectListForceShowTimer);
+        projectListForceShowTimer = null;
+      }
+    }
+
+    projectListForceShowTimer = setTimeout(
+      showProjectList, projectListForceShowDelayMs
+    );
+
+    document.addEventListener("DOMContentLoaded", () => {
+      const homeUrl =
+        ["login", "logout"]
+          .map(
+            (key) =>
+              $("." + key)
+                .attr("href")
+                ?.split(key)?.[0],
+          )
+          .filter((i) => i)[0] || "/";
+
+      const localStorageKeyPrefix = homeUrl.slice(1).replaceAll("/", ".");
+
+      // Load user settings from localStorage
+      const settingsFromLocalStorage = JSON.parse(
+        localStorage.getItem(localStorageKeyPrefix + "enhancedUxProjectListSettings") || "{}"
+      );
+
+      // Merge user settings with default settings
+      window.enhancedUxProjectListSettings = {
+        ...defaultSettings,
+        ...window.enhancedUxProjectListSettings,
+        ...settingsFromLocalStorage,
+      };
+      const settings = window.enhancedUxProjectListSettings;
+
+      let collapsibleSubprojectsFeatureIsInitialized = false;
+      let toggleDescriptionFeatureIsInitialized = false;
+      if (!settings.collapsibleSubprojects && !settings.toggleDescription) {
+        showProjectList();
+      }
+
+      const svgIcons = new (class SVGIcons {
+        constructor() {
+          const extractedPath = this.#extractIconPath();
+          this.basePath = extractedPath ? homeUrl + extractedPath : null;
+        }
+        #extractIconPath() {
+          const $elem = $("use[href*='/assets/icons-'][href*='.svg#']").first();
+          const match = $elem
+            .attr("href")
+            ?.match(/\/(assets\/icons-[a-f0-9]+\.svg)#/);
+          return match ? match[1] : null;
+        }
+        generateSvgIconTag(key, size = 18) {
+          if (!this.basePath) return null;
+          return $(
+            `<svg class="s${size} icon-svg" aria-hidden="true">` +
+            `<use href="${this.basePath}#${key}"></use>` +
+            `</svg>`,
+          );
+        }
+        get magnifier() {
+          return this.generateSvgIconTag("icon--search", 18);
+        }
+        get close() {
+          return this.generateSvgIconTag("icon--close", 18);
+        }
+      })();
+
+      function insertSvgIcon(elem, iconName, size = 18) {
+        const $icon = svgIcons.generateSvgIconTag(iconName, size);
+        if ($icon) {
+          const label = elem.text();
+          elem.text(""); // Clear text to insert icon before text
+          elem.append($icon);
+          elem.append($("<span>").text(label).addClass("icon-label"));
+        }
+        return elem;
+      }
+
+      function initViewSettingsPanel() {
+        const $settingsPanel = $("<div>").attr(
+          "id",
+          "custom-project-list-settings-panel-content",
+        );
+
+        function generateSettingItem(labelText, id, value = false) {
+          const $container = $("<div>").addClass("setting-item");
+          const $label = $("<label>").text(labelText).attr("for", id);
+          const $input = $("<input>")
+            .attr("type", "checkbox")
+            .attr("id", id)
+            .prop("checked", value);
+          return $container.append($label).append($input);
+        }
+
+        // Append settings to dialog
+        $settingsPanel.append(
+          generateSettingItem(
+            i18n.labelCompactQueryForm,
+            "compact_query_form_enabled",
+            settings.compactQueryForm
+          )
+        ).append(
+          generateSettingItem(
+            i18n.labelProjectShortcutMenu,
+            "project_shortcut_menu_enabled",
+            settings.projectShortcutMenuEnabled
+          ),
+        ).append(
+          generateSettingItem(
+            i18n.labelCollapsibleSubprojects,
+            "collapsible_subprojects_enabled",
+            settings.collapsibleSubprojects
+          ),
+        ).append(
+          generateSettingItem(
+            i18n.labelToggleDescriptionFeature,
+            "toggle_description_enabled",
+            settings.toggleDescription
+          ),
+        );
+
+        const $dialog = $settingsPanel.dialog({
+          autoOpen: false,
+          title: i18n.labelViewSettings,
+          modal: true,
+          width: "auto",
+          resizable: false,
+          buttons: [
+            {
+              text: i18n.labelResetAndReload,
+              click() {
+                localStorage.removeItem(localStorageKeyPrefix + "enhancedUxProjectListSettings");
+                location.reload();
+              },
+            },
+            {
+              text: i18n.labelSaveAndReload,
+              click() {
+                // Save settings to localStorage
+                const newSettings = {
+                  compactQueryForm: $("#compact_query_form_enabled").prop("checked"),
+                  projectShortcutMenuEnabled: $("#project_shortcut_menu_enabled").prop("checked"),
+                  collapsibleSubprojects: $("#collapsible_subprojects_enabled").prop("checked"),
+                  toggleDescription: $("#toggle_description_enabled").prop("checked"),
+                };
+                localStorage.setItem(
+                  localStorageKeyPrefix + "enhancedUxProjectListSettings",
+                  JSON.stringify({ ...settings, ...newSettings })
+                );
+                location.reload();
+              },
+            },
+            {
+              text: i18n.labelCancel,
+              click() {
+                $dialog.dialog("close");
+              },
+            },
+          ],
+        });
+
+        // Add view settings button
+        const $viewSettingsButton = $("<a>")
+          .attr("id", "view_settings_button")
+          .addClass("icon icon-settings")
+          .text(i18n.labelViewSettings)
+          .on("click", (e) => {
+            e.preventDefault();
+            $dialog.dialog("open");
+          })
+          .appendTo("#content>.contextual:first");
+        insertSvgIcon($viewSettingsButton, "icon--settings", 18);
+      }
+
+      function initCompactQueryForm() {
+        if (!settings.compactQueryForm) return;
+
+        function setUpQueryFormButtons() {
+          // Add cancel button to query form.
+          const $cancelButton = $("<a>")
+            .text(i18n.labelCancel)
+            .addClass("icon query_form_cancel")
+            .css("cursor", "pointer")
+            .on("click", () => {
+              $("#query_form").hide();
+            });
+
+          if (svgIcons.close) {
+            $cancelButton.prepend(svgIcons.close);
+          } else {
+            $cancelButton.addClass("icon-close");
+          }
+
+          $("#query_form_with_buttons>.buttons").append($cancelButton);
+
+          $("#query_form").hide();
+        }
+
+        $("#main").addClass("eux-compact-query-form-enabled");
+
+        const $queryFormOpenButton = $("<a>")
+          .attr("id", "query_form_open_button")
+          .addClass("icon")
+          .text(i18n.labelCriteria)
+          .on("click", (e) => {
+            e.preventDefault();
+            $("#query_form").show();
+          })
+          .on("mouseenter", () => {
+            $("#query_form").show();
+          })
+          .appendTo("#content>h2:first");
+
+        if (svgIcons.magnifier) {
+          $queryFormOpenButton.prepend(svgIcons.magnifier);
+        } else {
+          $queryFormOpenButton.addClass("icon-magnifier");
+        }
+
+        // Close the query form when the outside of the form is clicked
+        $(document).click((e) => {
+          if (
+            e.target !== $("#query_form")[0] &&
+            $(e.target).parents("#query_form").length === 0 &&
+            e.target !== $("#query_form_open_button")[0] &&
+            $(window).width() >= 900
+          ) {
+            $("#query_form").hide();
+          }
+        });
+
+        setUpQueryFormButtons();
+      }
+
+      function initProjectShortcutMenu() {
+        if (!settings.projectShortcutMenuEnabled) return;
+        function generateLinkBox(projectHref) {
+          const $linkBox = $("<div>").addClass("link-box");
+          const $issueListLink = $("<a>")
+            .attr("href", `${projectHref}/issues`)
+            .text(i18n.labelIssues)
+            .addClass("icon icon-list");
+          insertSvgIcon($issueListLink, "icon--list", 14);
+          const $newIssueLink = $("<a>")
+            .attr("href", `${projectHref}/issues/new`)
+            .text(i18n.labelNewIssue)
+            .addClass("icon icon-add");
+          insertSvgIcon($newIssueLink, "icon--add", 14);
+          const $settingLink = $("<a>")
+            .attr("href", `${projectHref}/settings`)
+            .text(i18n.labelSettings)
+            .addClass("icon icon-settings");
+          insertSvgIcon($settingLink, "icon--settings", 14);
+          $linkBox.append($issueListLink, $newIssueLink, $settingLink);
+          return $linkBox;
+        }
+
+        // Add short cuts
+        $("#projects-index a.project").each((i, el) => {
+          const $el = $(el);
+          const projectHref = $el.attr("href");
+          const $linkBox = generateLinkBox(projectHref);
+
+          const $spanItems = $el
+            .parent()
+            .children("span");
+          if ($spanItems.length > 0) {
+            $spanItems.last().after($linkBox);
+          } else {
+            $el.after($linkBox);
+          }
+        });
+      }
+
+      function initCollapsibleSubprojects() {
+        if (!settings.collapsibleSubprojects) return;
+
+        const $projectsIndex = $("#projects-index");
+        // Only available for project board view
+        if ($projectsIndex.length === 0) return;
+
+        class CollapsedStateManager {
+          #storageKey = localStorageKeyPrefix + "collapsed_projects";
+
+          constructor() {
+            this.collapsedProjects = new Set(this.#loadState());
+
+            // Clean up invalid project hrefs that no longer exist in the DOM if there is no filter applied, to prevent memory leak over time
+            if ($("#filters-table .filter").length == 0) {
+              this.#deleteInactiveProjects();
+            }
+          }
+
+          #deleteInactiveProjects() {
+            const validProjects = new Set(
+              $projectsIndex.find("a:is(.root, .child)").map((i, el) =>
+                $(el).attr("href")
+              ).get()
+            );
+            this.collapsedProjects.forEach((proj) => {
+              if (!validProjects.has(proj)) {
+                this.collapsedProjects.delete(proj);
+              }
+            });
+          }
+
+          #loadState() {
+            const stored = localStorage.getItem(this.#storageKey);
+            return stored ? JSON.parse(stored) : [];
+          }
+
+          #saveState() {
+            localStorage.setItem(this.#storageKey, JSON.stringify([...this.collapsedProjects]));
+          }
+
+          isCollapsed(projectHref) {
+            return this.collapsedProjects.has(projectHref);
+          }
+
+          toggleCollapsed(projectHref, collapsed = null) {
+            if (collapsed === null) {
+              collapsed = !this.isCollapsed(projectHref);
+            }
+            if (collapsed) {
+              this.collapsedProjects.add(projectHref);
+            } else {
+              this.collapsedProjects.delete(projectHref);
+            }
+            this.#saveState();
+          }
+
+          setCollapsed(projectHref) {
+            this.toggleCollapsed(projectHref, true);
+          }
+
+          setExpanded(projectHref) {
+            this.toggleCollapsed(projectHref, false);
+          }
+
+          bulkSetCollapsed(projectHrefs, overwrite = true) {
+            if (overwrite) {
+              this.collapsedProjects = new Set(projectHrefs);
+            } else {
+              projectHrefs.forEach((href) => this.collapsedProjects.add(href));
+            }
+            this.#saveState();
+          }
+        }
+
+        const collapsedStateMan = new CollapsedStateManager();
+
+        function toggleExpandCollapse($iconContainer) {
+          if (!$iconContainer || $iconContainer.length === 0) return;
+
+          const $projectListHeader = $iconContainer.closest("li.root, li.child");
+          if ($projectListHeader.length === 0) return;
+
+          const projectHref = $projectListHeader.find("> div:is(.root, .child) > a.project").attr("href");
+
+          $iconContainer.toggleClass('icon-expanded icon-collapsed');
+          $projectListHeader.toggleClass("collapsed");
+          collapsedStateMan.toggleCollapsed(
+            projectHref, $projectListHeader.hasClass("collapsed")
+          );
+
+          // Replace svg icon with appropriate one
+          const $svgIcon = $iconContainer.find("svg use");
+          if ($svgIcon.length > 0) {
+            $svgIcon.remove();
+            const newIconName = $projectListHeader.hasClass("collapsed") ? "icon--angle-right" : "icon--angle-down";
+            insertSvgIcon($iconContainer, newIconName, 18);
+          }
+        }
+
+        // Add icon to identify all projects
+        $projectsIndex.find("a:is(.root, .child)").each((i, el) => {
+          const $el = $(el);
+          const projectHref = $el.attr("href");
+          const $projectListHeader = $el.closest("li.root, li.child");
+          const hasChildProjects = $projectListHeader.find("ul.projects").length > 0;
+
+          if (projectHref && hasChildProjects) {
+            const initialState = collapsedStateMan.isCollapsed(projectHref) ? "collapsed" : "expanded";
+
+            $projectListHeader
+              .addClass("collapsible")
+              .toggleClass("collapsed", initialState === "collapsed");
+
+            const $iconContainer = $("<div>")
+              .addClass("toggle-subprojects icon-only")
+              .addClass(initialState === "collapsed" ? "icon-collapsed" : "icon-expanded");
+            const $icon = svgIcons.generateSvgIconTag(
+              initialState === "collapsed" ? "icon--angle-right" : "icon--angle-down",
+              18
+            );
+
+            if ($icon) $iconContainer.append($icon);
+            $projectListHeader.prepend($iconContainer);
+
+            // Click event for toggling subprojects
+            $iconContainer.on("click", (e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              toggleExpandCollapse($iconContainer);
+
+              if (e.shiftKey) {
+                // If shift key is pressed, apply the same action to all sub projects
+                $projectListHeader
+                  .children("ul.projects")
+                  .find("li.collapsible")
+                  .each((i, el) => {
+                    const $subProject = $(el);
+                    if ($subProject.hasClass("collapsed") !== $projectListHeader.hasClass("collapsed")) {
+                      toggleExpandCollapse($subProject.find("> .toggle-subprojects"));
+                    }
+                  });
+              }
+            });
+          }
+        });
+
+        // Add buttons to expand/collapse all projects
+        const $buttonContainer = $("<span>")
+          .attr("id", "project-collapse-buttons");
+        const $collapseAllButton = $("<a>")
+          .text(i18n.labelCollapsedAllProjects)
+          .addClass("collapse-all-button")
+          .on("click", () => {
+            const projectHrefs = [];
+            $projectsIndex.find("li.collapsible").each((i, el) => {
+              const href = $(el).find("> div:is(.root, .child) > a.project").attr("href");
+              if (href) {
+                projectHrefs.push(href);
+                if (!$(el).hasClass("collapsed")) {
+                  toggleExpandCollapse($(el).find("> .toggle-subprojects"));
+                }
+              }
+            });
+            collapsedStateMan.bulkSetCollapsed(projectHrefs);
+          });
+        const $expandAllButton = $("<a>")
+          .text(i18n.labelExpandedAllProjects)
+          .addClass("expand-all-button")
+          .on("click", () => {
+            $projectsIndex.find("li.collapsible.collapsed").each((i, el) => {
+              toggleExpandCollapse($(el).find("> .toggle-subprojects"));
+            });
+            collapsedStateMan.bulkSetCollapsed([]);
+          });
+
+        $buttonContainer
+          .append($collapseAllButton)
+          .append($expandAllButton)
+          .appendTo($("#content>h2:first"));
+
+        // Show project list after initializing collapsible feature
+        if (
+          !settings.toggleDescription ||
+          (settings.toggleDescription && toggleDescriptionFeatureIsInitialized)
+        ) {
+          showProjectList();
+        }
+
+        collapsibleSubprojectsFeatureIsInitialized = true;
+      }
+
+      function initToggleDescription() {
+        if (!settings.toggleDescription) return;
+
+        if ($("#projects-index").length === 0) return;
+
+        // Add toggle description checkbox
+        const $toggleDescriptionCheckBox = $("<input>")
+          .attr("type", "checkbox")
+          .attr("id", "toggle_description_cb")
+          .on("change", (e) => {
+            e.preventDefault();
+            $("#projects-index")
+              .toggleClass("description-hidden", !e.target.checked);
+            localStorage.setItem(
+              localStorageKeyPrefix + "project_description_hidden",
+              !e.target.checked
+            );
+          });
+
+        const $toggleDescriptionContainer = $("<span>")
+          .attr("id", "toggle_description_container")
+          .append($toggleDescriptionCheckBox)
+          .append(
+            $("<label>")
+              .attr("for", "toggle_description_cb")
+              .text(i18n.labelToggleDescription)
+          )
+          .appendTo("#content>h2:first");
+
+        // Load saved state from localStorage
+        const descriptionHidden = JSON.parse(
+          localStorage.getItem(
+            localStorageKeyPrefix + "project_description_hidden"
+          ) || "false"
+        );
+        $("#toggle_description_cb").prop("checked", !descriptionHidden);
+        $("#projects-index").toggleClass("description-hidden", descriptionHidden);
+
+        if (
+          !settings.collapsibleSubprojects ||
+          (
+            settings.collapsibleSubprojects &&
+            collapsibleSubprojectsFeatureIsInitialized
+          )
+        ) {
+          showProjectList();
+        }
+
+        toggleDescriptionFeatureIsInitialized = true;
+      }
+
+      // Initialize features
+      initViewSettingsPanel();
+      initCompactQueryForm();
+      initProjectShortcutMenu();
+      initCollapsibleSubprojects();
+      initToggleDescription();
+    });
+  })();
+</script>
+<style>
+  :root {
+    interpolate-size: allow-keywords;
+  }
+
+  /* ===== View Settings panel ===== */
+  #view_settings_button {
+    cursor: pointer;
+  }
+
+  #custom-project-list-settings-panel-content {
+    .setting-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 10px;
+    }
+
+    label {
+      font-size: 0.9em;
+      font-weight: normal;
+      cursor: pointer;
+    }
+
+    input[type="checkbox"] {
+      margin-right: 5px;
+    }
+
+    &+.ui-dialog-buttonpane {
+      button {
+        height: auto;
+      }
+    }
+  }
+
+  /* ===== Compact query form ===== */
+  #main.eux-compact-query-form-enabled {
+    #content {
+      position: relative;
+    }
+
+    #query_form_open_button {
+      display: none;
+    }
+
+    /* Styles for mobile layout */
+    @media screen and (max-width: 899px) {
+      #query_form_with_buttons>p.buttons>.query_form_cancel {
+        display: none;
+      }
+
+      #query_form {
+        display: block !important;
+      }
+    }
+
+    /* Styles for desktop layout */
+    @media screen and (min-width: 900px) {
+      #query_form_open_button {
+        display: inline;
+        font-size: 0.6em;
+        margin: 0 10px;
+        background-repeat: no-repeat;
+        cursor: pointer;
+      }
+
+      #query_form {
+        display: none;
+        position: absolute;
+        background-color: white;
+        z-index: 50;
+        width: min-content;
+        max-width: calc(100% - 50px);
+        box-shadow: 5px 5px 5px rgb(0 0 0 / 20%);
+        border-radius: 5px;
+        padding: 15px;
+        border: 1px #ccc solid;
+        top: 42px;
+        min-width: 900px;
+
+        #filters .add-filter {
+          min-width: 350px;
+        }
+      }
+
+      #query_form_with_buttons>p.buttons {
+        border-top: 1px solid #ccc;
+        padding-top: 10px;
+        margin: 15px 0 0;
+        display: flex;
+        justify-content: flex-end;
+        align-items: center;
+      }
+
+      #query_form_content fieldset {
+        margin-bottom: 20px;
+      }
+    }
+  }
+
+  /* ===== Shortcut links for each project ===== */
+  #projects-index {
+    .link-box {
+      display: flex;
+      gap: 10px;
+      margin: 0;
+      margin-left: 0.5em;
+
+      max-height: 0;
+      opacity: 0;
+      overflow: hidden;
+      pointer-events: none;
+      line-height: normal;
+
+      transition:
+        max-height 0.3s ease,
+        margin 0.3s ease,
+        opacity 0.2s ease;
+
+      a {
+        font-size: 0.8em;
+        white-space: nowrap;
+        background-size: 12px;
+      }
+
+      @media screen and (max-width: 899px) {
+        a {
+          background-size: 14px;
+        }
+      }
+    }
+
+    div:is(.root, .child):has(> a.project):hover .link-box {
+      max-height: 1em;
+      opacity: 1;
+      pointer-events: auto;
+      margin-top: 5px;
+      margin-bottom: 5px;
+    }
+  }
+
+  /* ===== Collapsible subprojects ===== */
+  #projects-index {
+    li:is(.root, .child).collapsible {
+      &>div:is(.root, .child) {
+        margin-left: 20px;
+      }
+
+      &>ul.projects {
+        clear: both;
+        margin-left: 7px;
+        overflow: hidden;
+        max-height: fit-content;
+        transition: max-height 0.3s ease;
+      }
+
+      &.collapsed>ul.projects {
+        max-height: 0;
+      }
+    }
+
+    .toggle-subprojects {
+      cursor: pointer;
+      margin-right: 5px;
+      float: inline-start;
+      border-radius: 4px;
+      background-position: center;
+
+      &:hover {
+        background-color: rgba(0, 0, 0, 0.05);
+      }
+
+      &:active {
+        background-color: rgba(0, 0, 0, 0.1);
+      }
+    }
+  }
+
+  #project-collapse-buttons {
+    font-size: 0.7em;
+    margin-left: 10px;
+    display: inline-block;
+
+    a {
+      cursor: pointer;
+      padding: 0 10px;
+      border: 1px solid #ddd;
+      text-decoration: none;
+      font-weight: normal;
+
+      &.collapse-all-button {
+        border-top-left-radius: 1em;
+        border-bottom-left-radius: 1em;
+      }
+
+      &.expand-all-button {
+        border-top-right-radius: 1em;
+        border-bottom-right-radius: 1em;
+        margin-left: 1px;
+      }
+
+      &:hover {
+        background-color: rgba(0, 0, 0, 0.1);
+      }
+
+      &:active {
+        background-color: rgba(0, 0, 0, 0.2);
+      }
+    }
+  }
+
+
+  /* ===== Toggle description ===== */
+  #toggle_description_container {
+    margin-left: 10px;
+    display: inline-block;
+
+    label {
+      margin-left: 3px;
+      font-size: 0.6em;
+      font-weight: normal;
+    }
+  }
+
+  #projects-index.description-hidden div.description {
+    display: none;
+  }
+</style>

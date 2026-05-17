@@ -142,6 +142,28 @@
     </div>
     <input type="text" class="search-box" placeholder="Search features..." id="featureSearch">
   </div>
+  
+  <!-- Project Index View -->
+  <div class="category-section" data-category="project-index-view">
+    <div class="category-header">
+      <span class="category-title"><%= l(:label_project_index_view_customization, scope: :enhanced_ux) %></span>
+      <div class="category-controls">
+        <a href="#" class="enable-category">Enable all</a>
+        <a href="#" class="disable-category">Disable all</a>
+      </div>
+    </div>
+    <div class="feature-grid">
+      <div class="feature-card" data-feature="custom_project_list">
+        <div class="feature-header">
+          <input type="hidden" name="settings[custom_project_list]" value="0">
+          <%= check_box_tag 'settings[custom_project_list]', '1', @settings[:custom_project_list] == '1', class: 'feature-checkbox' %>
+          <label class="feature-title" for="settings_custom_project_list">Custom project list</label>
+        </div>
+        <%= image_tag('features/custom_project_list.png', plugin: 'redmine_enhanced_ux',
+            class: "feature-image", alt: "Custom project list preview") %>
+      </div>
+    </div>
+  </div>
 
   <!-- Issue Index View -->
   <div class="category-section" data-category="issue-index">
