@@ -5,6 +5,7 @@
 // Comment:            Simple menu bar
 -->
 <script>
+  (() => {
   //<![CDATA[
   const homeUrl = ($("head script[src*='/jquery-'][src*='-ui-'][src*='.js']")
       .attr("src")
@@ -657,6 +658,7 @@
   window.addEventListener("DOMContentLoaded", () => {
     requestAnimationFrame(setupSimpleMenuBar);
   });
+  })();
   //]]>
 </script>
 
