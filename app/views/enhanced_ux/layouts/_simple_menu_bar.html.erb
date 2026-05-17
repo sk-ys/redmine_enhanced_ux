@@ -6,7 +6,6 @@
 -->
 <script>
   //<![CDATA[
-  // Detect home URL from the responsive CSS link tag
   const homeUrl = ($("[src*='/jquery-'][src*='-ui-'][src*='.js']").attr("src")
     ?.match(/^(.*?)(?:\/javascripts\/|\/assets\/)/)
     ?.[1] || "") + "/";
