@@ -51,6 +51,25 @@
     };
     const i18n = i18nDict[document.documentElement.lang] || i18nDict["en"];
 
+    const homeUrl = ($("head script[src*='/jquery-'][src*='-ui-'][src*='.js']")
+    .attr("src")
+    ?.match(/^(.*?)(?:\/javascripts\/|\/assets\/)/)
+    ?.[1] || "") + "/";
+    const localStorageKeyPrefix = homeUrl.slice(1).replaceAll("/", ".");
+
+    // Load user settings from localStorage
+    const settingsFromLocalStorage = JSON.parse(
+      localStorage.getItem(localStorageKeyPrefix + "custom-project-list-settings") || "{}"
+    );
+
+    // Merge user settings with default settings
+    window.enhancedUxProjectListSettings = {
+      ...defaultSettings,
+      ...window.enhancedUxProjectListSettings,
+      ...settingsFromLocalStorage,
+    };
+    const settings = window.enhancedUxProjectListSettings;
+
     // Add CSS for collapsible subprojects
     const $style = $("<style>");
     $style.text(`
@@ -80,25 +99,6 @@
     );
 
     document.addEventListener("DOMContentLoaded", () => {
-      const homeUrl = ($("head script[src*='/jquery-'][src*='-ui-'][src*='.js']")
-      .attr("src")
-      ?.match(/^(.*?)(?:\/javascripts\/|\/assets\/)/)
-      ?.[1] || "") + "/";
-      const localStorageKeyPrefix = homeUrl.slice(1).replaceAll("/", ".");
-
-      // Load user settings from localStorage
-      const settingsFromLocalStorage = JSON.parse(
-        localStorage.getItem(localStorageKeyPrefix + "custom-project-list-settings") || "{}"
-      );
-
-      // Merge user settings with default settings
-      window.enhancedUxProjectListSettings = {
-        ...defaultSettings,
-        ...window.enhancedUxProjectListSettings,
-        ...settingsFromLocalStorage,
-      };
-      const settings = window.enhancedUxProjectListSettings;
-
       let collapsibleSubprojectsFeatureIsInitialized = false;
       let toggleDescriptionFeatureIsInitialized = false;
       if (!settings.collapsibleSubprojects && !settings.toggleDescription) {
