@@ -1267,6 +1267,11 @@
     z-index: 1;
   }
 
+  /* Prevent iframe interaction during dragging or resizing */
+  .popup-anywhere:is(.ui-dialog-dragging, .ui-dialog-resizing) iframe {
+    pointer-events: none !important;
+  }
+
   .ui-dialog.popup-anywhere-maximize {
     width: 100% !important;
     height: 100% !important;
