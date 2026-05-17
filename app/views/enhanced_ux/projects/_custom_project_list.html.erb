@@ -86,7 +86,7 @@
             (key) =>
               $("." + key)
                 .attr("href")
-                ?.split(key)[0],
+                ?.split(key)?.[0],
           )
           .filter((i) => i)[0] || "/";
 
