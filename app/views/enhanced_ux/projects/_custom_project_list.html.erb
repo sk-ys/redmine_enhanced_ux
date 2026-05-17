@@ -212,7 +212,7 @@
                   toggleDescription: $("#toggle_description_enabled").prop("checked"),
                 };
                 localStorage.setItem(
-                  localStorageKeyPrefix + "enhancedUxProjectListSettings",
+                  localStorageKeyPrefix + "custom-project-list-settings",
                   JSON.stringify({ ...settings, ...newSettings })
                 );
                 location.reload();
