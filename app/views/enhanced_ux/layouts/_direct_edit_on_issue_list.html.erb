@@ -392,9 +392,7 @@
                     const url = new URL(getAbsUrl($(e).attr("href")));
                     return Array.from(url.searchParams.keys()).some((key) =>
                       searchParamsKeys.some((searchParamsKey) =>
-                        new RegExp(
-                          searchParamsKey.replace(/[\[\]]/g, "\\$&"),
-                        ).test(key),
+                        key.includes(searchParamsKey),
                       ),
                     );
                   }))
