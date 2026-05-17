@@ -10,22 +10,8 @@
       compactQueryForm: true,
       projectShortcutMenuEnabled: true,
       collapsibleSubprojects: true,
-      toggleDescription: true,
-      projectListForceShowDelayMs: 1200
+      toggleDescription: true
     };
-
-    // Load user settings from localStorage
-    const settingsFromLocalStorage = JSON.parse(
-      localStorage.getItem("enhancedUxProjectListSettings") || "{}"
-    );
-
-    // Merge user settings with default settings
-    window.enhancedUxProjectListSettings = {
-      ...defaultSettings,
-      ...window.enhancedUxProjectListSettings,
-      ...settingsFromLocalStorage,
-    };
-    const settings = window.enhancedUxProjectListSettings;
 
     const i18nDict = {
       en: {
@@ -65,41 +51,35 @@
     };
     const i18n = i18nDict[document.documentElement.lang] || i18nDict["en"];
 
-    let collapsibleSubprojectsFeatureIsInitialized = false;
-    let toggleDescriptionFeatureIsInitialized = false;
-    if (settings.collapsibleSubprojects || settings.toggleDescription) {
-      // Add CSS for collapsible subprojects
-      const $style = $("<style>");
-      $style.text(`
-        #projects-index {
-          opacity: 0;
-          transition: opacity 0.3s ease;
-        }
-      `);
-      $style.addClass("eux-project-list-style");
-      $("head").append($style);
+    // Add CSS for collapsible subprojects
+    const $style = $("<style>");
+    $style.text(`
+      #projects-index {
+        opacity: 0;
+        transition: opacity 0.3s ease;
+      }
+    `);
+    $style.addClass("eux-project-list-initial-style");
+    $("head").append($style);
+
+    // Fail-safe to force show the project list in case the script fails partway and leaves the list hidden.
+    const projectListForceShowDelayMs = 3000;
+    let projectListForceShowTimer = null;
+
+    function showProjectList() {
+      $("#projects-index").css("opacity", 1);
+
+      if (projectListForceShowTimer !== null) {
+        clearTimeout(projectListForceShowTimer);
+        projectListForceShowTimer = null;
+      }
     }
 
+    projectListForceShowTimer = setTimeout(
+      showProjectList, projectListForceShowDelayMs
+    );
 
     document.addEventListener("DOMContentLoaded", () => {
-      let projectListForceShowTimer = null;
-
-      function showProjectList() {
-        $("#projects-index").css("opacity", 1);
-
-        if (projectListForceShowTimer !== null) {
-          clearTimeout(projectListForceShowTimer);
-          projectListForceShowTimer = null;
-        }
-      }
-
-      if (settings.collapsibleSubprojects || settings.toggleDescription) {
-        // Fail-safe: force-show the list even if initialization fails partway.
-        projectListForceShowTimer = setTimeout(
-          showProjectList, settings.projectListForceShowDelayMs
-        );
-      }
-
       const homeUrl =
         ["login", "logout"]
           .map(
@@ -111,6 +91,25 @@
           .filter((i) => i)[0] || "/";
 
       const localStorageKeyPrefix = homeUrl.slice(1).replaceAll("/", ".");
+
+      // Load user settings from localStorage
+      const settingsFromLocalStorage = JSON.parse(
+        localStorage.getItem(localStorageKeyPrefix + "enhancedUxProjectListSettings") || "{}"
+      );
+
+      // Merge user settings with default settings
+      window.enhancedUxProjectListSettings = {
+        ...defaultSettings,
+        ...window.enhancedUxProjectListSettings,
+        ...settingsFromLocalStorage,
+      };
+      const settings = window.enhancedUxProjectListSettings;
+
+      let collapsibleSubprojectsFeatureIsInitialized = false;
+      let toggleDescriptionFeatureIsInitialized = false;
+      if (!settings.collapsibleSubprojects && !settings.toggleDescription) {
+        showProjectList();
+      }
 
       const svgIcons = new (class SVGIcons {
         constructor() {
@@ -204,7 +203,7 @@
             {
               text: i18n.labelResetAndReload,
               click() {
-                localStorage.removeItem("enhancedUxProjectListSettings");
+                localStorage.removeItem(localStorageKeyPrefix + "enhancedUxProjectListSettings");
                 location.reload();
               },
             },
@@ -219,7 +218,7 @@
                   toggleDescription: $("#toggle_description_enabled").prop("checked"),
                 };
                 localStorage.setItem(
-                  "enhancedUxProjectListSettings",
+                  localStorageKeyPrefix + "enhancedUxProjectListSettings",
                   JSON.stringify({ ...settings, ...newSettings })
                 );
                 location.reload();
