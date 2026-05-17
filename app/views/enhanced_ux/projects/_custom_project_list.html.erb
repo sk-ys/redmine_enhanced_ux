@@ -361,7 +361,7 @@
             this.collapsedProjects = new Set(this.#loadState());
 
             // Clean up invalid project hrefs that no longer exist in the DOM if there is no filter applied, to prevent memory leak over time
-            if ($("#filters-table filter").length == 0) {
+            if ($("#filters-table .filter").length == 0) {
               this.#deleteInactiveProjects();
             }
           }
