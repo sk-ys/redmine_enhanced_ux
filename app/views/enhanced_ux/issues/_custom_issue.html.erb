@@ -206,10 +206,10 @@
     const issueEditUrl = issueUrl + "/edit";
     const issueIdMatch = issuePathname.match(/\/issues\/([0-9]+)\/{0,1}$/);
     const isInIframe = window.self !== window.top;
-    const homeUrl =
-      $("script[src*='/assets/responsive'][src*='.js']")
-        .attr("src")
-        ?.split("assets/responsive")[0] || "/";
+    const homeUrl = ($("head script[src*='/jquery-'][src*='-ui-'][src*='.js']")
+      .attr("src")
+      ?.match(/^(.*?)(?:\/javascripts\/|\/assets\/)/)
+      ?.[1] || "") + "/";
     const localStorageKeyPrefix = homeUrl.slice(1).replaceAll("/", ".");
     let notesManager = null;
     let issueLayoutManager = null;

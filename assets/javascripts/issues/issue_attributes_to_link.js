@@ -22,15 +22,10 @@ window.addEventListener("DOMContentLoaded", () => {
     },
   ];
 
-  const homeUrl =
-    ["login", "logout"]
-      .map(
-        (key) =>
-          $("." + key)
-            .attr("href")
-            ?.split(key)[0]
-      )
-      .filter((i) => i)[0] || "/";
+  const homeUrl = ($("head script[src*='/jquery-'][src*='-ui-'][src*='.js']")
+    .attr("src")
+    ?.match(/^(.*?)(?:\/javascripts\/|\/assets\/)/)
+    ?.[1] || "") + "/";
 
   const projectIdentifier = $("body")
     .attr("class")
