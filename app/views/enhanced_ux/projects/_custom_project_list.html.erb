@@ -437,7 +437,10 @@
             projectHref, $projectListHeader.hasClass("collapsed")
           );
 
-          toggleExpendCollapseIcon($iconContainer[0]);
+          if (window.toggleExpendCollapseIcon) {
+            // Redmine 6 and later
+            window.toggleExpendCollapseIcon($iconContainer[0]);
+          }
         }
 
         // Add icon to identify all projects
