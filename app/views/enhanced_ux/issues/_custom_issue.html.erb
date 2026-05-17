@@ -1308,9 +1308,25 @@
 
           // Update content history tab
           if (updateHistory) {
+            const $newHistory = $("#tab-content-history", data).children();
+
+            // Support for Lazy Load History plugin
+            const $lazyLoadHistory = $("#history .lazy-load-history");
+            if ($lazyLoadHistory.length > 0) {
+              const $newLazyLoadHistory = $newHistory.filter(".lazy-load-history");
+              if ($newLazyLoadHistory.length > 0) {
+                const newLazyLoadHistoryNode = $newLazyLoadHistory.get(0);
+                $lazyLoadHistory.replaceWith(newLazyLoadHistoryNode);
+                window.lazyLoadHistory?.initContainer?.(newLazyLoadHistoryNode);
+              } else {
+                $lazyLoadHistory.remove();
+              }
+            }
+
             $("#tab-content-history")
               .empty()
-              .append($("#tab-content-history", data).children());
+              .append($newHistory.filter(":not(.lazy-load-history)"));
+
             $("#history>.tabs>ul>li>a.selected").click();
           }
 
