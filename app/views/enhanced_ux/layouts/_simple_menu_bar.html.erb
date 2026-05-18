@@ -415,7 +415,7 @@
         if ($projectTitle.children().length > 0) {
           $title.append($projectTitle.children().clone());
         } else {
-          $title.append($projectTitle.text());
+          $title.text($projectTitle.text());
         }
 
         const mainMenu = $mainMenuWithFlyoutMenu
