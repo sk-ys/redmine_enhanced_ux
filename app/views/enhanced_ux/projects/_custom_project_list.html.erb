@@ -568,7 +568,9 @@
           ) || "false"
         );
         $("#toggle_description_cb").prop("checked", !descriptionHidden);
-        $("#projects-index").toggleClass("description-hidden", descriptionHidden);
+        if (descriptionHidden) {
+          $("#projects-index")[0].classList.add("description-hidden");
+        }
 
         if (
           !settings.collapsibleSubprojects ||
