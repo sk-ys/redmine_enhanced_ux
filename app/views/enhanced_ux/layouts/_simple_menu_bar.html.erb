@@ -347,7 +347,7 @@
             const isHeader = $elem.prop("nodeName") === "STRONG";
             if (isHeader) {
               $simpleProjectMenuItems.append(
-                $("<li><div>" + $elem.text() + "</div></li>").addClass(
+                $("<li>").append($("<div>").text($elem.text())).addClass(
                   "ui-widget-header",
                 ),
               );
