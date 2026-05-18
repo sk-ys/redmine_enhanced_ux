@@ -348,7 +348,7 @@
         if ($projectsIndex.length === 0) return;
 
         class CollapsedStateManager {
-          #storageKey = localStorageKeyPrefix + "collapsed_projects";
+          #storageKey = localStorageKeyPrefix + "collapsed-projects";
 
           constructor() {
             this.collapsedProjects = new Set(this.#loadState());
@@ -546,7 +546,7 @@
             $("#projects-index")
               .toggleClass("description-hidden", !e.target.checked);
             localStorage.setItem(
-              localStorageKeyPrefix + "project_description_hidden",
+              localStorageKeyPrefix + "project-list-description-hidden",
               !e.target.checked
             );
           });
@@ -564,7 +564,7 @@
         // Load saved state from localStorage
         const descriptionHidden = JSON.parse(
           localStorage.getItem(
-            localStorageKeyPrefix + "project_description_hidden"
+            localStorageKeyPrefix + "project-list-description-hidden"
           ) || "false"
         );
         $("#toggle_description_cb").prop("checked", !descriptionHidden);
