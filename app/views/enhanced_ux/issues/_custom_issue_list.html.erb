@@ -6,44 +6,46 @@
 -->
 <script>
   var ajaxUpdateIssueList;
-  (() => {
-    window.addEventListener("DOMContentLoaded", () => {
-      // ----- settings start -----
-      const defaultColumnWidth = {
-        buttons: "20px",
-      };
-      // ----- settings end -----
 
+  (() => {
+    // ----- settings start -----
+    const defaultColumnWidth = {
+      buttons: "20px",
+    };
+    // ----- settings end -----
+
+    const resourcesAll = {
+      en: {
+        labelCancel: "Cancel",
+        labelCriteria: "Criteria",
+        labelHideColumn: "Hide column",
+        confirmResetWidth: "Do you want to reset the width?",
+      },
+      ja: {
+        labelCancel: "キャンセル",
+        labelCriteria: "抽出条件",
+        labelHideColumn: "列を非表示",
+        confirmResetWidth: "幅をリセットしますか？",
+      },
+    };
+
+    const resources = {
+      ...resourcesAll["en"],
+      ...(resourcesAll[document.documentElement.lang] || {}),
+    };
+
+    const homeUrl =
+      ($("head script[src*='/jquery-'][src*='-ui-'][src*='.js']")
+        .attr("src")
+        ?.match(/^(.*?)(?:\/javascripts\/|\/assets\/)/)?.[1] || "") + "/";
+    const localStorageKeyPrefix = homeUrl.slice(1).replaceAll("/", ".");
+
+    window.addEventListener("DOMContentLoaded", () => {
       // Prevent applying to new issued forms.
       if ($("#issue-form.new_issue").length > 0) return;
 
       // Prevent applying to the project settings page.
       if (/\/settings\/issues(|\/)$/.test(location.pathname)) return;
-
-      const resourcesAll = {
-        en: {
-          labelCancel: "Cancel",
-          labelCriteria: "Criteria",
-          labelHideColumn: "Hide column",
-          confirmResetWidth: "Do you want to reset the width?",
-        },
-        ja: {
-          labelCancel: "キャンセル",
-          labelCriteria: "抽出条件",
-          labelHideColumn: "列を非表示",
-          confirmResetWidth: "幅をリセットしますか？",
-        },
-      };
-      const resources = {
-        ...resourcesAll["en"],
-        ...(resourcesAll[document.documentElement.lang] || {}),
-      };
-
-      const homeUrl =
-        ($("head script[src*='/jquery-'][src*='-ui-'][src*='.js']")
-          .attr("src")
-          ?.match(/^(.*?)(?:\/javascripts\/|\/assets\/)/)?.[1] || "") + "/";
-      const localStorageKeyPrefix = homeUrl.slice(1).replaceAll("/", ".");
 
       const svgIcons = new (class SVGIcons {
         constructor() {
