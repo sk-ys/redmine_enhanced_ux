@@ -20,6 +20,10 @@ This is a plugin for Redmine. This plugin is designed to improve the user experi
 
 #### Module-Specific Customization
 
+##### Project Index View Customization
+
+- Custom project list - Enhance the project list view with a compact criteria form, project shortcut links, collapsible subprojects (with expand/collapse all controls), and a description visibility toggle.
+
 ##### Issue Index View Customization
 
 - Custom issue list - Enhance the issue list view to keep list headers fixed with CSS ( position: sticky ), seamless updates using AJAX to avoid page reloads, and a compact criteria box for improved usability.
@@ -104,7 +108,7 @@ To access the plugin's settings:
 
 ### Redmine
 
-- Redmine 5.1 (Note: This plugin has been tested with Redmine 5.1 only.)
+- Compatible with Redmine 5.1 to 6.1 (tested only on versions 5.1 to 6.1).
 
 ### Theme
 
@@ -112,6 +116,19 @@ To access the plugin's settings:
 - Alternate
 - Classic
 - [Bleuclair](https://github.com/farend/redmine_theme_farend_bleuclair)
+
+### Plugins
+- [Additional Tags](https://github.com/alphanodes/additional_tags/)
+- [Additionals](https://github.com/alphanodes/additionals)
+- [Redmine Actual Date](https://github.com/sk-ys/redmine_actual_date)
+- [Redmine Datetime CF](https://github.com/sk-ys/redmine_datetime_cf)
+- [Redmine Drafts](https://github.com/jbbarth/redmine_drafts)
+- [Redmine Extra Notes](http://github.com/sk-ys/redmine_extra_notes)
+- [Redmine GLightbox](http://github.com/sk-ys/redmine_glightbox)
+- [Redmine Issue Note List](https://github.com/sk-ys/redmine_issue_note_list)
+- [Redmine Lazy Load History](http://github.com/sk-ys/redmine_lazy_load_history)
+- [RedmineRT](https://github.com/MayamaTakeshi/redmine_rt)
+- [Redmine Silencer 3](https://github.com/readyredmine/redmine_silencer)
 
 ## Support
 
