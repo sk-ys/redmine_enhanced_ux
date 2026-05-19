@@ -9,8 +9,10 @@
 
   (() => {
     // ----- settings start -----
-    const defaultColumnWidth = {
-      buttons: "20px",
+    const defaultSettings = {
+      defaultColumnWidth: {
+        buttons: "20px",
+      },
     };
     // ----- settings end -----
 
@@ -39,6 +41,19 @@
         .attr("src")
         ?.match(/^(.*?)(?:\/javascripts\/|\/assets\/)/)?.[1] || "") + "/";
     const localStorageKeyPrefix = homeUrl.slice(1).replaceAll("/", ".");
+    
+    // Load user settings from localStorage
+    const settingsFromLocalStorage = JSON.parse(
+      localStorage.getItem(localStorageKeyPrefix + "custom-issue-list-settings") || "{}"
+    );
+
+    // Merge user settings with default settings
+    window.enhancedUxIssueListSettings = {
+      ...defaultSettings,
+      ...window.enhancedUxIssueListSettings,
+      ...settingsFromLocalStorage,
+    };
+    const settings = window.enhancedUxIssueListSettings;
 
     window.addEventListener("DOMContentLoaded", () => {
       // Prevent applying to new issued forms.
@@ -96,7 +111,7 @@
         get: () => {
           return (
             JSON.parse(localStorage.getItem(columnWidth.key)) ||
-            defaultColumnWidth
+            settings.defaultColumnWidth
           );
         },
         restore: () => {
