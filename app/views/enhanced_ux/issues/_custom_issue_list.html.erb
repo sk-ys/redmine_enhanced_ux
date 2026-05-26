@@ -7,73 +7,82 @@
 <script>
   var ajaxUpdateIssueList;
 
-  window.addEventListener("DOMContentLoaded", () => {
+  (() => {
     // ----- settings start -----
-    const defaultColumnWidth = {
-      buttons: "20px",
+    const defaultSettings = {
+      compactQueryForm: true,
+      stickyIssueListHeader: true,
+      resizableColumnWidth: true,
+      displayHideButtonOnColumns: true,
+      sortableColumns: true,
+      displayDoneRatioText: true,
+      updateIssueListViaAjax: true,
+      defaultColumnWidth: {
+        buttons: "20px",
+      },
     };
     // ----- settings end -----
 
-    // Prevent applying to new issued forms.
-    if ($("#issue-form.new_issue").length > 0) return;
-
-    // Prevent applying to the project settings page.
-    if (/\/settings\/issues(|\/)$/.test(location.pathname)) return;
-
     const resourcesAll = {
       en: {
+        labelViewSettings: "View Settings",
+        labelSaveAndReload: "Save and Reload",
+        labelResetAndReload: "Reset and Reload",
         labelCancel: "Cancel",
         labelCriteria: "Criteria",
         labelHideColumn: "Hide column",
         confirmResetWidth: "Do you want to reset the width?",
+        labelCompactQueryForm: "Compact query form",
+        labelStickyIssueListHeader: "Sticky issue list header",
+        labelResizableColumnWidth: "Resizable column width",
+        labelDisplayHideButtonOnColumns: "Display hide button on columns",
+        labelSortableColumns: "Sortable columns",
+        labelDisplayDoneRatioText: "Display done ratio with text",
+        labelUpdateIssueListViaAjax: "Update issue list with Ajax",
       },
       ja: {
+        labelViewSettings: "表示設定",
+        labelSaveAndReload: "保存して再読み込み",
+        labelResetAndReload: "リセットして再読み込み",
         labelCancel: "キャンセル",
         labelCriteria: "抽出条件",
         labelHideColumn: "列を非表示",
         confirmResetWidth: "幅をリセットしますか？",
+        labelCompactQueryForm: "コンパクトな抽出条件",
+        labelStickyIssueListHeader: "チケット一覧のヘッダーを固定する",
+        labelResizableColumnWidth: "列の幅を変更可能にする",
+        labelDisplayHideButtonOnColumns: "列の非表示ボタンを表示する",
+        labelSortableColumns: "列の並べ替えを可能にする",
+        labelDisplayDoneRatioText: "進捗率をテキストで表示する",
+        labelUpdateIssueListViaAjax: "チケット一覧をAjaxで更新する",
       },
     };
+
     const resources = {
       ...resourcesAll["en"],
       ...(resourcesAll[document.documentElement.lang] || {}),
     };
 
-    const homeUrl = ($("head script[src*='/jquery-'][src*='-ui-'][src*='.js']")
-      .attr("src")
-      ?.match(/^(.*?)(?:\/javascripts\/|\/assets\/)/)
-      ?.[1] || "") + "/";
+    const homeUrl =
+      ($("head script[src*='/jquery-'][src*='-ui-'][src*='.js']")
+        .attr("src")
+        ?.match(/^(.*?)(?:\/javascripts\/|\/assets\/)/)?.[1] || "") + "/";
     const localStorageKeyPrefix = homeUrl.slice(1).replaceAll("/", ".");
 
-    const svgIcons = new (class SVGIcons {
-      constructor() {
-        const extractedPath = this.#extractIconPath();
-        this.basePath = extractedPath ? homeUrl + extractedPath : null;
-      }
-      #extractIconPath() {
-        const $elem = $("use[href*='/assets/icons-'][href*='.svg#']").first();
-        const match = $elem
-          .attr("href")
-          ?.match(/\/(assets\/icons-[a-f0-9]+\.svg)#/);
-        return match ? match[1] : null;
-      }
-      generateSvgIconTag(key) {
-        if (!this.basePath) return null;
-        return $(
-          `<svg class="s18 icon-svg" aria-hidden="true">` +
-            `<use href="${this.basePath}#${key}"></use>` +
-            `</svg>`,
-        );
-      }
-      get magnifier() {
-        return this.generateSvgIconTag("icon--search");
-      }
-      get close() {
-        return this.generateSvgIconTag("icon--close");
-      }
-    })();
+    // Load user settings from localStorage
+    const settingsFromLocalStorage = JSON.parse(
+      localStorage.getItem(
+        localStorageKeyPrefix + "custom-issue-list-settings",
+      ) || "{}",
+    );
 
-    let collapsedGroups = new Set();
+    // Merge user settings with default settings
+    window.enhancedUxIssueListSettings = {
+      ...defaultSettings,
+      ...window.enhancedUxIssueListSettings,
+      ...settingsFromLocalStorage,
+    };
+    const settings = window.enhancedUxIssueListSettings;
 
     // Utils
     function getAbsUrl(url) {
@@ -94,7 +103,7 @@
       get: () => {
         return (
           JSON.parse(localStorage.getItem(columnWidth.key)) ||
-          defaultColumnWidth
+          settings.defaultColumnWidth
         );
       },
       restore: () => {
@@ -118,436 +127,669 @@
       },
     };
 
-    function setUpIssueListHeader() {
-      const $hideButton = $("<span>")
-        .addClass("icon icon-close")
-        .on("click", (e) => {
-          name = columnWidth.getElemName($(e.target).closest("th"));
-          $(`#selected_c>option[value=${name}]`).remove();
-          ajaxUpdateIssueListWithQuery();
-        })
-        .text(String.fromCharCode(160))
-        .attr("title", resources.labelHideColumn);
+    window.addEventListener("DOMContentLoaded", () => {
+      // Prevent applying to new issued forms.
+      if ($("#issue-form.new_issue").length > 0) return;
 
-      columnWidth.restore();
-      $("table.list.issues>thead>tr")
-        .sortable({
-          items: "> th:not(.checkbox):not(.id):not(.buttons)",
-          revert: true,
-          scroll: false,
-          helper: "clone",
-          dropOnEmpty: false,
-          update: (event, ui) => {
-            $("table.issues>thead>tr>th")
-              .map((i, e) => $(e).attr("class").split(" ")[0])
-              .each((i, e) => {
-                // Sort selected in criteria
-                $(`#selected_c>option[value=${e}]`).appendTo("#selected_c");
-              });
-            ajaxUpdateIssueListWithQuery();
-          },
-        })
-        .children("th:not(.checkbox):not(.id):not(.buttons)")
-        .resizable({
-          handles: "e",
-          stop: () => {
-            columnWidth.update();
-          },
-        })
-        .append($hideButton)
-        .find("div.ui-resizable-handle")
-        .on("dblclick", (e) => {
-          if (confirm(resources.confirmResetWidth)) {
-            // Reset width
-            $(e.target).closest("th").css("width", "");
-            columnWidth.update();
-          }
-        });
+      // Prevent applying to the project settings page.
+      if (/\/settings\/issues(|\/)$/.test(location.pathname)) return;
 
-      // Replace anchor tag action
-      $("table.list.issues>thead>tr>th>a").on("click", (e) =>
-        replaceAnchorTagAction(e),
-      );
-    }
+      const svgIcons = new (class SVGIcons {
+        constructor() {
+          const extractedPath = this.#extractIconPath();
+          this.basePath = extractedPath ? homeUrl + extractedPath : null;
+        }
+        #extractIconPath() {
+          const $elem = $("use[href*='/assets/icons-'][href*='.svg#']").first();
+          const match = $elem
+            .attr("href")
+            ?.match(/\/(assets\/icons-[a-f0-9]+\.svg)#/);
+          return match ? match[1] : null;
+        }
+        generateSvgIconTag(key, size = 18) {
+          if (!this.basePath) return null;
+          return $(
+            `<svg class="s${size} icon-svg" aria-hidden="true">` +
+              `<use href="${this.basePath}#${key}"></use>` +
+              `</svg>`,
+          );
+        }
+        get magnifier() {
+          return this.generateSvgIconTag("icon--search");
+        }
+        get close() {
+          return this.generateSvgIconTag("icon--close");
+        }
+      })();
 
-    ajaxUpdateIssueList = async function (settings = {}) {
-      const settingsDefault = { search: location.search, noSearch: false };
-      settings = { ...settingsDefault, ...settings };
-
-      settings.search = settings.noSearch
-        ? ""
-        : settings.search[0] === "?"
-          ? settings.search
-          : "?" +
-            (settings.search[0] === "&"
-              ? settings.search.slice(1)
-              : settings.search);
-
-      const url = location.origin + location.pathname + settings.search;
-
-      if ($("table.list.issues").length === 0) {
-        // If table not found, hard load the page.
-        window.location.href = url;
-        return;
+      function insertSvgIcon(elem, iconName, size = 18) {
+        const $icon = svgIcons.generateSvgIconTag(iconName, size);
+        if ($icon) {
+          const label = elem.text();
+          elem.text(""); // Clear text to insert icon before text
+          elem.append($icon);
+          elem.append($("<span>").text(label).addClass("icon-label"));
+        }
+        return elem;
       }
 
-      try {
-        const response = await fetch(url);
-
-        if (!response.ok) {
-          throw new Error(`Error ${response.status}: ${response.statusText}`);
-        }
-
-        // Data acquisition and processing
-        const htmlString = await response.text();
-        const data = new DOMParser().parseFromString(htmlString, "text/html");
-
-        if (url !== location.href) {
-          // Update history
-          window.history.pushState({}, "", url);
-
-          // Update back url
-          $('input[name*="back_url"]').attr("value", url);
-        }
-
-        // Show flash
-        const $flash = $("#content > div.flash", htmlString);
-        if ($flash.length) {
-          $("#content > div.flash").remove();
-          $flash.prependTo("#content");
-        }
-
-        // Update query form
-        $("#query_form")
-          .empty()
-          .append($("#query_form", htmlString).children());
-        setUpQueryFormButtons();
-        setFilterItemToSortable();
-
-        // Update query-totals
-        $("#content>p.query-totals").remove();
-        $("#query_form+p.query-totals", htmlString).insertAfter("#query_form");
-
-        // Update list title
-        $("#content>h2:first")
-          .contents()
-          .each((_, e) => {
-            if (e.nodeType === Node.TEXT_NODE) {
-              e.nodeValue = $("#content>h2", htmlString).text();
-            }
-          });
-
-        // Update page title
-        // Note: The cause is unknown, Failed to extract title using
-        // `$("title", htmlString)`
-        $("head>title").text($("head>title", data).text());
-
-        // Update sidebar
-        if ($("#sidebar-wrapper").length === 0) {
-          // Support for Redmine earlier than 5
-          $("#sidebar").empty().append($("#sidebar", htmlString).children());
-        } else {
-          // Support for Redmine 6 and later
-          $("#sidebar-wrapper")
-            .empty()
-            .append($("#sidebar-wrapper", htmlString).children());
-        }
-
-        // Support for RedmineUp issue_tags plugin
-        if (typeof setSelect2Filter) {
-          if (availableFilters["issue_tags"]) {
-            setSelect2Filter("issue_tags", {
-              url: homeUrl + "auto_completes/redmine_tags",
-            });
-          }
-        }
-
-        // Backup scroll position
-        const scrollTargetSelector =
-          '#content > form[data-cm-url$="/issues/context_menu"] >' +
-          "div.autoscroll";
-        const scrollPositionBeforeUpdate = {
-          top: $(scrollTargetSelector).scrollTop(),
-          left: $(scrollTargetSelector).scrollLeft(),
-        };
-
-        // Update issue list
-        $("table.list.issues")
-          .empty()
-          .append($("table.list.issues", htmlString).children());
-
-        // Restore collapsed state of groups
-        restoreGroupCollapsedState();
-        stashGroupCollapsedState();
-
-        // Restore scroll position
-        setTimeout(() => {
-          $(scrollTargetSelector)
-            .scrollTop(scrollPositionBeforeUpdate.top)
-            .scrollLeft(scrollPositionBeforeUpdate.left);
-        });
-
-        // Update anchor tags
-        $("span.pagination")
-          .empty()
-          .append($("span.pagination", htmlString).children());
-
-        [
-          "p.other-formats a.atom",
-          "p.other-formats a.csv",
-          "p.other-formats a.pdf",
-        ].forEach((s) => {
-          $(s).attr("href", $(s, htmlString).attr("href"));
-        });
-
-        // Update CSV export form
-        $("#csv-export-form > input").remove();
-        $("#csv-export-form").prepend(
-          $("#csv-export-form > input", htmlString),
+      function initViewSettingsPanel() {
+        const $settingsPanel = $("<div>").attr(
+          "id",
+          "custom-issue-list-settings-panel-content",
         );
 
+        function generateSettingItem(labelText, id, value = false) {
+          const $container = $("<div>").addClass("setting-item");
+          const $label = $("<label>").text(labelText).attr("for", id);
+          const $input = $("<input>")
+            .attr("type", "checkbox")
+            .attr("id", id)
+            .prop("checked", value);
+          return $container.append($label).append($input);
+        }
+
+        // Append settings to dialog
+        $settingsPanel
+          .append(
+            generateSettingItem(
+              resources.labelCompactQueryForm,
+              "compact_query_form_enabled",
+              settings.compactQueryForm,
+            ),
+          )
+          .append(
+            generateSettingItem(
+              resources.labelStickyIssueListHeader,
+              "sticky_issue_list_header_enabled",
+              settings.stickyIssueListHeader,
+            ),
+          )
+          .append(
+            generateSettingItem(
+              resources.labelResizableColumnWidth,
+              "resizable_column_width_enabled",
+              settings.resizableColumnWidth,
+            ),
+          )
+          .append(
+            generateSettingItem(
+              resources.labelDisplayHideButtonOnColumns,
+              "display_hide_button_on_columns_enabled",
+              settings.displayHideButtonOnColumns,
+            ),
+          )
+          .append(
+            generateSettingItem(
+              resources.labelSortableColumns,
+              "sortable_columns_enabled",
+              settings.sortableColumns,
+            ),
+          )
+          .append(
+            generateSettingItem(
+              resources.labelDisplayDoneRatioText,
+              "display_done_ratio_text_enabled",
+              settings.displayDoneRatioText,
+            ),
+          )
+          .append(
+            generateSettingItem(
+              resources.labelUpdateIssueListViaAjax,
+              "update_issue_list_via_ajax_enabled",
+              settings.updateIssueListViaAjax,
+            ),
+          );
+
+        const $dialog = $settingsPanel.dialog({
+          autoOpen: false,
+          title: resources.labelViewSettings,
+          modal: true,
+          width: "auto",
+          resizable: false,
+          buttons: [
+            {
+              text: resources.labelResetAndReload,
+              click() {
+                localStorage.removeItem(
+                  localStorageKeyPrefix + "custom-issue-list-settings",
+                );
+                location.reload();
+              },
+            },
+            {
+              text: resources.labelSaveAndReload,
+              click() {
+                // Save settings to localStorage
+                const newSettings = {
+                  compactQueryForm: $("#compact_query_form_enabled").prop(
+                    "checked",
+                  ),
+                  stickyIssueListHeader: $(
+                    "#sticky_issue_list_header_enabled",
+                  ).prop("checked"),
+                  resizableColumnWidth: $(
+                    "#resizable_column_width_enabled",
+                  ).prop("checked"),
+                  displayHideButtonOnColumns: $(
+                    "#display_hide_button_on_columns_enabled",
+                  ).prop("checked"),
+                  sortableColumns: $("#sortable_columns_enabled").prop(
+                    "checked",
+                  ),
+                  displayDoneRatioText: $(
+                    "#display_done_ratio_text_enabled",
+                  ).prop("checked"),
+                  updateIssueListViaAjax: $(
+                    "#update_issue_list_via_ajax_enabled",
+                  ).prop("checked"),
+                };
+                localStorage.setItem(
+                  localStorageKeyPrefix + "custom-issue-list-settings",
+                  JSON.stringify({ ...settings, ...newSettings }),
+                );
+                location.reload();
+              },
+            },
+            {
+              text: resources.labelCancel,
+              click() {
+                $dialog.dialog("close");
+              },
+            },
+          ],
+        });
+
+        // Add view settings button
+        const $viewSettingsButton = $("<a>")
+          .attr("id", "view_settings_button")
+          .addClass("icon icon-settings")
+          .text(resources.labelViewSettings)
+          .on("click", (e) => {
+            e.preventDefault();
+            $dialog.dialog("open");
+          })
+          .appendTo("#content>.contextual .drdn-items");
+        insertSvgIcon($viewSettingsButton, "icon--settings", 18);
+      }
+
+      let collapsedGroups = new Set();
+
+      function setUpIssueListHeader() {
+        const options = {
+          stickyIssueListHeader: settings.stickyIssueListHeader,
+          resizableColumnWidth: settings.resizableColumnWidth,
+          displayHideButtonOnColumns: settings.displayHideButtonOnColumns,
+          sortableColumns: settings.sortableColumns,
+        };
+
+        if (options.stickyIssueListHeader) {
+          $("table.list.issues").addClass("sticky-header");
+        }
+
+        const $issueListTr = $("table.list.issues>thead>tr");
+
+        if (options.resizableColumnWidth) {
+          $issueListTr
+            .children("th:not(.checkbox):not(.id):not(.buttons)")
+            .resizable({
+              handles: "e",
+              stop: () => {
+                columnWidth.update();
+              },
+            })
+            .find("div.ui-resizable-handle")
+            .on("dblclick", (e) => {
+              if (confirm(resources.confirmResetWidth)) {
+                // Reset width
+                $(e.target).closest("th").css("width", "");
+                columnWidth.update();
+              }
+            });
+        }
+
+        if (options.displayHideButtonOnColumns) {
+          const $hideButton = $("<span>")
+            .addClass("icon icon-close")
+            .on("click", (e) => {
+              const name = columnWidth.getElemName($(e.target).closest("th"));
+              $(`#selected_c>option[value=${name}]`).remove();
+              ajaxUpdateIssueListWithQuery();
+            })
+            .text(String.fromCharCode(160))
+            .attr("title", resources.labelHideColumn);
+
+          $issueListTr
+            .children("th:not(.checkbox):not(.id):not(.buttons)")
+            .append($hideButton);
+        }
+
+        if (options.sortableColumns) {
+          $issueListTr.sortable({
+            items: "> th:not(.checkbox):not(.id):not(.buttons)",
+            revert: true,
+            scroll: false,
+            helper: "clone",
+            dropOnEmpty: false,
+            update: (event, ui) => {
+              $("table.issues>thead>tr>th")
+                .map((i, e) => $(e).attr("class").split(" ")[0])
+                .each((i, e) => {
+                  // Sort selected in criteria
+                  $(`#selected_c>option[value=${e}]`).appendTo("#selected_c");
+                });
+              ajaxUpdateIssueListWithQuery();
+            },
+          });
+        }
+
+        // Replace anchor tag action
+        $("table.list.issues>thead>tr>th>a").on("click", (e) =>
+          replaceAnchorTagAction(e),
+        );
+      }
+
+      ajaxUpdateIssueList = async function (settings = {}) {
+        const settingsDefault = { search: location.search, noSearch: false };
+        settings = { ...settingsDefault, ...settings };
+
+        settings.search = settings.noSearch
+          ? ""
+          : settings.search[0] === "?"
+            ? settings.search
+            : "?" +
+              (settings.search[0] === "&"
+                ? settings.search.slice(1)
+                : settings.search);
+
+        const url = location.origin + location.pathname + settings.search;
+
+        if (!window.enhancedUxIssueListSettings.updateIssueListViaAjax) {
+          // If Ajax update is disabled, hard load the page.
+          window.location.href = url;
+          return;
+        }
+
+        if ($("table.list.issues").length === 0) {
+          // If table not found, hard load the page.
+          window.location.href = url;
+          return;
+        }
+
+        try {
+          const response = await fetch(url);
+
+          if (!response.ok) {
+            throw new Error(`Error ${response.status}: ${response.statusText}`);
+          }
+
+          // Data acquisition and processing
+          const htmlString = await response.text();
+          const data = new DOMParser().parseFromString(htmlString, "text/html");
+
+          if (url !== location.href) {
+            // Update history
+            window.history.pushState({}, "", url);
+
+            // Update back url
+            $('input[name*="back_url"]').attr("value", url);
+          }
+
+          // Show flash
+          const $flash = $("#content > div.flash", htmlString);
+          if ($flash.length) {
+            $("#content > div.flash").remove();
+            $flash.prependTo("#content");
+          }
+
+          // Update query form
+          $("#query_form")
+            .empty()
+            .append($("#query_form", htmlString).children());
+
+          if (settings.compactQueryForm) {
+            setUpQueryFormButtons();
+            setFilterItemToSortable();
+          } else {
+            setupQueryButtonEventListeners();
+          }
+
+          // Update query-totals
+          $("#content>p.query-totals").remove();
+          $("#query_form+p.query-totals", htmlString).insertAfter(
+            "#query_form",
+          );
+
+          // Update list title
+          $("#content>h2:first")
+            .contents()
+            .each((_, e) => {
+              if (e.nodeType === Node.TEXT_NODE) {
+                e.nodeValue = $("#content>h2", htmlString).text();
+              }
+            });
+
+          // Update page title
+          // Note: The cause is unknown, Failed to extract title using
+          // `$("title", htmlString)`
+          $("head>title").text($("head>title", data).text());
+
+          // Update sidebar
+          if ($("#sidebar-wrapper").length === 0) {
+            // Support for Redmine earlier than 5
+            $("#sidebar").empty().append($("#sidebar", htmlString).children());
+          } else {
+            // Support for Redmine 6 and later
+            $("#sidebar-wrapper")
+              .empty()
+              .append($("#sidebar-wrapper", htmlString).children());
+          }
+
+          // Support for RedmineUp issue_tags plugin
+          if (typeof setSelect2Filter !== "undefined") {
+            if (availableFilters["issue_tags"]) {
+              setSelect2Filter("issue_tags", {
+                url: homeUrl + "auto_completes/redmine_tags",
+              });
+            }
+          }
+
+          // Backup scroll position
+          const scrollTargetSelector =
+            '#content > form[data-cm-url$="/issues/context_menu"] >' +
+            "div.autoscroll";
+          const scrollPositionBeforeUpdate = {
+            top: $(scrollTargetSelector).scrollTop(),
+            left: $(scrollTargetSelector).scrollLeft(),
+          };
+
+          // Update issue list
+          $("table.list.issues")
+            .empty()
+            .append($("table.list.issues", htmlString).children());
+
+          // Restore collapsed state of groups
+          restoreGroupCollapsedState();
+          stashGroupCollapsedState();
+
+          // Restore scroll position
+          setTimeout(() => {
+            $(scrollTargetSelector)
+              .scrollTop(scrollPositionBeforeUpdate.top)
+              .scrollLeft(scrollPositionBeforeUpdate.left);
+          });
+
+          // Update anchor tags
+          $("span.pagination")
+            .empty()
+            .append($("span.pagination", htmlString).children());
+
+          [
+            "p.other-formats a.atom",
+            "p.other-formats a.csv",
+            "p.other-formats a.pdf",
+          ].forEach((s) => {
+            $(s).attr("href", $(s, htmlString).attr("href"));
+          });
+
+          // Update CSV export form
+          $("#csv-export-form > input").remove();
+          $("#csv-export-form").prepend(
+            $("#csv-export-form > input", htmlString),
+          );
+
+          setUpIssueListHeader();
+          displayDoneRatioText();
+
+          // Restore original toggleIssuesSelection change event.
+          $("input[type=checkbox].toggle-selection").on(
+            "change",
+            toggleIssuesSelection,
+          );
+        } catch (error) {
+          console.error("Fetch error:", error);
+        }
+
+        // Regenerate GLightbox if exists
+        if (window.redmineGLightbox) {
+          window.redmineGLightbox.regenerate();
+        }
+      };
+
+      function ajaxUpdateIssueListWithQuery(target) {
+        // Select or deselect all columns before serializing
+        $("#selected_c option").prop("selected", true);
+        $("#available_c option").prop("selected", false);
+
+        ajaxUpdateIssueList({
+          search: $("#query_form").serialize(),
+          target: target,
+        });
+      }
+
+      function replaceQueryFormSubmission(e) {
+        e.preventDefault();
+        ajaxUpdateIssueListWithQuery(e.currentTarget);
+        if (settings.compactQueryForm) $("#query_form").hide();
+      }
+
+      function removeReplaceQueryFormSubmission() {
+        $("#content").off("submit", "#query_form", replaceQueryFormSubmission);
+      }
+
+      function setUpCompactQueryForm() {
+        // Replace query form submission process
+        $("#content").on("submit", "#query_form", replaceQueryFormSubmission);
+
+        if (!settings.compactQueryForm) {
+          // Set up event listeners for apply and clear buttons in query form
+          // if compact query form is not enabled,
+          // because the buttons can be used.
+          setupQueryButtonEventListeners();
+          return;
+        }
+
+        $("#main").addClass("eux-compact-query-form-enabled");
+
+        const $queryFormOpenButton = $("<a>")
+          .attr("id", "query_form_open_button")
+          .addClass("icon")
+          .text(resources.labelCriteria)
+          .on("click", (e) => {
+            e.preventDefault();
+            $("#query_form").show();
+          })
+          .on("mouseenter", () => {
+            $("#query_form").show();
+          })
+          .appendTo("#content>h2:first");
+
+        if (svgIcons.magnifier) {
+          $queryFormOpenButton.prepend(svgIcons.magnifier);
+        } else {
+          $queryFormOpenButton.addClass("icon-magnifier");
+        }
+
+        // Close the query form when the outside of the form is clicked
+        $(document).click((e) => {
+          if (
+            e.target !== $("#query_form")[0] &&
+            $(e.target).parents("#query_form").length === 0 &&
+            e.target !== $("#query_form_open_button")[0] &&
+            $(window).width() >= 900
+          ) {
+            $("#query_form").hide();
+          }
+        });
+
+        setUpQueryFormButtons();
+        setFilterItemToSortable();
+      }
+
+      function setupQueryButtonEventListeners() {
+        // Replace apply button with ajax update
+        $("#query_form_with_buttons p.buttons>a.icon-checked:first")
+          .attr("onclick", "")
+          .on("click", (e) => {
+            e.preventDefault();
+
+            // Conventional query submission
+            if (e.ctrlKey) {
+              removeReplaceQueryFormSubmission();
+            }
+
+            $("#query_form").submit();
+          });
+
+        // Replace clear button with ajax update
+        $("#query_form_with_buttons p.buttons>a.icon-reload:first")
+          .addClass("prevent-popup-anywhere")
+          .on("click", (e) => {
+            if (e.ctrlKey) return;
+            e.preventDefault();
+            ajaxUpdateIssueList({
+              search: extractSearch($(e.currentTarget).attr("href")),
+            });
+          });
+      }
+
+      function setUpQueryFormButtons() {
+        // Add cancel button to query form.
+        const $cancelButton = $("<a>")
+          .text(resources.labelCancel)
+          .addClass("icon query_form_cancel")
+          .css("cursor", "pointer")
+          .on("click", () => {
+            $("#query_form").hide();
+          });
+
+        if (svgIcons.close) {
+          $cancelButton.prepend(svgIcons.close);
+        } else {
+          $cancelButton.addClass("icon-close");
+        }
+        $("#query_form_with_buttons>.buttons").append($cancelButton);
+
+        setupQueryButtonEventListeners();
+
+        // Remove the ReplaceQueryFormSubmission function before the click event
+        // in the capturing phase.
+        $(
+          "#query_form_with_buttons p.buttons > a.icon.icon-save",
+        )[0]?.addEventListener("click", removeReplaceQueryFormSubmission, {
+          capture: true,
+        });
+
+        $("#query_form").hide();
+      }
+
+      function setFilterItemToSortable() {
+        $("#filters-table").sortable({
+          revert: true,
+        });
+      }
+
+      function replaceAnchorTagAction(e) {
+        if (e.ctrlKey) return;
+
+        e.preventDefault();
+        ajaxUpdateIssueList({
+          search: extractSearch($(e.currentTarget).attr("href")),
+        });
+      }
+
+      function displayDoneRatioText() {
+        if (!settings.displayDoneRatioText) return;
+
+        const $doneRatioElements = $(
+          "table.list.issues > tbody > tr.issue > td.done_ratio",
+        );
+        if ($doneRatioElements.length === 0) return;
+
+        $doneRatioElements.each(function () {
+          const percent = $(this)
+            .children("table.progress")
+            .attr("class")
+            .match(/progress-(\d+)/)[1];
+          const $p = $(this).children("p.percent");
+          $p.text(`${percent}%`);
+        });
+      }
+
+      function replaceToggleRowGroupFunctions() {
+        // Backup original function for a single group
+        const originalToggleRowGroup = window.toggleRowGroup;
+
+        // Replace function
+        window.toggleRowGroup = function (elem) {
+          // Call original function
+          originalToggleRowGroup(elem);
+
+          // Update collapse state
+          const $tr = $(elem).closest("tr");
+          const groupName =
+            $tr.find(".name a")?.attr("href") || $tr.find(".name").text();
+          if ($tr.hasClass("open")) {
+            collapsedGroups.delete(groupName);
+          } else {
+            collapsedGroups.add(groupName);
+          }
+        };
+
+        // Backup original function for all groups
+        const originalToggleAllRowGroups = window.toggleAllRowGroups;
+
+        // Replace function
+        window.toggleAllRowGroups = function (elem) {
+          originalToggleAllRowGroups(elem);
+          stashGroupCollapsedState();
+        };
+      }
+
+      function stashGroupCollapsedState() {
+        collapsedGroups = new Set(
+          $("table.list.issues > tbody > tr.group:not(.open)")
+            .map(
+              (_, e) =>
+                $(e).find(".name a")?.attr("href") || $(e).find(".name").text(),
+            )
+            .get(),
+        );
+      }
+
+      function restoreGroupCollapsedState() {
+        $("table.list.issues > tbody > tr.group").each((_, e) => {
+          const groupName =
+            $(e).find(".name a")?.attr("href") || $(e).find(".name").text();
+          if (collapsedGroups.has(groupName) && $(e).hasClass("open")) {
+            // Collapse group
+            window.toggleRowGroup($(e).find(".expander")[0]);
+          }
+        });
+      }
+
+      function initialize() {
+        initViewSettingsPanel();
+        setUpCompactQueryForm();
         setUpIssueListHeader();
         displayDoneRatioText();
 
-        // Restore original toggleIssuesSelection change event.
-        $("input[type=checkbox].toggle-selection").on(
-          "change",
-          toggleIssuesSelection,
-        );
-      } catch (error) {
-        console.error("Fetch error:", error);
-      }
-
-      // Regenerate GLightbox if exists
-      if (window.redmineGLightbox) {
-        window.redmineGLightbox.regenerate();
-      }
-    };
-
-    function ajaxUpdateIssueListWithQuery(target) {
-      // Select or deselect all columns before serializing
-      $("#selected_c option").prop("selected", true);
-      $("#available_c option").prop("selected", false);
-
-      ajaxUpdateIssueList({
-        search: $("#query_form").serialize(),
-        target: target,
-      });
-    }
-
-    function replaceQueryFormSubmission(e) {
-      e.preventDefault();
-      ajaxUpdateIssueListWithQuery(e.currentTarget);
-      $("#query_form").hide();
-    }
-
-    function removeReplaceQueryFormSubmission() {
-      $("#content").off("submit", "#query_form", replaceQueryFormSubmission);
-    }
-
-    function setUpQueryForm() {
-      const $queryFormOpenButton = $("<a>")
-        .attr("id", "query_form_open_button")
-        .addClass("icon")
-        .text(resources.labelCriteria)
-        .on("click", (e) => {
-          e.preventDefault();
-          $("#query_form").show();
-        })
-        .on("mouseenter", () => {
-          $("#query_form").show();
-        })
-        .appendTo("#content>h2:first");
-
-      if (svgIcons.magnifier) {
-        $queryFormOpenButton.prepend(svgIcons.magnifier);
-      } else {
-        $queryFormOpenButton.addClass("icon-magnifier");
-      }
-
-      // Close the query form when the outside of the form is clicked
-      $(document).click((e) => {
-        if (
-          e.target !== $("#query_form")[0] &&
-          $(e.target).parents("#query_form").length === 0 &&
-          e.target !== $("#query_form_open_button")[0] &&
-          $(window).width() >= 900
-        ) {
-          $("#query_form").hide();
-        }
-      });
-
-      // Replace query form submission process
-      $("#content").on("submit", "#query_form", replaceQueryFormSubmission);
-
-      setUpQueryFormButtons();
-      setFilterItemToSortable();
-    }
-
-    function setUpQueryFormButtons() {
-      // Add cancel button to query form.
-      const $cancelButton = $("<a>")
-        .text(resources.labelCancel)
-        .addClass("icon query_form_cancel")
-        .css("cursor", "pointer")
-        .on("click", () => {
-          $("#query_form").hide();
-        });
-
-      if (svgIcons.close) {
-        $cancelButton.prepend(svgIcons.close);
-      } else {
-        $cancelButton.addClass("icon-close");
-      }
-
-      $("#query_form_with_buttons>.buttons").append($cancelButton);
-
-      // Add label for display settings
-      $("<label>")
-        .text(resources.labelDisplayPeriod)
-        .insertBefore("input#months");
-      $("<label>")
-        .text(resources.labelDisplayStartDate)
-        .insertBefore("select#month")
-        .css({ marginLeft: 10 });
-
-      // Replace apply button with ajax update
-      $("#query_form_with_buttons p.buttons>a.icon-checked:first")
-        .attr("onclick", "")
-        .on("click", (e) => {
-          e.preventDefault();
-
-          // Conventional query submission
-          if (e.ctrlKey) {
-            removeReplaceQueryFormSubmission();
-          }
-
-          $("#query_form").submit();
-        });
-
-      // Replace clear button with ajax update
-      $("#query_form_with_buttons p.buttons>a.icon-reload:first")
-        .addClass("prevent-popup-anywhere")
-        .on("click", (e) => {
-          if (e.ctrlKey) return;
-          e.preventDefault();
-          ajaxUpdateIssueList({
-            search: extractSearch($(e.currentTarget).attr("href")),
-          });
-        });
-
-      // Remove the ReplaceQueryFormSubmission function before the click event
-      // in the capturing phase.
-      $(
-        "#query_form_with_buttons p.buttons > a.icon.icon-save",
-      )[0]?.addEventListener("click", removeReplaceQueryFormSubmission, {
-        capture: true,
-      });
-
-      $("#query_form").hide();
-    }
-
-    function setFilterItemToSortable() {
-      $("#filters-table").sortable({
-        revert: true,
-      });
-    }
-
-    function replaceAnchorTagAction(e) {
-      if (e.ctrlKey) return;
-
-      e.preventDefault();
-      ajaxUpdateIssueList({
-        search: extractSearch($(e.currentTarget).attr("href")),
-      });
-    }
-
-    function displayDoneRatioText() {
-      const $doneRatioElements = $(
-        "table.list.issues > tbody > tr.issue > td.done_ratio",
-      );
-      if ($doneRatioElements.length === 0) return;
-
-      $doneRatioElements.each(function () {
-        const percent = $(this)
-          .children("table.progress")
-          .attr("class")
-          .match(/progress-(\d+)/)[1];
-        const $p = $(this).children("p.percent");
-        $p.text(`${percent}%`);
-      });
-    }
-
-    function replaceToggleRowGroupFunctions() {
-      // Backup original function for a single group
-      const originalToggleRowGroup = window.toggleRowGroup;
-
-      // Replace function
-      window.toggleRowGroup = function (elem) {
-        // Call original function
-        originalToggleRowGroup(elem);
-
-        // Update collapse state
-        const $tr = $(elem).closest("tr");
-        const groupName =
-          $tr.find(".name a")?.attr("href") || $tr.find(".name").text();
-        if ($tr.hasClass("open")) {
-          collapsedGroups.delete(groupName);
-        } else {
-          collapsedGroups.add(groupName);
-        }
-      };
-
-      // Backup original function for all groups
-      const originalToggleAllRowGroups = window.toggleAllRowGroups;
-
-      // Replace function
-      window.toggleAllRowGroups = function (elem) {
-        originalToggleAllRowGroups(elem);
         stashGroupCollapsedState();
-      };
-    }
+        replaceToggleRowGroupFunctions();
 
-    function stashGroupCollapsedState() {
-      collapsedGroups = new Set(
-        $("table.list.issues > tbody > tr.group:not(.open)")
-          .map(
-            (_, e) =>
-              $(e).find(".name a")?.attr("href") || $(e).find(".name").text(),
-          )
-          .get(),
-      );
-    }
+        // Replace pagination anchor tag action
+        $("span.pagination").on("click", "a", (e) => replaceAnchorTagAction(e));
 
-    function restoreGroupCollapsedState() {
-      $("table.list.issues > tbody > tr.group").each((_, e) => {
-        const groupName =
-          $(e).find(".name a")?.attr("href") || $(e).find(".name").text();
-        if (collapsedGroups.has(groupName) && $(e).hasClass("open")) {
-          // Collapse group
-          window.toggleRowGroup($(e).find(".expander")[0]);
-        }
-      });
-    }
+        // Add class for enhanced UX issue list
+        $("table.list.issues").addClass("eux-custom-issue-list");
+      }
 
-    function initialize() {
-      setUpQueryForm();
-      setUpIssueListHeader();
-      displayDoneRatioText();
-      stashGroupCollapsedState();
-      replaceToggleRowGroupFunctions();
-
-      // Replace pagination anchor tag action
-      $("span.pagination").on("click", "a", (e) => replaceAnchorTagAction(e));
-
-      // Add class for enhanced UX issue list
-      $("table.list.issues").addClass("eux-custom-issue-list");
-    }
-
-    initialize();
-  });
+      initialize();
+    });
+  })();
 </script>
 <style>
+  /* ===== Global settings ===== */
   #context-menu {
     position: fixed !important;
   }
@@ -556,8 +798,43 @@
     display: none;
   }
 
+  #content {
+    position: relative;
+  }
+
+  /* ===== View Settings panel ===== */
+  #view_settings_button {
+    cursor: pointer;
+  }
+
+  #custom-issue-list-settings-panel-content {
+    .setting-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 10px;
+    }
+
+    label {
+      font-size: 0.9em;
+      font-weight: normal;
+      cursor: pointer;
+    }
+
+    input[type="checkbox"] {
+      margin-right: 5px;
+    }
+
+    & + .ui-dialog-buttonpane {
+      button {
+        height: auto;
+      }
+    }
+  }
+
+  /* ===== Sticky Header ===== */
   @media screen and (min-height: 400px) {
-    #wrapper {
+    #wrapper:has(table.issues.list.sticky-header) {
       height: 100vh;
 
       & > div {
@@ -568,121 +845,53 @@
           overflow: auto;
         }
       }
-    }
 
-    #content {
-      display: flex;
-      flex-direction: column;
-      position: relative;
-      flex: 1 1 auto;
-
-      & > * {
-        flex: 0 0 auto;
-      }
-
-      & > form[data-cm-url$="/issues/context_menu"] {
+      #content {
+        display: flex;
+        flex-direction: column;
         flex: 1 1 auto;
-        overflow: hidden;
-        padding-bottom: 15px;
 
-        & > div.autoscroll {
-          height: 100%;
-          padding: 0;
-          margin: 0;
-          grid-template-columns: 1fr auto;
-          border-top: 1px solid #d0d7de;
-          border-bottom: 1px solid #d0d7de;
+        & > * {
+          flex: 0 0 auto;
+        }
+
+        & > form[data-cm-url$="/issues/context_menu"] {
+          flex: 1 1 auto;
+          overflow: hidden;
+          padding-bottom: 15px;
+
+          & > div.autoscroll {
+            height: 100%;
+            padding: 0;
+            margin: 0;
+            grid-template-columns: 1fr auto;
+            border-top: 1px solid #d0d7de;
+            border-bottom: 1px solid #d0d7de;
+          }
         }
       }
-    }
 
-    table.list.issues {
-      overflow: auto;
-      margin: 0;
-      border: none;
-      & > thead {
-        position: sticky;
-        top: 0;
-        z-index: 20;
-        box-shadow: inset 0px 0px 0px 1px #d0d7de;
-        th {
-          border-top: 0;
-          border-bottom: 0;
-        }
-      }
-    }
-  }
-
-  /* Styles for mobile layout */
-  @media screen and (max-width: 899px) {
-    #query_form_with_buttons > p.buttons > .query_form_cancel {
-      display: none;
-    }
-    #query_form {
-      display: block !important;
-    }
-  }
-
-  /* Styles for desktop layout */
-  @media screen and (min-width: 900px) {
-    #content {
-      & > div.contextual {
-        position: absolute;
-        right: 15px;
-      }
-
-      & > p.query-totals {
+      table.list.issues {
+        overflow: auto;
         margin: 0;
+        border: none;
+        & > thead {
+          position: sticky;
+          top: 0;
+          z-index: 20;
+          box-shadow: inset 0px 0px 0px 1px #d0d7de;
+          th {
+            border-top: 0;
+            border-bottom: 0;
+            box-shadow: 0px 3px 3px rgb(0 0 0 / 10%);
+          }
+        }
       }
-    }
-
-    #list-definition td.field {
-      min-width: 80px;
-    }
-
-    #query_form_open_button {
-      display: inline;
-      font-size: 0.6em;
-      margin: 0 10px;
-      background-repeat: no-repeat;
-      cursor: pointer;
-    }
-
-    #query_form {
-      display: none;
-      position: absolute;
-      background-color: white;
-      z-index: 50;
-      width: min-content;
-      max-width: calc(100% - 50px);
-      box-shadow: 5px 5px 5px rgb(0 0 0 / 20%);
-      border-radius: 5px;
-      padding: 15px;
-      border: 1px #ccc solid;
-      top: 42px;
-      min-width: 900px;
-
-      #filters .add-filter {
-        min-width: 350px;
-      }
-    }
-
-    #query_form_with_buttons > p.buttons {
-      border-top: 1px solid #ccc;
-      padding-top: 10px;
-      margin: 15px 0 0;
-      display: flex;
-      justify-content: flex-end;
-      align-items: center;
-    }
-
-    #query_form_content fieldset {
-      margin-bottom: 20px;
     }
   }
 
   @media screen and (min-width: 900px) and (min-height: 400px) {
-    #content {
+    #content:has(table.issues.list.sticky-header) {
       span.pagination {
         position: absolute;
         bottom: 10px;
@@ -700,10 +909,81 @@
     }
   }
 
-  /* Sortable table header style settings */
-  #content table.list.issues > thead > tr > th {
-    box-shadow: 0px 3px 3px rgb(0 0 0 / 10%);
+  /* Styles for desktop layout */
+  @media screen and (min-width: 900px) {
+    #content:has(table.issues.list.sticky-header) {
+      & > div.contextual {
+        position: absolute;
+        right: 15px;
+      }
+      & > p.query-totals {
+        margin: 0;
+      }
+    }
+  }
 
+  /* ===== Compact query form ===== */
+  #main.eux-compact-query-form-enabled {
+    /* Styles for mobile layout */
+    @media screen and (max-width: 899px) {
+      #query_form_with_buttons > p.buttons > .query_form_cancel {
+        display: none;
+      }
+      #query_form {
+        display: block !important;
+      }
+    }
+
+    /* Styles for desktop layout */
+    @media screen and (min-width: 900px) {
+      #list-definition td.field {
+        min-width: 80px;
+      }
+
+      #query_form_open_button {
+        display: inline;
+        font-size: 0.6em;
+        margin: 0 10px;
+        background-repeat: no-repeat;
+        cursor: pointer;
+      }
+
+      #query_form {
+        display: none;
+        position: absolute;
+        background-color: white;
+        z-index: 50;
+        width: min-content;
+        max-width: calc(100% - 50px);
+        box-shadow: 5px 5px 5px rgb(0 0 0 / 20%);
+        border-radius: 5px;
+        padding: 15px;
+        border: 1px #ccc solid;
+        top: 42px;
+        min-width: 900px;
+
+        #filters .add-filter {
+          min-width: 350px;
+        }
+      }
+
+      #query_form_with_buttons > p.buttons {
+        border-top: 1px solid #ccc;
+        padding-top: 10px;
+        margin: 15px 0 0;
+        display: flex;
+        justify-content: flex-end;
+        align-items: center;
+      }
+
+      #query_form_content fieldset {
+        margin-bottom: 20px;
+      }
+    }
+  }
+
+  /* ===== Resizable and Sortable table header ===== */
+  #content table.list.issues > thead > tr > th {
     &.ui-sortable-handle {
       cursor: ew-resize;
     }
@@ -727,7 +1007,19 @@
         display: none;
       }
     }
+  }
+  #content
+    table.list.issues
+    > thead
+    > tr:hover
+    > th.ui-resizable
+    > div.ui-resizable-handle {
+    background-color: #0001;
+  }
 
+  /* ===== Display close button on columns ===== */
+  #content table.list.issues > thead > tr > th {
+    position: relative;
     & > span.icon-close {
       display: none;
       position: absolute;
@@ -742,16 +1034,8 @@
       display: inline;
     }
   }
-  #content
-    table.list.issues
-    > thead
-    > tr:hover
-    > th.ui-resizable
-    > div.ui-resizable-handle {
-    background-color: #0001;
-  }
 
-  /* Display done-ratio text */
+  /* ===== Display done ratio with text ===== */
   table.list.issues > tbody > tr.issue > td.done_ratio {
     position: relative;
 
@@ -805,13 +1089,14 @@
   /* Support for Redmine theme "farend bleuclair" */
   body.theme-Bleuclair {
     @media screen and (min-width: 900px) {
-      #content
+      #content:has(table.issues.list.sticky-header)
         > #sidebar-switch-panel:not([style*="display: none;"])
         + div.contextual {
         right: 45px;
       }
     }
-    #sidebar:not(:has(#sidebar-wrapper)) ~ #content {
+    #sidebar:not(:has(#sidebar-wrapper))
+      ~ #content:has(table.issues.list.sticky-header) {
       /* Support for Redmine earlier than 5 */
       @media screen and (min-height: 400px) {
         #sidebar-switch-panel {
@@ -833,11 +1118,13 @@
   html[dir="rtl"],
   html:has(head link[rel="stylesheet"][href*="/rtl"]) {
     @media screen and (min-width: 900px) {
-      #content {
+      #content:has(table.issues.list.sticky-header) {
         & > div.contextual {
           left: 15px;
           right: auto;
         }
+      }
+      #content {
         table.list.issues {
           & > thead > tr {
             & > th {
@@ -858,7 +1145,7 @@
     }
     body.theme-Bleuclair {
       @media screen and (min-width: 900px) {
-        #content
+        #content:has(table.issues.list.sticky-header)
           > #sidebar-switch-panel:not([style*="display: none;"])
           + div.contextual {
           left: 45px;
