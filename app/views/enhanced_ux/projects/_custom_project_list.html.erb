@@ -22,8 +22,9 @@
         labelToggleDescriptionFeature: "Toggle Description Feature",
         labelSaveAndReload: "Save and Reload",
         labelResetAndReload: "Reset and Reload",
-        labelIssues: "Issues",
         labelNewIssue: "New Issue",
+        labelIssues: "Issues",
+        labelWiki: "Wiki",
         labelSettings: "Settings",
         labelCancel: "Cancel",
         labelCriteria: "Criteria",
@@ -39,8 +40,9 @@
         labelToggleDescriptionFeature: "説明の表示切替機能",
         labelSaveAndReload: "保存して再読み込み",
         labelResetAndReload: "リセットして再読み込み",
-        labelIssues: "チケット一覧",
         labelNewIssue: "新規チケット",
+        labelIssues: "チケット一覧",
+        labelWiki: "Wiki",
         labelSettings: "設定",
         labelCancel: "キャンセル",
         labelCriteria: "抽出条件",
@@ -304,22 +306,29 @@
         if (!settings.projectShortcutMenuEnabled) return;
         function generateLinkBox(projectHref) {
           const $linkBox = $("<div>").addClass("link-box");
-          const $issueListLink = $("<a>")
-            .attr("href", `${projectHref}/issues`)
-            .text(i18n.labelIssues)
-            .addClass("icon icon-list");
-          insertSvgIcon($issueListLink, "icon--list", 14);
           const $newIssueLink = $("<a>")
             .attr("href", `${projectHref}/issues/new`)
             .text(i18n.labelNewIssue)
             .addClass("icon icon-add");
           insertSvgIcon($newIssueLink, "icon--add", 14);
+          const $issueListLink = $("<a>")
+            .attr("href", `${projectHref}/issues`)
+            .text(i18n.labelIssues)
+            .addClass("icon icon-list");
+          insertSvgIcon($issueListLink, "icon--list", 14);
+          const $wikiLink = $("<a>")
+            .attr("href", `${projectHref}/wiki`)
+            .text(i18n.labelWiki)
+            .addClass("icon icon-wiki-page");
+          insertSvgIcon($wikiLink, "icon--wiki-page", 14);
           const $settingLink = $("<a>")
             .attr("href", `${projectHref}/settings`)
             .text(i18n.labelSettings)
             .addClass("icon icon-settings");
           insertSvgIcon($settingLink, "icon--settings", 14);
-          $linkBox.append($issueListLink, $newIssueLink, $settingLink);
+          $linkBox.append(
+            $newIssueLink, $issueListLink, $wikiLink, $settingLink
+          );
           return $linkBox;
         }
 
