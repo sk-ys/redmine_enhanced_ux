@@ -671,12 +671,19 @@
       align-items: center;
       justify-content: space-between;
       margin-bottom: 10px;
+      padding: 0 5px;
+      border-radius: 5px;
+
+      &:hover {
+        background-color: rgba(0, 0, 0, 0.1);
+      }
     }
 
     label {
       font-size: 0.9em;
       font-weight: normal;
       cursor: pointer;
+      flex-grow: 1;
     }
 
     input[type="checkbox"] {
