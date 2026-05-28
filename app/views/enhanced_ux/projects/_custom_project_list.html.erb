@@ -8,7 +8,13 @@
   (() => {
     const defaultSettings = {
       compactQueryForm: true,
-      projectShortcutMenuEnabled: true,
+      projectShortcutMenu: {
+        enabled: true,
+        newIssue: true,
+        issues: true,
+        wiki: true,
+        projectSettings: true,
+      },
       collapsibleSubprojects: true,
       toggleDescription: true
     };
@@ -152,8 +158,9 @@
           "custom-project-list-settings-panel-content",
         );
 
-        function generateSettingItem(labelText, id, value = false) {
-          const $container = $("<div>").addClass("setting-item");
+        function generateSettingItem(labelText, id, value = false, indent = 0) {
+          const $container = $("<div>").addClass("setting-item")
+            .css("margin-left", `${indent}em`);
           const $label = $("<label>").text(labelText).attr("for", id);
           const $input = $("<input>")
             .attr("type", "checkbox")
@@ -173,7 +180,31 @@
           generateSettingItem(
             i18n.labelProjectShortcutMenu,
             "project_shortcut_menu_enabled",
-            settings.projectShortcutMenuEnabled
+            settings.projectShortcutMenu?.enabled
+          ),
+          generateSettingItem(
+            i18n.labelNewIssue,
+            "project_shortcut_menu_new_issue",
+            settings.projectShortcutMenu?.newIssue,
+            1
+          ),
+          generateSettingItem(
+            i18n.labelIssues,
+            "project_shortcut_menu_issue_list",
+            settings.projectShortcutMenu?.issues,
+            1
+          ),
+          generateSettingItem(
+            i18n.labelWiki,
+            "project_shortcut_menu_wiki",
+            settings.projectShortcutMenu?.wiki,
+            1
+          ),
+          generateSettingItem(
+            i18n.labelSettings,
+            "project_shortcut_menu_project_settings",
+            settings.projectShortcutMenu?.projectSettings,
+            1
           ),
         ).append(
           generateSettingItem(
@@ -209,7 +240,13 @@
                 // Save settings to localStorage
                 const newSettings = {
                   compactQueryForm: $("#compact_query_form_enabled").prop("checked"),
-                  projectShortcutMenuEnabled: $("#project_shortcut_menu_enabled").prop("checked"),
+                  projectShortcutMenu: {
+                    enabled: $("#project_shortcut_menu_enabled").prop("checked"),
+                    newIssue: $("#project_shortcut_menu_new_issue").prop("checked"),
+                    issues: $("#project_shortcut_menu_issue_list").prop("checked"),
+                    wiki: $("#project_shortcut_menu_wiki").prop("checked"),
+                    projectSettings: $("#project_shortcut_menu_project_settings").prop("checked"),
+                  },
                   collapsibleSubprojects: $("#collapsible_subprojects_enabled").prop("checked"),
                   toggleDescription: $("#toggle_description_enabled").prop("checked"),
                 };
@@ -303,32 +340,47 @@
       }
 
       function initProjectShortcutMenu() {
-        if (!settings.projectShortcutMenuEnabled) return;
+        if (!settings.projectShortcutMenu?.enabled) return;
+
         function generateLinkBox(projectHref) {
           const $linkBox = $("<div>").addClass("link-box");
-          const $newIssueLink = $("<a>")
-            .attr("href", `${projectHref}/issues/new`)
-            .text(i18n.labelNewIssue)
-            .addClass("icon icon-add");
-          insertSvgIcon($newIssueLink, "icon--add", 14);
-          const $issueListLink = $("<a>")
-            .attr("href", `${projectHref}/issues`)
-            .text(i18n.labelIssues)
-            .addClass("icon icon-list");
-          insertSvgIcon($issueListLink, "icon--list", 14);
-          const $wikiLink = $("<a>")
-            .attr("href", `${projectHref}/wiki`)
-            .text(i18n.labelWiki)
-            .addClass("icon icon-wiki-page");
-          insertSvgIcon($wikiLink, "icon--wiki-page", 14);
-          const $settingLink = $("<a>")
-            .attr("href", `${projectHref}/settings`)
-            .text(i18n.labelSettings)
-            .addClass("icon icon-settings");
-          insertSvgIcon($settingLink, "icon--settings", 14);
-          $linkBox.append(
-            $newIssueLink, $issueListLink, $wikiLink, $settingLink
-          );
+
+          if (settings.projectShortcutMenu?.newIssue) {
+            const $newIssueLink = $("<a>")
+              .attr("href", `${projectHref}/issues/new`)
+              .text(i18n.labelNewIssue)
+              .addClass("icon icon-add")
+              .appendTo($linkBox);
+            insertSvgIcon($newIssueLink, "icon--add", 14);
+          }
+
+          if (settings.projectShortcutMenu?.issues) {
+            const $issueListLink = $("<a>")
+              .attr("href", `${projectHref}/issues`)
+              .text(i18n.labelIssues)
+              .addClass("icon icon-list")
+              .appendTo($linkBox);
+            insertSvgIcon($issueListLink, "icon--list", 14);
+          }
+
+          if (settings.projectShortcutMenu?.wiki) {
+            const $wikiLink = $("<a>")
+              .attr("href", `${projectHref}/wiki`)
+              .text(i18n.labelWiki)
+              .addClass("icon icon-wiki-page")
+              .appendTo($linkBox);
+            insertSvgIcon($wikiLink, "icon--wiki-page", 14);
+          }  
+
+          if (settings.projectShortcutMenu?.projectSettings) {
+            const $settingLink = $("<a>")
+              .attr("href", `${projectHref}/settings`)
+              .text(i18n.labelSettings)
+              .addClass("icon icon-settings")
+              .appendTo($linkBox);
+            insertSvgIcon($settingLink, "icon--settings", 14);
+          }
+
           return $linkBox;
         }
 
@@ -619,12 +671,19 @@
       align-items: center;
       justify-content: space-between;
       margin-bottom: 10px;
+      padding: 0 5px;
+      border-radius: 5px;
+
+      &:hover {
+        background-color: rgba(0, 0, 0, 0.1);
+      }
     }
 
     label {
       font-size: 0.9em;
       font-weight: normal;
       cursor: pointer;
+      flex-grow: 1;
     }
 
     input[type="checkbox"] {
