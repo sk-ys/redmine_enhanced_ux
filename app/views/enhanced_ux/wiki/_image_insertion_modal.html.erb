@@ -19,6 +19,8 @@
         labelModalImageTitle: "Title",
         labelModalSize: "Size",
         labelModalSizeUnit: "Size Unit",
+        labelClearSize: "Clear",
+        messageClearSize: "Clear the size.",
         messageModalHowToEnableSizeUnit:
           "To enable size unit selection, use HTML formatting and input size.",
         labelModalOptions: "Options",
@@ -40,6 +42,8 @@
         labelModalImageTitle: "タイトル",
         labelModalSize: "サイズ",
         labelModalSizeUnit: "サイズ単位",
+        labelClearSize: "クリア",
+        messageClearSize: "サイズをクリアします。",
         messageModalHowToEnableSizeUnit:
           "サイズ単位の選択を有効にするには、HTMLフォーマットを使用し、" +
           "サイズを入力してください。",
@@ -627,11 +631,23 @@
               .append(resources.labelModalHtmlWithLineBreakTag)
           );
 
+        const $clearSizeButton = $("<a>")
+          .text(resources.labelClearSize)
+          .attr("href", "#")
+          .attr("title", resources.messageClearSize)
+          .on("click", (e) => {
+            e.preventDefault();
+            this.size = "";
+            this.#$size.val("");
+            this.previewFormattedText();
+          });
+
         const $modalSizeGroup = $("<div>")
           .addClass("image-insertion-modal-size-group")
           .append($("<label>").text(resources.labelModalSize + ":"))
           .append(this.#$size)
-          .append(this.#$sizeUnit);
+          .append(this.#$sizeUnit)
+          .append($clearSizeButton);
 
         const $modalOptionsDetails = $("<details>")
           .attr("id", "image_insertion_modal_options_details")
