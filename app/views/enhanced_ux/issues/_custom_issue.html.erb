@@ -474,8 +474,8 @@
             .attr("id", "issue-container")
             .resizable({
               handles: isRtl ? "w" : "e",
-              create: function () {
-                $(this)
+              create: (e) => {
+                $(e.target)
                   .children(".ui-resizable-handle")
                   .on("dblclick", () => {
                     if (confirm(resources.confirmResetWidth)) {
