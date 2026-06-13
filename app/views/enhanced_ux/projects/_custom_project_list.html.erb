@@ -303,6 +303,86 @@
         insertSvgIcon($viewSettingsButton, "icon--settings", 18);
       }
 
+      const dummyProjectItemId = "dummy-project-item";
+      function appendDummyProjectItem() {
+        // It is used to adjust the layout by adding an extra item at the end,
+        // preventing unintended movement of project items.
+        if ($(`#${dummyProjectItemId}`).length > 0) return;
+        $("#projects-index ul.projects.root").append(
+          $("<li>").attr("id", dummyProjectItemId),
+        );
+      }
+
+      function updateDummyProjectItemHeight() {
+        const $dummyItem = $(`#${dummyProjectItemId}`);
+        if ($dummyItem.length === 0) return;
+
+        const $projectIndex = $("#projects-index");
+        const projectIndexRect = $projectIndex[0].getBoundingClientRect();
+        const projectItemSelectMargin = 5;
+        const dummyItemDefaultPadding = 25; // It needs to match the CSS padding-bottom value.
+        const $projectRootItems = $(
+          `#projects-index ul.projects.root > li:not(#${dummyProjectItemId})`,
+        );
+        if ($projectRootItems.length === 0) return;
+
+        // Temporarily hide the dummy item to prevent it from affecting the
+        // height calculation
+        $dummyItem.hide();
+
+        const projectRootItemsWithRect = $projectRootItems
+          .map((i, el) => {
+            return { elem: el, rect: el.getBoundingClientRect() };
+          })
+          .get();
+        const maxBottom = Math.max(
+          ...projectRootItemsWithRect.map(({ rect }) => rect.bottom),
+          0,
+        );
+        const target = projectRootItemsWithRect.find(
+          ({ rect }) => rect.bottom === maxBottom,
+        );
+        const lastItem =
+          projectRootItemsWithRect[projectRootItemsWithRect.length - 1];
+        const rightValues = new Set(
+          projectRootItemsWithRect.map(({ rect }) => rect.right),
+        );
+        const isSingleColumn = rightValues.size === 1;
+        const isLastItemMostRight =
+          lastItem.rect.right >=
+          projectIndexRect.right - projectItemSelectMargin;
+        const isTargetNotRightmost =
+          target.rect.right < projectIndexRect.right + projectItemSelectMargin;
+        const isLastItemOnBottom = maxBottom === lastItem.rect.bottom;
+        const shouldHideDummy = isSingleColumn && isLastItemMostRight;
+        const shouldFillGap =
+          isTargetNotRightmost && !(isLastItemOnBottom && isLastItemMostRight);
+
+        let dummyItemHeight = 0;
+        if (!shouldHideDummy) {
+          const baseTop =
+            shouldFillGap && isLastItemMostRight
+              ? lastItem.rect.bottom
+              : projectIndexRect.top;
+
+          dummyItemHeight = maxBottom - baseTop - dummyItemDefaultPadding;
+        }
+
+        $dummyItem
+          .height(Math.max(0, dummyItemHeight))
+          .toggle(!shouldHideDummy);
+
+        $projectRootItems
+          .removeClass("most-right-item")
+          .filter(
+            (i, el) =>
+              rightValues.size > 1 &&
+              el.getBoundingClientRect().right >=
+                projectIndexRect.right - projectItemSelectMargin,
+          )
+          .addClass("most-right-item");
+      }
+
       function initCompactQueryForm() {
         if (!settings.compactQueryForm) return;
 
@@ -421,6 +501,14 @@
             $el.after($linkBox);
           }
         });
+
+        // Insert a dummy project item to adjust the layout and prevent
+        // unintended movement of project items when hovering.
+        appendDummyProjectItem();
+        setTimeout(() => {
+          updateDummyProjectItemHeight();
+          $(window).on("resize", updateDummyProjectItemHeight);
+        }, 600);
       }
 
       function initCollapsibleSubprojects() {
@@ -571,6 +659,12 @@
             $iconContainer.on("click", (e) => {
               e.preventDefault();
               e.stopPropagation();
+
+              // Temporarily hide the dummy project item to prevent it from
+              // affecting the height calculation during animation
+              // TODO: This approach is unstable
+              // $(`#${dummyItemId}`).hide();
+
               toggleExpandCollapse($iconContainer);
 
               if (e.shiftKey) {
@@ -590,6 +684,9 @@
                     }
                   });
               }
+
+              // After toggling animation, update the dummy project item height
+              setTimeout(updateDummyProjectItemHeight, 500);
             });
           }
         });
@@ -937,5 +1034,31 @@
 
   #projects-index.description-hidden div.description {
     display: none;
+  }
+
+  /* ===== Dummy project item for layout adjustment ===== */
+  #dummy-project-item {
+    display: inline-block;
+    width: 0;
+    height: 0;
+    margin: 0;
+    padding: 0;
+    border: none;
+    list-style-type: none;
+    transition: padding 0.2s linear;
+    padding-bottom: 25px;
+    visibility: hidden;
+    width: 1px;  /* For debugging purposes */
+    background-color: #ccc;  /* For debugging purposes */
+  }
+  #projects-index:has(li:not(.most-right-item) div:is(.root, .child):hover) {
+    #dummy-project-item {
+      padding-bottom: 50px;
+    }
+  }
+  #projects-index:has(li.most-right-item div:is(.root, .child):hover) {
+    #dummy-project-item {
+      padding-bottom: 0;
+    }
   }
 </style>
