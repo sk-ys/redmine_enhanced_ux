@@ -16,7 +16,7 @@
         projectSettings: true,
       },
       collapsibleSubprojects: true,
-      toggleDescription: true
+      toggleDescription: true,
     };
 
     const i18nDict = {
@@ -59,15 +59,17 @@
     };
     const i18n = i18nDict[document.documentElement.lang] || i18nDict["en"];
 
-    const homeUrl = ($("head script[src*='/jquery-'][src*='-ui-'][src*='.js']")
-    .attr("src")
-    ?.match(/^(.*?)(?:\/javascripts\/|\/assets\/)/)
-    ?.[1] || "") + "/";
+    const homeUrl =
+      ($("head script[src*='/jquery-'][src*='-ui-'][src*='.js']")
+        .attr("src")
+        ?.match(/^(.*?)(?:\/javascripts\/|\/assets\/)/)?.[1] || "") + "/";
     const localStorageKeyPrefix = homeUrl.slice(1).replaceAll("/", ".");
 
     // Load user settings from localStorage
     const settingsFromLocalStorage = JSON.parse(
-      localStorage.getItem(localStorageKeyPrefix + "custom-project-list-settings") || "{}"
+      localStorage.getItem(
+        localStorageKeyPrefix + "custom-project-list-settings",
+      ) || "{}",
     );
 
     // Merge user settings with default settings
@@ -103,7 +105,8 @@
     }
 
     projectListForceShowTimer = setTimeout(
-      showProjectList, projectListForceShowDelayMs
+      showProjectList,
+      projectListForceShowDelayMs,
     );
 
     document.addEventListener("DOMContentLoaded", () => {
@@ -129,8 +132,8 @@
           if (!this.basePath) return null;
           return $(
             `<svg class="s${size} icon-svg" aria-hidden="true">` +
-            `<use href="${this.basePath}#${key}"></use>` +
-            `</svg>`,
+              `<use href="${this.basePath}#${key}"></use>` +
+              `</svg>`,
           );
         }
         get magnifier() {
@@ -159,7 +162,8 @@
         );
 
         function generateSettingItem(labelText, id, value = false, indent = 0) {
-          const $container = $("<div>").addClass("setting-item")
+          const $container = $("<div>")
+            .addClass("setting-item")
             .css("margin-left", `${indent}em`);
           const $label = $("<label>").text(labelText).attr("for", id);
           const $input = $("<input>")
@@ -170,55 +174,59 @@
         }
 
         // Append settings to dialog
-        $settingsPanel.append(
-          generateSettingItem(
-            i18n.labelCompactQueryForm,
-            "compact_query_form_enabled",
-            settings.compactQueryForm
+        $settingsPanel
+          .append(
+            generateSettingItem(
+              i18n.labelCompactQueryForm,
+              "compact_query_form_enabled",
+              settings.compactQueryForm,
+            ),
           )
-        ).append(
-          generateSettingItem(
-            i18n.labelProjectShortcutMenu,
-            "project_shortcut_menu_enabled",
-            settings.projectShortcutMenu?.enabled
-          ),
-          generateSettingItem(
-            i18n.labelNewIssue,
-            "project_shortcut_menu_new_issue",
-            settings.projectShortcutMenu?.newIssue,
-            1
-          ),
-          generateSettingItem(
-            i18n.labelIssues,
-            "project_shortcut_menu_issue_list",
-            settings.projectShortcutMenu?.issues,
-            1
-          ),
-          generateSettingItem(
-            i18n.labelWiki,
-            "project_shortcut_menu_wiki",
-            settings.projectShortcutMenu?.wiki,
-            1
-          ),
-          generateSettingItem(
-            i18n.labelSettings,
-            "project_shortcut_menu_project_settings",
-            settings.projectShortcutMenu?.projectSettings,
-            1
-          ),
-        ).append(
-          generateSettingItem(
-            i18n.labelCollapsibleSubprojects,
-            "collapsible_subprojects_enabled",
-            settings.collapsibleSubprojects
-          ),
-        ).append(
-          generateSettingItem(
-            i18n.labelToggleDescriptionFeature,
-            "toggle_description_enabled",
-            settings.toggleDescription
-          ),
-        );
+          .append(
+            generateSettingItem(
+              i18n.labelProjectShortcutMenu,
+              "project_shortcut_menu_enabled",
+              settings.projectShortcutMenu?.enabled,
+            ),
+            generateSettingItem(
+              i18n.labelNewIssue,
+              "project_shortcut_menu_new_issue",
+              settings.projectShortcutMenu?.newIssue,
+              1,
+            ),
+            generateSettingItem(
+              i18n.labelIssues,
+              "project_shortcut_menu_issue_list",
+              settings.projectShortcutMenu?.issues,
+              1,
+            ),
+            generateSettingItem(
+              i18n.labelWiki,
+              "project_shortcut_menu_wiki",
+              settings.projectShortcutMenu?.wiki,
+              1,
+            ),
+            generateSettingItem(
+              i18n.labelSettings,
+              "project_shortcut_menu_project_settings",
+              settings.projectShortcutMenu?.projectSettings,
+              1,
+            ),
+          )
+          .append(
+            generateSettingItem(
+              i18n.labelCollapsibleSubprojects,
+              "collapsible_subprojects_enabled",
+              settings.collapsibleSubprojects,
+            ),
+          )
+          .append(
+            generateSettingItem(
+              i18n.labelToggleDescriptionFeature,
+              "toggle_description_enabled",
+              settings.toggleDescription,
+            ),
+          );
 
         const $dialog = $settingsPanel.dialog({
           autoOpen: false,
@@ -230,7 +238,9 @@
             {
               text: i18n.labelResetAndReload,
               click() {
-                localStorage.removeItem(localStorageKeyPrefix + "custom-project-list-settings");
+                localStorage.removeItem(
+                  localStorageKeyPrefix + "custom-project-list-settings",
+                );
                 location.reload();
               },
             },
@@ -239,20 +249,34 @@
               click() {
                 // Save settings to localStorage
                 const newSettings = {
-                  compactQueryForm: $("#compact_query_form_enabled").prop("checked"),
+                  compactQueryForm: $("#compact_query_form_enabled").prop(
+                    "checked",
+                  ),
                   projectShortcutMenu: {
-                    enabled: $("#project_shortcut_menu_enabled").prop("checked"),
-                    newIssue: $("#project_shortcut_menu_new_issue").prop("checked"),
-                    issues: $("#project_shortcut_menu_issue_list").prop("checked"),
+                    enabled: $("#project_shortcut_menu_enabled").prop(
+                      "checked",
+                    ),
+                    newIssue: $("#project_shortcut_menu_new_issue").prop(
+                      "checked",
+                    ),
+                    issues: $("#project_shortcut_menu_issue_list").prop(
+                      "checked",
+                    ),
                     wiki: $("#project_shortcut_menu_wiki").prop("checked"),
-                    projectSettings: $("#project_shortcut_menu_project_settings").prop("checked"),
+                    projectSettings: $(
+                      "#project_shortcut_menu_project_settings",
+                    ).prop("checked"),
                   },
-                  collapsibleSubprojects: $("#collapsible_subprojects_enabled").prop("checked"),
-                  toggleDescription: $("#toggle_description_enabled").prop("checked"),
+                  collapsibleSubprojects: $(
+                    "#collapsible_subprojects_enabled",
+                  ).prop("checked"),
+                  toggleDescription: $("#toggle_description_enabled").prop(
+                    "checked",
+                  ),
                 };
                 localStorage.setItem(
                   localStorageKeyPrefix + "custom-project-list-settings",
-                  JSON.stringify({ ...settings, ...newSettings })
+                  JSON.stringify({ ...settings, ...newSettings }),
                 );
                 location.reload();
               },
@@ -370,7 +394,7 @@
               .addClass("icon icon-wiki-page")
               .appendTo($linkBox);
             insertSvgIcon($wikiLink, "icon--wiki-page", 14);
-          }  
+          }
 
           if (settings.projectShortcutMenu?.projectSettings) {
             const $settingLink = $("<a>")
@@ -390,9 +414,7 @@
           const projectHref = $el.attr("href");
           const $linkBox = generateLinkBox(projectHref);
 
-          const $spanItems = $el
-            .parent()
-            .children("span");
+          const $spanItems = $el.parent().children("span");
           if ($spanItems.length > 0) {
             $spanItems.last().after($linkBox);
           } else {
@@ -422,9 +444,10 @@
 
           #deleteInactiveProjects() {
             const validProjects = new Set(
-              $projectsIndex.find("a:is(.root, .child)").map((i, el) =>
-                $(el).attr("href")
-              ).get()
+              $projectsIndex
+                .find("a:is(.root, .child)")
+                .map((i, el) => $(el).attr("href"))
+                .get(),
             );
             this.collapsedProjects.forEach((proj) => {
               if (!validProjects.has(proj)) {
@@ -439,7 +462,10 @@
           }
 
           #saveState() {
-            localStorage.setItem(this.#storageKey, JSON.stringify([...this.collapsedProjects]));
+            localStorage.setItem(
+              this.#storageKey,
+              JSON.stringify([...this.collapsedProjects]),
+            );
           }
 
           isCollapsed(projectHref) {
@@ -481,22 +507,28 @@
         function toggleExpandCollapse($iconContainer) {
           if (!$iconContainer || $iconContainer.length === 0) return;
 
-          const $projectListHeader = $iconContainer.closest("li.root, li.child");
+          const $projectListHeader =
+            $iconContainer.closest("li.root, li.child");
           if ($projectListHeader.length === 0) return;
 
-          const projectHref = $projectListHeader.find("> div:is(.root, .child) > a.project").attr("href");
+          const projectHref = $projectListHeader
+            .find("> div:is(.root, .child) > a.project")
+            .attr("href");
 
-          $iconContainer.toggleClass('icon-expanded icon-collapsed');
+          $iconContainer.toggleClass("icon-expanded icon-collapsed");
           $projectListHeader.toggleClass("collapsed");
           collapsedStateMan.toggleCollapsed(
-            projectHref, $projectListHeader.hasClass("collapsed")
+            projectHref,
+            $projectListHeader.hasClass("collapsed"),
           );
 
           // Replace svg icon with appropriate one
           const $svgIcon = $iconContainer.find("svg use");
           if ($svgIcon.length > 0) {
             $svgIcon.remove();
-            const newIconName = $projectListHeader.hasClass("collapsed") ? "icon--angle-right" : "icon--angle-down";
+            const newIconName = $projectListHeader.hasClass("collapsed")
+              ? "icon--angle-right"
+              : "icon--angle-down";
             insertSvgIcon($iconContainer, newIconName, 18);
           }
         }
@@ -506,10 +538,13 @@
           const $el = $(el);
           const projectHref = $el.attr("href");
           const $projectListHeader = $el.closest("li.root, li.child");
-          const hasChildProjects = $projectListHeader.find("ul.projects").length > 0;
+          const hasChildProjects =
+            $projectListHeader.find("ul.projects").length > 0;
 
           if (projectHref && hasChildProjects) {
-            const initialState = collapsedStateMan.isCollapsed(projectHref) ? "collapsed" : "expanded";
+            const initialState = collapsedStateMan.isCollapsed(projectHref)
+              ? "collapsed"
+              : "expanded";
 
             $projectListHeader
               .addClass("collapsible")
@@ -517,10 +552,16 @@
 
             const $iconContainer = $("<div>")
               .addClass("toggle-subprojects icon-only")
-              .addClass(initialState === "collapsed" ? "icon-collapsed" : "icon-expanded");
+              .addClass(
+                initialState === "collapsed"
+                  ? "icon-collapsed"
+                  : "icon-expanded",
+              );
             const $icon = svgIcons.generateSvgIconTag(
-              initialState === "collapsed" ? "icon--angle-right" : "icon--angle-down",
-              18
+              initialState === "collapsed"
+                ? "icon--angle-right"
+                : "icon--angle-down",
+              18,
             );
 
             if ($icon) $iconContainer.append($icon);
@@ -539,8 +580,13 @@
                   .find("li.collapsible")
                   .each((i, el) => {
                     const $subProject = $(el);
-                    if ($subProject.hasClass("collapsed") !== $projectListHeader.hasClass("collapsed")) {
-                      toggleExpandCollapse($subProject.find("> .toggle-subprojects"));
+                    if (
+                      $subProject.hasClass("collapsed") !==
+                      $projectListHeader.hasClass("collapsed")
+                    ) {
+                      toggleExpandCollapse(
+                        $subProject.find("> .toggle-subprojects"),
+                      );
                     }
                   });
               }
@@ -549,15 +595,19 @@
         });
 
         // Add buttons to expand/collapse all projects
-        const $buttonContainer = $("<span>")
-          .attr("id", "project-collapse-buttons");
+        const $buttonContainer = $("<span>").attr(
+          "id",
+          "project-collapse-buttons",
+        );
         const $collapseAllButton = $("<a>")
           .text(i18n.labelCollapsedAllProjects)
           .addClass("collapse-all-button")
           .on("click", () => {
             const projectHrefs = [];
             $projectsIndex.find("li.collapsible").each((i, el) => {
-              const href = $(el).find("> div:is(.root, .child) > a.project").attr("href");
+              const href = $(el)
+                .find("> div:is(.root, .child) > a.project")
+                .attr("href");
               if (href) {
                 projectHrefs.push(href);
                 if (!$(el).hasClass("collapsed")) {
@@ -604,11 +654,13 @@
           .attr("id", "toggle_description_cb")
           .on("change", (e) => {
             e.preventDefault();
-            $("#projects-index")
-              .toggleClass("description-hidden", !e.target.checked);
+            $("#projects-index").toggleClass(
+              "description-hidden",
+              !e.target.checked,
+            );
             localStorage.setItem(
               localStorageKeyPrefix + "project-list-description-hidden",
-              !e.target.checked
+              !e.target.checked,
             );
           });
 
@@ -618,15 +670,15 @@
           .append(
             $("<label>")
               .attr("for", "toggle_description_cb")
-              .text(i18n.labelToggleDescription)
+              .text(i18n.labelToggleDescription),
           )
           .appendTo("#content>h2:first");
 
         // Load saved state from localStorage
         const descriptionHidden = JSON.parse(
           localStorage.getItem(
-            localStorageKeyPrefix + "project-list-description-hidden"
-          ) || "false"
+            localStorageKeyPrefix + "project-list-description-hidden",
+          ) || "false",
         );
         $("#toggle_description_cb").prop("checked", !descriptionHidden);
         if (descriptionHidden) {
@@ -635,10 +687,8 @@
 
         if (
           !settings.collapsibleSubprojects ||
-          (
-            settings.collapsibleSubprojects &&
-            collapsibleSubprojectsFeatureIsInitialized
-          )
+          (settings.collapsibleSubprojects &&
+            collapsibleSubprojectsFeatureIsInitialized)
         ) {
           showProjectList();
         }
@@ -690,7 +740,7 @@
       margin-right: 5px;
     }
 
-    &+.ui-dialog-buttonpane {
+    & + .ui-dialog-buttonpane {
       button {
         height: auto;
       }
@@ -709,7 +759,7 @@
 
     /* Styles for mobile layout */
     @media screen and (max-width: 899px) {
-      #query_form_with_buttons>p.buttons>.query_form_cancel {
+      #query_form_with_buttons > p.buttons > .query_form_cancel {
         display: none;
       }
 
@@ -747,7 +797,7 @@
         }
       }
 
-      #query_form_with_buttons>p.buttons {
+      #query_form_with_buttons > p.buttons {
         border-top: 1px solid #ccc;
         padding-top: 10px;
         margin: 15px 0 0;
@@ -806,11 +856,11 @@
   /* ===== Collapsible subprojects ===== */
   #projects-index {
     li:is(.root, .child).collapsible {
-      &>div:is(.root, .child) {
+      & > div:is(.root, .child) {
         margin-left: 20px;
       }
 
-      &>ul.projects {
+      & > ul.projects {
         clear: both;
         margin-left: 7px;
         overflow: hidden;
@@ -818,7 +868,7 @@
         transition: max-height 0.3s ease;
       }
 
-      &.collapsed>ul.projects {
+      &.collapsed > ul.projects {
         max-height: 0;
       }
     }
@@ -872,7 +922,6 @@
       }
     }
   }
-
 
   /* ===== Toggle description ===== */
   #toggle_description_container {
