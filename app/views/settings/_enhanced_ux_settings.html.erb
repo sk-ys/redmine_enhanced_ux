@@ -52,19 +52,22 @@
     display: flex;
     align-items: flex-start;
     margin-bottom: 12px;
+    
+    label.feature-title {
+      flex: 1;
+      font-weight: bold;
+      font-size: 14px;
+      line-height: 1.4;
+      color: #333;
+      margin: 0;
+      margin-left: 0;
+      width: 100%;
+    }
   }
   
   .feature-checkbox {
     margin-right: 12px;
     margin-top: 3px;
-  }
-  
-  .feature-title {
-    flex: 1;
-    font-weight: bold;
-    font-size: 14px;
-    line-height: 1.4;
-    color: #333;
   }
   
   .feature-image {
@@ -131,6 +134,25 @@
   .buttons a {
     padding: 8px 20px;
     border-radius: 4px;
+  }
+
+  /* Experimental Badge Styling */
+  .experimental-badge {
+    display: inline-block;
+    border: 1px solid #AAA;
+    color: #AAA;
+    font-size: 0.7em;
+    font-weight: normal;
+    line-height: 1;
+    padding: 2px 4px;
+    border-radius: 3px;
+    margin-left: 0.5em;
+    text-transform: uppercase;
+    white-space: nowrap;
+  }
+  .experimental-badge::before {
+    content: "⚠️";
+    margin-right: 0.3em;
   }
 </style>
 
@@ -519,7 +541,10 @@
         <div class="feature-header">
           <input type="hidden" name="settings[update_relative_time_in_realtime]" value="0">
           <%= check_box_tag 'settings[update_relative_time_in_realtime]', '1', @settings[:update_relative_time_in_realtime] == '1', class: 'feature-checkbox' %>
-          <label class="feature-title" for="settings_update_relative_time_in_realtime">Update relative time in real-time</label>
+          <label class="feature-title" for="settings_update_relative_time_in_realtime">
+            Update relative time in real-time
+            <span class="experimental-badge">Experimental</span>
+          </label>
         </div>
       </div>
     </div>
