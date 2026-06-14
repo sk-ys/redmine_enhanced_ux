@@ -15,10 +15,20 @@
     const resourcesAll = {
       en: {
         labelModalTitle: "Insert image",
-        labelModalFilename: "File Name",
+        labelModalFilenameOrPath: "File Name or Path",
         labelModalImageTitle: "Title",
-        labelModalThumbnailSize: "Thumbnail size",
-        labelModalDecode: "decode",
+        labelModalSize: "Size",
+        labelModalSizeUnit: "Size Unit",
+        labelClearSize: "Clear",
+        messageClearSize: "Clear the size.",
+        messageModalHowToEnableSizeUnit:
+          "To enable size unit selection, use HTML formatting and input size.",
+        labelModalOptions: "Options",
+        labelModalDecode: "Decode",
+        labelModalHtmlFormatting: "HTML formatting",
+        labelModalHtmlWithLineBreakTag: "With line break tag",
+        messageModalHowToEnableHtmlBreakTag:
+          "To enable break tag option, enable HTML formatting.",
         labelModalTagPreview: "Preview",
         labelModalUploadFile: "Upload file",
         labelModalChooseFiles: "Choose Files",
@@ -28,10 +38,21 @@
       },
       ja: {
         labelModalTitle: "画像の挿入",
-        labelModalFilename: "ファイル名",
+        labelModalFilenameOrPath: "ファイル名またはパス",
         labelModalImageTitle: "タイトル",
-        labelModalThumbnailSize: "サムネイルサイズ",
+        labelModalSize: "サイズ",
+        labelModalSizeUnit: "サイズ単位",
+        labelClearSize: "クリア",
+        messageClearSize: "サイズをクリアします。",
+        messageModalHowToEnableSizeUnit:
+          "サイズ単位の選択を有効にするには、HTMLフォーマットを使用し、" +
+          "サイズを入力してください。",
+        labelModalOptions: "オプション",
         labelModalDecode: "デコード",
+        labelModalHtmlFormatting: "HTMLフォーマット",
+        labelModalHtmlWithLineBreakTag: "改行タグ付き",
+        messageModalHowToEnableHtmlBreakTag:
+          "改行タグオプションを有効にするには、HTMLフォーマットを有効にしてください。",
         labelModalTagPreview: "プレビュー",
         labelModalUploadFile: "ファイルのアップロード",
         labelModalChooseFiles: "ファイル選択",
@@ -50,6 +71,7 @@
     let imageInsertionModal = null;
 
     const imageExtensions = ["jpg", "jpeg", "png", "gif", "bmp", "svg"];
+    const sizeUnits = ["px", "%", "em", "rem", "vw"];
 
     function getTextileImageTagRegex(global = true, strict = false) {
       return new RegExp(
@@ -85,10 +107,30 @@
         `${global ? "g" : ""}i`
       );
     }
+    function getHtmlImgTagBaseRegex(global = true, strict = false) {
+      return new RegExp(
+        (strict ? "^" : "") + "<img\\s+([^>]*)>(<br>)?" + (strict ? "$" : ""),
+        `${global ? "g" : ""}i`
+      );
+    }
+    function getHtmlImgTagSrcRegex() {
+      // Note: This regex does not validate the file extension
+      return /src\s*=\s*["']([^"']+)["']/i;
+    }
+    function getHtmlImgTagWidthRegex() {
+      return /width\s*[=|:]\s*["']?(\d+)([a-z%]+)?["']?/i;
+    }
+    function getHtmlImgTagTitleRegex() {
+      return /(title|alt)\s*=\s*["']([^"']*)["']/i;
+    }
 
     function isImageFile(fileName) {
       const extension = fileName.split(".").pop().toLowerCase();
       return imageExtensions.includes(extension);
+    }
+
+    function isExternalImagePath(path) {
+      return /^(https?:)?\/\//i.test(path);
     }
 
     function findTextileImageTags(text, global, strict) {
@@ -141,7 +183,28 @@
           text: match[0],
           imageTitle: match[4]?.trim(),
           path: match[1]?.trim(),
-          thumbSize: match[3] || match[5],
+          size: match[3] || match[5],
+          sizeUnit: "px",
+        });
+        if (!global) break;
+      }
+      return global ? matches : matches[0];
+    }
+
+    function findHtmlImgTags(text, global, strict) {
+      const htmlImgTagRegex = getHtmlImgTagBaseRegex(global, strict);
+      const matches = [];
+      let match;
+      while ((match = htmlImgTagRegex.exec(text)) !== null) {
+        const matchWidth = getHtmlImgTagWidthRegex().exec(match[1]);
+        matches.push({
+          type: "HtmlImg",
+          text: match[0],
+          imageTitle: getHtmlImgTagTitleRegex().exec(match[1])?.[2]?.trim(),
+          path: getHtmlImgTagSrcRegex().exec(match[1])?.[1]?.trim(),
+          size: matchWidth?.[1],
+          sizeUnit: matchWidth?.[2],
+          withLineBreak: match[2] !== undefined,
         });
         if (!global) break;
       }
@@ -153,6 +216,7 @@
         ...findTextileImageTags(text, true, false),
         ...findMarkdownImageTags(text, true, false),
         ...findThumbnailMacro(text, true, false),
+        ...findHtmlImgTags(text, true, false),
       ];
     }
 
@@ -161,6 +225,8 @@
       if ((match = findThumbnailMacro(text, false, true))) {
         return match;
       } else if ((match = findMarkdownImageTags(text, false, true))) {
+        return match;
+      } else if ((match = findHtmlImgTags(text, false, true))) {
         return match;
       } else if ((match = findTextileImageTags(text, false, true))) {
         return match;
@@ -321,14 +387,20 @@
       return selectedTextsTemp;
     }
 
-    function generateDecorator(tagFormatting, thumbnailSize, imageTitle) {
+    function generateDecorator(
+      tagFormatting,
+      imageTitle,
+      size,
+      sizeUnit = "px",
+      withLineBreak = false // for HTML tag only
+    ) {
       let prefix = "";
       let suffix = "";
       switch (tagFormatting) {
         case "thumbnail":
           prefix = "{{thumbnail(";
           suffix =
-            (thumbnailSize === "" ? "" : ", size=" + thumbnailSize) +
+            (size === "" ? "" : ", size=" + size) +
             (imageTitle === "" ? "" : ", title=" + imageTitle) +
             ")}}";
           break;
@@ -339,6 +411,15 @@
         case "markdown":
           prefix = "![" + imageTitle + "](";
           suffix = ")";
+          break;
+        case "html":
+          prefix = '<img src="';
+          suffix =
+            '"' +
+            (imageTitle === "" ? "" : ' title="' + imageTitle + '"') +
+            (size === "" ? "" : ' style="width:' + size + sizeUnit + ';"') +
+            ">" +
+            (withLineBreak ? "<br>" : "");
           break;
       }
 
@@ -430,8 +511,11 @@
       #$modal;
       #$fileName;
       #$imageTitle;
-      #$thumbSize;
+      #$size;
+      #$sizeUnit;
       #$decodeEnabled;
+      #$htmlFormatting;
+      #$htmlWithLineBreakTagEnabled;
       #$tagPreview;
       #$uploadFile;
 
@@ -459,21 +543,40 @@
           .attr("id", "image_insertion_modal_title")
           .attr("type", "text");
 
-        this.#$thumbSize = $("<input>")
+        this.#$size = $("<input>")
           .attr("id", "image_insertion_modal_size")
           .attr("type", "number")
           .attr("min", 0);
+
+        this.#$sizeUnit = $("<select>")
+          .attr("id", "image_insertion_modal_size_unit")
+          .append(
+            sizeUnits.map((unit) =>
+              $("<option>").attr("value", unit).text(unit)
+            )
+          );
 
         this.#$decodeEnabled = $("<input>")
           .attr("id", "image_insertion_modal_decode")
           .attr("type", "checkbox")
           .prop("checked", checkedDecodeDefault);
 
+        this.#$htmlFormatting = $("<input>")
+          .attr("id", "image_insertion_modal_html_formatting")
+          .attr("type", "checkbox");
+
+        this.#$htmlWithLineBreakTagEnabled = $("<input>")
+          .attr("id", "image_insertion_modal_html_with_line_break_enabled")
+          .attr("type", "checkbox");
+
         [
           this.#$fileName,
           this.#$imageTitle,
-          this.#$thumbSize,
+          this.#$size,
+          this.#$sizeUnit,
           this.#$decodeEnabled,
+          this.#$htmlFormatting,
+          this.#$htmlWithLineBreakTagEnabled,
         ].map((obj) => {
           obj.keydown((e) => {
             const key = e.which;
@@ -495,12 +598,72 @@
 
         const $modalDecodeBox = $("<span>")
           .attr("id", "image_insertion_modal_decode_box")
+          .addClass("image-insertion-modal-option-item")
           .append(
             $("<label>")
               .attr("for", "image_insertion_modal_decode")
+              .append(this.#$decodeEnabled)
               .append(resources.labelModalDecode)
+          );
+
+        const $modalHtmlFormattingBox = $("<span>")
+          .attr("id", "image_insertion_modal_html_formatting_box")
+          .addClass("image-insertion-modal-option-item")
+          .append(
+            $("<label>")
+              .attr("for", "image_insertion_modal_html_formatting")
+              .append(this.#$htmlFormatting)
+              .append(resources.labelModalHtmlFormatting)
+          );
+
+        const $modalHtmlWithLineBreakTagEnabledBox = $("<span>")
+          .attr(
+            "id",
+            "image_insertion_modal_html_with_line_break_tag_enabled_box"
           )
-          .append(this.#$decodeEnabled);
+          .addClass(
+            "image-insertion-modal-option-item image-insertion-modal-option-indent"
+          )
+          .append(
+            $("<label>")
+              .attr("for", "image_insertion_modal_html_with_line_break_enabled")
+              .append(this.#$htmlWithLineBreakTagEnabled)
+              .append(resources.labelModalHtmlWithLineBreakTag)
+          );
+
+        const $clearSizeButton = $("<a>")
+          .text(resources.labelClearSize)
+          .attr("href", "#")
+          .attr("title", resources.messageClearSize)
+          .on("click", (e) => {
+            e.preventDefault();
+            this.size = "";
+            this.#$size.val("");
+            this.previewFormattedText();
+          });
+
+        const $modalSizeGroup = $("<div>")
+          .addClass("image-insertion-modal-size-group")
+          .append($("<label>").text(resources.labelModalSize + ":"))
+          .append(this.#$size)
+          .append(this.#$sizeUnit)
+          .append($clearSizeButton);
+
+        const $modalOptionsDetails = $("<details>")
+          .attr("id", "image_insertion_modal_options_details")
+          .append(
+            $("<summary>")
+              .attr("id", "image_insertion_modal_options_summary")
+              .text(resources.labelModalOptions)
+          )
+          .append(
+            $("<div>")
+              .addClass("image-insertion-modal-options")
+              .append($modalSizeGroup)
+              .append($modalDecodeBox)
+              .append($modalHtmlFormattingBox)
+              .append($modalHtmlWithLineBreakTagEnabledBox)
+          );
 
         const $modalUploadFileButton = $("<button>")
           .attr("id", "image_insertion_modal_upload_file_button")
@@ -527,20 +690,17 @@
 
         this.#$modal
           .append(
-            $("<p>")
-              .append(resources.labelModalFilename + ":")
-              .append(this.#$fileName)
-              .append($modalDecodeBox)
-          )
-          .append(
-            $("<p>")
-              .append(resources.labelModalImageTitle + ":")
-              .append(this.#$imageTitle)
-          )
-          .append(
-            $("<p>")
-              .append(resources.labelModalThumbnailSize + ":")
-              .append(this.#$thumbSize)
+            $("<div>")
+              .append(
+                $("<p>")
+                  .append(resources.labelModalFilenameOrPath + ":")
+                  .append(this.#$fileName)
+              )
+              .append(
+                $("<p>")
+                  .append(resources.labelModalImageTitle + ":")
+                  .append(this.#$imageTitle)
+              )
           )
           .append(
             $("<p>")
@@ -548,6 +708,7 @@
               .append("<br>")
               .append(this.#$tagPreview)
           )
+          .append($("<div>").append($modalOptionsDetails))
           .append(this.#$uploadFile);
       }
 
@@ -587,7 +748,15 @@
             const parsedText = parseText(this.selectedText.text);
             this.fileName = parsedText.path;
             this.imageTitle = parsedText.imageTitle;
-            this.thumbSize = parsedText.thumbSize ?? "";
+            this.size = parsedText.size ?? "";
+            this.htmlFormattingEnabled = parsedText.type === "HtmlImg";
+            this.withLineBreak = parsedText.withLineBreak ?? false;
+            this.sizeUnit =
+              this.htmlFormattingEnabled &&
+              parsedText.sizeUnit &&
+              sizeUnits.includes(parsedText.sizeUnit)
+                ? parsedText.sizeUnit
+                : "px";
             this.previewFormattedText();
 
             if (this.fileName === "") {
@@ -642,6 +811,29 @@
             !!(match && match[1])
           );
         }
+
+        if (isExternalImagePath(this.fileName) && this.#$size.val() !== "") {
+          this.htmlFormattingEnabled = true;
+          this.#$htmlFormatting.prop("disabled", true);
+        } else {
+          this.#$htmlFormatting.prop("disabled", false);
+        }
+        if (!this.htmlFormattingEnabled || this.#$size.val() === "") {
+          this.#$sizeUnit
+            .prop("disabled", true)
+            .attr("title", resources.messageModalHowToEnableSizeUnit);
+        } else {
+          this.#$sizeUnit.prop("disabled", false).removeAttr("title");
+        }
+        if (!this.htmlFormattingEnabled) {
+          this.#$htmlWithLineBreakTagEnabled
+            .prop("disabled", true)
+            .attr("title", resources.messageModalHowToEnableHtmlBreakTag);
+        } else {
+          this.#$htmlWithLineBreakTagEnabled
+            .prop("disabled", false)
+            .removeAttr("title");
+        }
       }
       previewFormattedTextDelay(delay = 100) {
         setTimeout(() => this.previewFormattedText(), delay);
@@ -649,7 +841,7 @@
 
       resetForm() {
         this.#$fileName.val("");
-        this.#$thumbSize.val("");
+        this.#$size.val("");
         this.#$imageTitle.val("");
         this.#$tagPreview.text("");
       }
@@ -680,14 +872,17 @@
           this.#textFormatting === "textile"
             ? findTextileImageTags(`!${this.fileName}!`, false, true)
             : undefined;
-        const tagFormatting =
-          textilePreview?.textileStyleWithBracket || this.thumbSize === ""
-            ? this.#textFormatting
-            : "thumbnail";
+        const tagFormatting = this.htmlFormattingEnabled
+          ? "html"
+          : textilePreview?.textileStyleWithBracket || this.size === ""
+          ? this.#textFormatting
+          : "thumbnail";
         const [prefix, suffix] = generateDecorator(
           tagFormatting,
-          this.thumbSize,
-          this.imageTitle
+          this.imageTitle,
+          this.size,
+          this.htmlFormattingEnabled ? this.sizeUnit : "px",
+          this.htmlFormattingEnabled && this.withLineBreak
         );
 
         const formattedText =
@@ -774,11 +969,18 @@
       set fileName(value) {
         this.#$fileName.val(value);
       }
-      get thumbSize() {
-        return this.#$thumbSize.val();
+      get size() {
+        return this.#$size.val();
       }
-      set thumbSize(value) {
-        return this.#$thumbSize.val(value);
+      set size(value) {
+        return this.#$size.val(value);
+      }
+      get sizeUnit() {
+        return this.#$sizeUnit.val();
+      }
+      set sizeUnit(value) {
+        if (!sizeUnits.includes(value)) return; // Invalid value
+        return this.#$sizeUnit.val(value);
       }
       get imageTitle() {
         return this.#$imageTitle.val();
@@ -788,6 +990,18 @@
       }
       get decodeEnabled() {
         return this.#$decodeEnabled.prop("checked");
+      }
+      get htmlFormattingEnabled() {
+        return this.#$htmlFormatting.prop("checked");
+      }
+      set htmlFormattingEnabled(value) {
+        return this.#$htmlFormatting.prop("checked", value);
+      }
+      get withLineBreak() {
+        return this.#$htmlWithLineBreakTagEnabled.prop("checked");
+      }
+      set withLineBreak(value) {
+        return this.#$htmlWithLineBreakTagEnabled.prop("checked", value);
       }
     }
 
@@ -817,6 +1031,68 @@
         };
         addFile.nextAttachmentId = addFileOrg.nextAttachmentId;
       }
+
+      // Replace addInlineAttachmentMarkup function for Redmine 6+
+      if (window.addInlineAttachmentMarkup) {
+        const addInlineAttachmentMarkupOrg = addInlineAttachmentMarkup;
+
+        // ⚠️Caution: Completely replace the original function
+        window.addInlineAttachmentMarkup = function (file) {
+          /* --- Below code is based on attachments.js --- */
+          // insert uploaded image inline if dropped area is currently focused textarea
+          if (
+            $(handleFileDropEvent.target).hasClass("wiki-edit") &&
+            $.inArray(file.type, window.wikiImageMimeTypes) > -1
+          ) {
+            var $textarea = $(handleFileDropEvent.target);
+            var cursorPosition = $textarea.prop("selectionStart");
+            var description = $textarea.val();
+            var newLineBefore = true;
+            var newLineAfter = true;
+            if (
+              cursorPosition === 0 ||
+              description.substr(cursorPosition - 1, 1).match(/\r|\n/)
+            ) {
+              newLineBefore = false;
+            }
+            if (description.substr(cursorPosition, 1).match(/\r|\n/)) {
+              newLineAfter = false;
+            }
+
+            getInlineAttachmentMarkup(file).then((imageMarkup) => {
+              $textarea.val(
+                description.substring(0, cursorPosition) +
+                  (newLineBefore ? "\n" : "") +
+                  imageMarkup +
+                  (newLineAfter ? "\n" : "") +
+                  description.substring(cursorPosition, description.length)
+              );
+
+              // Ref: https://redmine.org/issues/43662
+              // Move cursor after the inserted markup
+              var newCursorPosition =
+                cursorPosition + (newLineBefore ? 1 : 0) + imageMarkup.length;
+              $textarea.prop({
+                selectionStart: newCursorPosition + 1,
+                selectionEnd: newCursorPosition + 1,
+              });
+              /* --- Above code is based on attachments.js --- */
+
+              // Open the image insertion modal
+              // Set cursor position after the inserted markup
+              $textarea[0].setSelectionRange(
+                newCursorPosition,
+                newCursorPosition
+              );
+              const jsToolbarInstanceLike = {
+                textarea: $textarea[0],
+                editor: $textarea.closest(".jstEditor")[0],
+              };
+              addTask(jsToolbarInstanceLike);
+            });
+          }
+        };
+      }
     });
   })();
 </script>
@@ -832,6 +1108,86 @@
     width: 100%;
   }
 
+  /* Options details styling */
+  #image_insertion_modal_options_details {
+    margin-top: 0;
+  }
+
+  #image_insertion_modal_options_summary {
+    cursor: pointer;
+    font-weight: bold;
+    padding: 0.5em 0;
+    user-select: none;
+    outline: none;
+  }
+
+  #image_insertion_modal_options_summary:hover {
+    color: #333;
+  }
+
+  #image_insertion_modal_options_details[open]
+    > #image_insertion_modal_options_summary {
+    margin-bottom: 0.5em;
+  }
+
+  /* Size group styling */
+  .image-insertion-modal-size-group {
+    display: flex;
+    align-items: center;
+    gap: 0.5em;
+    margin-bottom: 1em;
+  }
+
+  .image-insertion-modal-size-group > label {
+    margin: 0;
+    font-weight: normal;
+    min-width: fit-content;
+  }
+
+  .image-insertion-modal-size-group > input[type="number"] {
+    width: 80px !important;
+    flex: 0 0 auto;
+  }
+
+  .image-insertion-modal-size-group > select {
+    width: 80px;
+  }
+
+  /* Options styling */
+  #image_insertion_modal .image-insertion-modal-options {
+    padding-left: 2rem;
+    margin-top: 0.5em;
+  }
+
+  .image-insertion-modal-option-item {
+    display: block;
+    margin-bottom: 0.5em;
+  }
+
+  .image-insertion-modal-option-item label {
+    display: inline-flex;
+    align-items: center;
+    margin: 0;
+    font-weight: normal;
+  }
+
+  .image-insertion-modal-option-item input[type="checkbox"] {
+    margin-right: 0.5em;
+    height: auto;
+  }
+
+  .image-insertion-modal-option-indent {
+    margin-left: 1.5em;
+    opacity: 1;
+    transition: opacity 0.2s;
+  }
+
+  .image-insertion-modal-option-indent input:disabled,
+  .image-insertion-modal-option-indent input:disabled + label {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+
   #image_insertion_modal_tag_preview {
     width: 100%;
     word-break: break-all;
@@ -843,15 +1199,12 @@
     box-sizing: border-box;
   }
 
-  #image_insertion_modal_decode {
-    height: auto;
+  #image_insertion_modal_size_unit {
+    margin: 0;
   }
 
-  #image_insertion_modal_decode_box {
-    position: absolute;
-    right: 0;
-    top: 0;
-    font-size: 80%;
+  #image_insertion_modal_decode {
+    height: auto;
   }
 
   #image_insertion_modal_upload_file_button {

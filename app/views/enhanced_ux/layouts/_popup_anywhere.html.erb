@@ -25,9 +25,11 @@
     const MaximumNumberOfStates = 5;
     // ----- settings end -----
 
-    const homeUrl = $("link[href*='favicon.ico']")
-      .attr("href")
-      .split("favicon.ico")[0];
+    const homeUrl = ($("head script[src*='/jquery-'][src*='-ui-'][src*='.js']")
+      .attr("src")
+      ?.match(/^(.*?)(?:\/javascripts\/|\/assets\/)/)
+      ?.[1] || "") + "/";
+    const localStorageKeyPrefix = homeUrl.slice(1).replaceAll("/", ".");
 
     // i18n
     const resourcesAll = {
@@ -85,6 +87,31 @@
       ...resourcesAll["en"],
       ...(resourcesAll[document.documentElement.lang] || {}),
     };
+
+    const svgIcons = new (class SVGIcons {
+      constructor() {
+        const extractedPath = this.#extractIconPath();
+        this.basePath = extractedPath ? homeUrl + extractedPath : null;
+      }
+      #extractIconPath() {
+        const $elem = $("use[href*='/assets/icons-'][href*='.svg#']").first();
+        const match = $elem
+          .attr("href")
+          ?.match(/\/(assets\/icons-[a-f0-9]+\.svg)#/);
+        return match ? match[1] : null;
+      }
+      generateSvgIconTag(key) {
+        if (!this.basePath) return null;
+        return $(
+          `<svg class="s18 icon-svg" aria-hidden="true">` +
+            `<use href="${this.basePath}#${key}"></use>` +
+            `</svg>`
+        );
+      }
+      get loader() {
+        return this.generateSvgIconTag("icon--loader");
+      }
+    })();
 
     const isRtl = $('head link[rel="stylesheet"][href*="/rtl"]').length > 0;
 
@@ -841,6 +868,13 @@
               this.moveToTop();
             });
 
+            // Hide sticky issue header
+            $contents.find("head").append(
+              $("<style>").text(
+                "#sticky-issue-header { display: none !important; }"
+              ).addClass("added-by-popup-anywhere hide-sticky-header")
+            );
+
             $(e.target).css("visibility", "");
           })
           .attr("src", this.options.src)
@@ -851,26 +885,30 @@
     class PopUp {
       static size = {
         get width() {
-          const states =
-            JSON.parse(localStorage.getItem("popup-anywhere-state")) || {};
+          const states = JSON.parse(localStorage.getItem(
+            localStorageKeyPrefix + "popup-anywhere-state")) || {};
           return states["_default-width"] ?? initialWidth;
         },
         set width(value) {
-          const states =
-            JSON.parse(localStorage.getItem("popup-anywhere-state")) || {};
+          const states = JSON.parse(localStorage.getItem(
+              localStorageKeyPrefix + "popup-anywhere-state")) || {};
           states["_default-width"] = value;
-          localStorage.setItem("popup-anywhere-state", JSON.stringify(states));
+          localStorage.setItem(
+            localStorageKeyPrefix + "popup-anywhere-state",
+            JSON.stringify(states));
         },
         get height() {
-          const states =
-            JSON.parse(localStorage.getItem("popup-anywhere-state")) || {};
+          const states = JSON.parse(localStorage.getItem(
+            localStorageKeyPrefix + "popup-anywhere-state")) || {};
           return states["_default-height"] ?? initialHeight;
         },
         set height(value) {
-          const states =
-            JSON.parse(localStorage.getItem("popup-anywhere-state")) || {};
+          const states = JSON.parse(localStorage.getItem(
+            localStorageKeyPrefix + "popup-anywhere-state")) || {};
           states["_default-height"] = value;
-          localStorage.setItem("popup-anywhere-state", JSON.stringify(states));
+          localStorage.setItem(
+            localStorageKeyPrefix + "popup-anywhere-state",
+            JSON.stringify(states));
         },
       };
 
@@ -912,7 +950,8 @@
 
       static saveDialogState() {
         const states =
-          JSON.parse(localStorage.getItem("popup-anywhere-state")) || {};
+          JSON.parse(localStorage.getItem(
+            localStorageKeyPrefix + "popup-anywhere-state")) || {};
 
         if (PopUp.getActiveDialogs().length === 0) {
           delete states[location.pathname];
@@ -986,11 +1025,14 @@
           delete states[location.pathname];
         }
 
-        localStorage.setItem("popup-anywhere-state", JSON.stringify(states));
+        localStorage.setItem(
+          localStorageKeyPrefix + "popup-anywhere-state",
+          JSON.stringify(states));
       }
 
       static restoreDialogState() {
-        const states = JSON.parse(localStorage.getItem("popup-anywhere-state"));
+        const states = JSON.parse(localStorage.getItem(
+          localStorageKeyPrefix + "popup-anywhere-state"));
         if (states === null || states[location.pathname] === undefined) return;
         const state = states[location.pathname];
         state.dialogs
@@ -1046,13 +1088,22 @@
         this.$dialog = $("<div>")
           .attr("title", title)
           .addClass("popup-anywhere-container")
-          .css({
+          .data("height", this.height)
+          .data("width", this.width);
+
+        if (svgIcons.loader) {
+          this.$dialog.prepend(
+            $("<div>")
+              .addClass("popup-anywhere-container-loading-icon")
+              .append(svgIcons.loader)
+          );
+        } else {
+          this.$dialog.css({
             backgroundImage: `url(${homeUrl}images/loading.gif)`,
             backgroundPosition: "center center",
             backgroundRepeat: "no-repeat",
-          })
-          .data("height", this.height)
-          .data("width", this.width);
+          });
+        }
 
         this.$dialog.dialogPA({
           closeText: resources.labelClose,
@@ -1174,6 +1225,33 @@
     display: flex;
     overflow: hidden !important;
     padding: 0;
+
+    .popup-anywhere-container-loading-icon {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      background-size: cover;
+      animation: spin 1s linear infinite;
+      transform-origin: center;
+      width: 18px;
+      height: 18px;
+
+      /* Fix rotation center */
+      svg {
+        display: block;
+        transform: translate(0, 0);
+      }
+
+      /* Stop animation when iframe is visible */
+      &:is(
+          .ui-dialog-content.popup-anywhere-container:not(
+              :has(iframe[style*="visibility: hidden;"])
+            )
+            *
+        ) {
+        display: none;
+      }
+    }
   }
 
   .ui-dialog.popup-anywhere
@@ -1181,6 +1259,12 @@
     > iframe {
     flex-grow: 1;
     border: none;
+    z-index: 1;
+  }
+
+  /* Prevent iframe interaction during dragging or resizing */
+  .popup-anywhere:is(.ui-dialog-dragging, .ui-dialog-resizing) iframe {
+    pointer-events: none !important;
   }
 
   .ui-dialog.popup-anywhere-maximize {

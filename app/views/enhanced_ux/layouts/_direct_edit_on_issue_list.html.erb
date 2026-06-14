@@ -25,10 +25,10 @@
       ...(resourcesAll[document.documentElement.lang] || {}),
     };
 
-    const homeUrl = $("link[href*='favicon.ico']")
-      .attr("href")
-      .split("favicon.ico")[0];
-
+    const homeUrl = ($("head script[src*='/jquery-'][src*='-ui-'][src*='.js']")
+      .attr("src")
+      ?.match(/^(.*?)(?:\/javascripts\/|\/assets\/)/)
+      ?.[1] || "") + "/";
     const supportedFields = [
       "status",
       "tracker",
@@ -50,6 +50,7 @@
       "start_date",
       "due_date",
       "date",
+      "datetime",
       "estimated_hours",
       "tags",
     ];
@@ -72,8 +73,8 @@
     $("head").append(
       $("<style>").text(
         "table.list.issues>tbody>tr.issue>td.selected " +
-          "{box-shadow: inset #ffd 0px 0px 3px 0px;}"
-      )
+          "{box-shadow: inset #ffd 0px 0px 3px 0px;}",
+      ),
     );
 
     class ContextInputForm {
@@ -117,9 +118,13 @@
               ? initialValue
                 ? new Date(initialValue).toLocaleDateString("sv-SE")
                 : new Date().toLocaleDateString("sv-SE")
+              : fieldType === "datetime-local"
+                ? initialValue
+                  ? new Date(initialValue).toLocaleString("sv-SE").slice(0, 16).replace(" ", "T")
+                  : new Date().toLocaleString("sv-SE").slice(0, 16).replace(" ", "T")
               : field === "estimated_hours" && initialValue.includes(":")
-              ? timeStringToDecimal(initialValue)
-              : initialValue
+                ? timeStringToDecimal(initialValue)
+                : initialValue,
           );
 
         return this.$input;
@@ -175,7 +180,7 @@
 
         const $container = $("<div>")
           .attr("id", "context-input-form")
-          .css({ position: "fixed" })
+          .css({ position: "absolute" })
           .append(this.$input)
           .append(this.$applyButton)
           .append(this.$cancelButton)
@@ -188,7 +193,8 @@
 
       #generateUrl(form, key, value) {
         const $form = $(form);
-        const backUrl = $form.find("input[name=back_url]").val();
+        const backUrl =
+          $form.find("input[name=back_url]").val() || location.href;
         const $selectedIssueIds = $form.find('input[name="ids[]"]:checked');
         const issueIdsParams = $selectedIssueIds.serialize();
 
@@ -203,16 +209,15 @@
         const isCustomField = key.startsWith("cf_");
         const cfId = isCustomField ? key.split("_")[1] : null;
 
+        const paramKey = isCustomField
+          ? `issue[custom_field_values][${cfId}]`
+          : `issue[${key}]`;
+
         return (
           `${homeUrl}issues/${actionOrIssueId}?` +
           `back_url=${encodeURIComponent(backUrl)}&` +
           (actionOrIssueId === "bulk_update" ? `${issueIdsParams}&` : "") +
-          encodeURI(
-            isCustomField
-              ? `issue[custom_field_values[${cfId}]]=`
-              : `issue[${key}]=`
-          ) +
-          encodeURIComponent(value)
+          `${encodeURIComponent(paramKey)}=${encodeURIComponent(value)}`
         );
       }
 
@@ -228,7 +233,7 @@
           field.includes("cf_")
             ? field.split(" ").filter((i) => i.startsWith("cf_"))[0]
             : field,
-          value
+          value,
         );
 
         return this.$applyButton.attr("href", url || "#");
@@ -249,10 +254,10 @@
             if (!$(e.target).closest("#context-input-form").length) {
               $("#context-input-form").hide();
               $("table.list.issues>tbody>tr.issue>td.selected").removeClass(
-                "selected"
+                "selected",
               );
             }
-          }
+          },
         );
       }
     }
@@ -304,19 +309,24 @@
 
       // Estimating field type
       const fieldType =
-        field === "tags"
-          ? "tags"
+        field.includes("entity-relation") && field.includes("tags")
+          ? "additional-tags"
+          : field.includes("tags")
+            ? "tags"
+          : field.includes("datetime")
+            ? "datetime-local"
           : field.includes("date")
-          ? "date"
-          : field.includes("int")
-          ? "int"
-          : field.includes("float") || field.includes("estimated_hours")
-          ? "float"
-          : "text";
+            ? "date"
+            : field.includes("int")
+              ? "int"
+              : field.includes("float") || field.includes("estimated_hours")
+                ? "float"
+                : "text";
 
       if (
         [
           "date",
+          "datetime-local",
           "subject",
           "string",
           "link",
@@ -334,7 +344,7 @@
             // Remove subject's header if owned.
             if (new RegExp(anchorText + ": (.+)").test(currentText)) {
               currentText = new RegExp(anchorText + ": (.+)").exec(
-                currentText
+                currentText,
               )[1];
             }
           }
@@ -346,7 +356,7 @@
           form,
           field,
           fieldType,
-          currentText
+          currentText,
         );
       } else {
         const url = $(form).data("cm-url");
@@ -360,21 +370,26 @@
           url: url,
           data: $(form).serialize(),
           success: (data) => {
-            if (field === "tags") {
+            if (fieldType === "tags") {
               const tags_anchor = $('a[href*="/edit_issue_tags?"]', data);
-              if (tags_anchor.length > 0) $.ajax({ url: tags_anchor[0].href });
+              if (tags_anchor.length > 0) {
+                $.ajax({ url: tags_anchor[0].href });
+              } else {
+                // Show original context menu
+                contextMenuShowOrg(e);
+              }
             } else {
-              const $fieldMenu = $('a[href][data-method="patch"]', data)
-                .filter((i, e) => {
-                  const url = new URL(getAbsUrl($(e).attr("href")));
-                  return Array.from(url.searchParams.keys()).some((key) =>
-                    searchParamsKeys.some((searchParamsKey) =>
-                      new RegExp(
-                        searchParamsKey.replace(/[\[\]]/g, "\\$&")
-                      ).test(key)
-                    )
-                  );
-                })
+              const $fieldMenu = (fieldType === "additional-tags" ?
+                $('a.submenu[href="#"]:has(.icon-tags)', data)
+                : $('a[href][data-method="patch"]', data)
+                  .filter((i, e) => {
+                    const url = new URL(getAbsUrl($(e).attr("href")));
+                    return Array.from(url.searchParams.keys()).some((key) =>
+                      searchParamsKeys.some((searchParamsKey) =>
+                        key.includes(searchParamsKey),
+                      ),
+                    );
+                  }))
                 .closest("li.folder")
                 .children("ul");
 
@@ -441,7 +456,7 @@
           // values for the same key are required.
           // body: JSON.stringify(Object.fromEntries(formData)),
           redirect: "manual",
-        }
+        },
       )
         .then(async (response) => {
           if (response.type === "opaqueredirect" || response.ok) {
@@ -457,7 +472,7 @@
             console.error(
               "Request failed:",
               response.statusText,
-              response.status
+              response.status,
             );
             alert(`Request failed: ${response.statusText}[${response.status}]`);
           }
@@ -469,19 +484,14 @@
   });
 </script>
 <style>
-  div#context-menu {
-    position: fixed;
-  }
-
   #context-input-form {
-    /* position: fixed; */
     display: flex;
     flex-direction: row;
     background-color: #ddd;
     padding: 1px 2px 1px 8px;
     border-radius: 2px;
     box-shadow: #0005 2px 2px 2px;
-    width: 200px;
+    width: 220px;
     box-sizing: border-box;
     cursor: move;
 
@@ -497,6 +507,10 @@
       &.cancel {
         margin-left: 0;
       }
+    }
+
+    &:where(#content:has(table.list.issues.eux-custom-issue-list) *) {
+      position: fixed !important;
     }
   }
 </style>

@@ -12,15 +12,15 @@
     const minTableHeight = 150;
     // ----- settings end -----
 
-    const homeUrl =
-      window.location.origin +
-      ($("#top-menu a.home").attr("href") ||
-        $("link[href*='/favicon.ico']").attr("href").split("/favicon.ico")[0]);
+    const homeUrl = ($("head script[src*='/jquery-'][src*='-ui-'][src*='.js']")
+      .attr("src")
+      ?.match(/^(.*?)(?:\/javascripts\/|\/assets\/)/)
+      ?.[1] || "") + "/";
     const pageType = /\/roadmap/.test(location.pathname)
       ? "roadmap"
       : /\/versions\/[0-9]+$/.test(location.pathname)
-      ? "versions"
-      : undefined;
+        ? "versions"
+        : undefined;
     if (pageType === undefined) return;
 
     const resourcesAll = {
@@ -130,7 +130,15 @@
         $(updatingTargetSelector).empty().append(updatedTarget);
 
         // Update sidebar
-        $("#sidebar").empty().append($("#sidebar", data).children());
+        if ($("#sidebar-wrapper").length === 0) {
+          // Support for Redmine earlier than 5
+          $("#sidebar").empty().append($("#sidebar", htmlString).children());
+        } else {
+          // Support for Redmine 6 and later
+          $("#sidebar-wrapper")
+            .empty()
+            .append($("#sidebar-wrapper", htmlString).children());
+        }
 
         if (window["setupShowOnlyOpenedIssues"]) {
           setupShowOnlyOpenedIssues();
@@ -229,7 +237,7 @@
               .find(
                 "#content " +
                   ":is(form.edit_version, form.new_version) " +
-                  "input[type=submit]"
+                  "input[type=submit]",
               )
               .hide()
               .toArray()
@@ -247,7 +255,7 @@
               .dialog(
                 "option",
                 "buttons",
-                submitButtons.concat(dialogCancelButton)
+                submitButtons.concat(dialogCancelButton),
               )
               .dialog("option", "title", $contents[0].title);
           });
@@ -295,7 +303,7 @@
         const bottomOfLastElem = Math.max(
           ...$("#content > *")
             .map((i, e) => e.getBoundingClientRect().bottom)
-            .toArray()
+            .toArray(),
         );
 
         const contentPaddingY =

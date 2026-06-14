@@ -20,6 +20,10 @@ This is a plugin for Redmine. This plugin is designed to improve the user experi
 
 #### Module-Specific Customization
 
+##### Project Index View Customization
+
+- Custom project list - Enhance the project list view with a compact criteria form, project shortcut links, collapsible subprojects (with expand/collapse all controls), and a description visibility toggle.
+
 ##### Issue Index View Customization
 
 - Custom issue list - Enhance the issue list view to keep list headers fixed with CSS ( position: sticky ), seamless updates using AJAX to avoid page reloads, and a compact criteria box for improved usability.
@@ -47,7 +51,9 @@ This is a plugin for Redmine. This plugin is designed to improve the user experi
 #### Wiki Customization
 
 - Add copy button to the pre block - Add a button to copy the contents of pre blocks easily.
+- Enhanced keyboard shortcuts - Adds useful editing shortcuts (cut/copy/move/duplicate/delete line) to wiki and textarea fields.
 - Enhanced list button - Improve the ordered / unordered list button, including changing hierarchy levels with the Tab key, and automatically adding hierarchy markers when adding lines with the Enter key.
+- Hyperlink converter - Automatically convert pasted HTML hyperlinks to Markdown or Textile format in wiki and textarea fields, preserving link text and URL.
 - Image insertion modal - Provide a modal for easier image insertion in wiki pages.
 - Insert attachment tag - Quickly insert attachment tag in wiki pages.
 - Responsive table scroll - Make tables in wiki pages scrollable for better viewing on smaller screens.
@@ -63,6 +69,7 @@ This is a plugin for Redmine. This plugin is designed to improve the user experi
 - Two pane mode - Split the screen into two panes for easier multitasking.
 - Auto reload - Automatically reload the page at the specified interval. Supports URL parameter `auto_reload` to enable auto-reload with a custom interval (e.g., `?auto_reload=0.5` for 30-second intervals).
 - Fixes for RTL design - RTL design fixes for some pages (excluding Gantt chart).
+- Update relative time in realtime - Automatically updates timestamps (e.g., "2 minutes ago") on the page without reload.
 
 ## Installation
 ### When using git
@@ -101,7 +108,7 @@ To access the plugin's settings:
 
 ### Redmine
 
-- Redmine 5.1 (Note: This plugin has been tested with Redmine 5.1 only.)
+- Compatible with Redmine 5.1 to 6.1 (tested only on versions 5.1 to 6.1).
 
 ### Theme
 
@@ -109,6 +116,19 @@ To access the plugin's settings:
 - Alternate
 - Classic
 - [Bleuclair](https://github.com/farend/redmine_theme_farend_bleuclair)
+
+### Plugins
+- [Additional Tags](https://github.com/alphanodes/additional_tags/)
+- [Additionals](https://github.com/alphanodes/additionals)
+- [Redmine Actual Date](https://github.com/sk-ys/redmine_actual_date)
+- [Redmine Datetime CF](https://github.com/sk-ys/redmine_datetime_cf)
+- [Redmine Drafts](https://github.com/jbbarth/redmine_drafts)
+- [Redmine Extra Notes](http://github.com/sk-ys/redmine_extra_notes)
+- [Redmine GLightbox](http://github.com/sk-ys/redmine_glightbox)
+- [Redmine Issue Note List](https://github.com/sk-ys/redmine_issue_note_list)
+- [Redmine Lazy Load History](http://github.com/sk-ys/redmine_lazy_load_history)
+- [RedmineRT](https://github.com/MayamaTakeshi/redmine_rt)
+- [Redmine Silencer 3](https://github.com/readyredmine/redmine_silencer)
 
 ## Support
 

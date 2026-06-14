@@ -5,7 +5,9 @@ module EnhancedUx
         if context[:request]
           controller = context[:controller]
 
-          path = URI.parse(context[:request].instance_variable_get(:@fullpath)).path
+          uri = context[:request].fullpath
+          uri = context[:request].instance_variable_get(:@fullpath) if uri.nil?
+          path = URI.parse(uri).path
           tags = []
 
           if /\/my\/account$/.match?(path)
@@ -29,7 +31,7 @@ module EnhancedUx
             end
           end
 
-          if /\/issues\/([0-9]+|new|[0-9]+\/copy|[0-9]+\/edit)\/{0,1}$/.match?(path)
+          if /\/issues(\/([0-9]+|new|[0-9]+\/copy|[0-9]+\/edit))?\/{0,1}$/.match?(path)
             if Setting.plugin_redmine_enhanced_ux[:custom_issue] == '1'
               tags << controller.render_to_string(partial: 'enhanced_ux/issues/custom_issue')
             end
@@ -58,6 +60,12 @@ module EnhancedUx
             end
           end
 
+          if /\/projects$/.match?(path)
+            if Setting.plugin_redmine_enhanced_ux[:custom_project_list] == '1'
+              tags << controller.render_to_string(partial: 'enhanced_ux/projects/custom_project_list')
+            end
+          end
+
           if /\/(roadmap|versions\/[0-9]+$)/.match?(path)
             if Setting.plugin_redmine_enhanced_ux[:custom_roadmap_and_version] == '1'
               tags << controller.render_to_string(partial: 'enhanced_ux/versions/custom_roadmap_and_version')
@@ -73,8 +81,10 @@ module EnhancedUx
           if Setting.plugin_redmine_enhanced_ux[:popup_anywhere] == '1'
             tags << controller.render_to_string(partial: 'enhanced_ux/layouts/popup_anywhere')
           end
-          if Setting.plugin_redmine_enhanced_ux[:show_only_opened_issues] == '1'
-            tags << controller.render_to_string(partial: 'enhanced_ux/layouts/show_only_opened_issues')
+          if /(\/issues\/[0-9]+|\/versions\/[0-9]+|\/roadmap)/.match?(path)
+            if Setting.plugin_redmine_enhanced_ux[:show_only_opened_issues] == '1'
+              tags << controller.render_to_string(partial: 'enhanced_ux/layouts/show_only_opened_issues')
+            end
           end
           if Setting.plugin_redmine_enhanced_ux[:simple_menu_bar] == '1'
             tags << controller.render_to_string(partial: 'enhanced_ux/layouts/simple_menu_bar')
@@ -84,8 +94,13 @@ module EnhancedUx
           end
 
           # Wiki
-          if Setting.plugin_redmine_enhanced_ux[:add_copy_button_to_the_pre_block] == '1'
-            tags << controller.render_to_string(partial: 'enhanced_ux/wiki/add_copy_button_to_the_pre_block')
+          unless (Redmine::VERSION::MAJOR > 6) || (Redmine::VERSION::MAJOR == 6 && Redmine::VERSION::MINOR >= 1)
+            if Setting.plugin_redmine_enhanced_ux[:add_copy_button_to_the_pre_block] == '1'
+              tags << controller.render_to_string(partial: 'enhanced_ux/wiki/add_copy_button_to_the_pre_block')
+            end
+          end
+          if Setting.plugin_redmine_enhanced_ux[:enhanced_keyboard_shortcuts] == '1'
+            tags << javascript_include_tag("wiki/enhanced_keyboard_shortcuts", :plugin => "redmine_enhanced_ux")
           end
           if Setting.plugin_redmine_enhanced_ux[:enhanced_list_button] == '1'
             tags << javascript_include_tag("wiki/enhanced_list_button", :plugin => "redmine_enhanced_ux")
@@ -99,6 +114,9 @@ module EnhancedUx
           if Setting.plugin_redmine_enhanced_ux[:responsive_table_scroll] == '1'
             tags << javascript_include_tag("wiki/responsive_table_scroll", :plugin => "redmine_enhanced_ux")
           end
+          if Setting.plugin_redmine_enhanced_ux[:hyperlink_converter] == '1'
+            tags << javascript_include_tag("wiki/hyperlink_converter", :plugin => "redmine_enhanced_ux")
+          end
 
           if /\/issues(|\/new|\/[0-9]+\/copy)$/.match?(path)
             if Setting.plugin_redmine_enhanced_ux[:copy_issue_form_link_with_data] == '1'
@@ -106,19 +124,21 @@ module EnhancedUx
             end
           end
 
-          if /(\/issues($|\/gantt)|\/roadmap|\/issue_note_list|\/calendar|\/versions\/[0-9]+$)/.match?(path)
+          if /(\/issues($|\/gantt)|\/roadmap|\/issue_note_list|\/calendar|\/versions\/[0-9]+$|\/time_entries)/.match?(path)
             if Setting.plugin_redmine_enhanced_ux[:two_pane_mode] == '1'
               tags << controller.render_to_string(partial: 'enhanced_ux/layouts/two_pane_mode')
             end
           end
-          if /(\/issues($|\/gantt)|\/roadmap|\/issue_note_list|\/calendar|\/versions\/[0-9]+$|\/activity|\/news)/.match?(path)
-            if Setting.plugin_redmine_enhanced_ux[:auto_reload] == '1'
-              tags << controller.render_to_string(partial: 'enhanced_ux/layouts/auto_reload')
-            end
+          if Setting.plugin_redmine_enhanced_ux[:auto_reload] == '1'
+            tags << controller.render_to_string(partial: 'enhanced_ux/layouts/auto_reload')
           end
 
           if Setting.plugin_redmine_enhanced_ux[:fixes_for_rtl_design] == '1'
             tags << stylesheet_link_tag("global/fixes_for_rtl_design", :plugin => "redmine_enhanced_ux", media: "all")
+          end
+
+          if Setting.plugin_redmine_enhanced_ux[:update_relative_time_in_realtime] == '1'
+            tags << javascript_include_tag("global/update_relative_time_in_realtime", :plugin => "redmine_enhanced_ux")
           end
 
           return tags.join('')
