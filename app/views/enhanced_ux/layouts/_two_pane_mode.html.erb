@@ -1,5 +1,5 @@
 <!--
-// Path pattern:       (/issues($|/gantt)|/roadmap|/issue_note_list|/calendar|/versions/[0-9]+$)
+// Path pattern:       (/issues($|/gantt)|/roadmap|/issue_note_list|/calendar|/versions/[0-9]+$|/time_entries)
 // Insertion position: Head of all pages
 // Type:               HTML
 // Comment:            2-pane mode
@@ -28,6 +28,7 @@
       "roadmap",
       "versions",
       "calendar",
+      "time_entries",
       "issue_note_list",
     ];
     const storageNameForSrc = localStorageKeyPrefix + "2-pane-mode-src";
@@ -484,6 +485,21 @@
               $("div.issue input[type=checkbox]")
                 .map((_, e) => parseInt($(e).val()))
                 .toArray()
+                .indexOf(issueId) >= 0
+            );
+          },
+        },
+        time_entries: {
+          targetAnchorSelector:
+            "table.list.time-entries tr.time-entry>td.issue>a",
+          scrollTargetSelector: "#content div.autoscroll:has(>table.list.time-entries)",
+          updatingTargetSelector: "table.list.time-entries",
+          existIssueIdInIssueList: (issueId) => {
+            return (
+              $("table.list.time-entries>tbody>tr>td.issue>a")
+                .get()
+                .map((item) => $(item).attr("href"))
+                .map((item) => Number(item.match(/issues\/([0-9]+)$/)[1]))
                 .indexOf(issueId) >= 0
             );
           },
