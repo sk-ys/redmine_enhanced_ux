@@ -124,7 +124,7 @@ module EnhancedUx
             end
           end
 
-          if /(\/issues($|\/gantt)|\/roadmap|\/issue_note_list|\/calendar|\/versions\/[0-9]+$)/.match?(path)
+          if /(\/issues($|\/gantt)|\/roadmap|\/issue_note_list|\/calendar|\/versions\/[0-9]+$|\/time_entries)/.match?(path)
             if Setting.plugin_redmine_enhanced_ux[:two_pane_mode] == '1'
               tags << controller.render_to_string(partial: 'enhanced_ux/layouts/two_pane_mode')
             end
