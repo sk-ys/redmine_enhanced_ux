@@ -281,7 +281,10 @@
     }
 
     function redrawDrawIOGraph() {
-      if (typeof GraphViewer?.createViewerForElement === "function") {
+      if (
+        typeof GraphViewer !== "undefined" &&
+        typeof GraphViewer?.createViewerForElement === "function"
+      ) {
         $(".mxgraph").each((i, elem) => {
           GraphViewer.createViewerForElement(elem);
         });
