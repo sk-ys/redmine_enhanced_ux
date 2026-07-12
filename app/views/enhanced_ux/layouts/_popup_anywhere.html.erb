@@ -8,8 +8,12 @@
   //<![CDATA[
   $(function () {
     // ----- settings start -----
-    let initialWidth = 1000;
-    let initialHeight = 600;
+    const defaultSettings = {
+      width: 1000,
+      height: 600,
+      maxStoredStateCount: 5,
+      disablePopupInPopup: true,
+    };
 
     // Target link query
     const targetLinkQueries =
@@ -21,15 +25,7 @@
       ":not(a.prevent-popup-anywhere)";
 
     const modalMode = false;
-    const disablePopupInPopup = true;
-    const MaximumNumberOfStates = 5;
     // ----- settings end -----
-
-    const homeUrl =
-      ($("head script[src*='/jquery-'][src*='-ui-'][src*='.js']")
-        .attr("src")
-        ?.match(/^(.*?)(?:\/javascripts\/|\/assets\/)/)?.[1] || "") + "/";
-    const localStorageKeyPrefix = homeUrl.slice(1).replaceAll("/", ".");
 
     // i18n
     const resourcesAll = {
@@ -89,6 +85,26 @@
       ...resourcesAll["en"],
       ...(resourcesAll[document.documentElement.lang] || {}),
     };
+
+    const homeUrl =
+      ($("head script[src*='/jquery-'][src*='-ui-'][src*='.js']")
+        .attr("src")
+        ?.match(/^(.*?)(?:\/javascripts\/|\/assets\/)/)?.[1] || "") + "/";
+    const localStorageKeyPrefix = homeUrl.slice(1).replaceAll("/", ".");
+
+    // Load user settings from localStorage
+    const settingsFromLocalStorage = JSON.parse(
+      localStorage.getItem(localStorageKeyPrefix + "popup-anywhere-settings") ||
+        "{}",
+    );
+
+    // Merge user settings with default settings
+    window.enhancedUxPopupAnywhereSettings = {
+      ...defaultSettings,
+      ...window.enhancedUxPopupAnywhereSettings,
+      ...settingsFromLocalStorage,
+    };
+    const settings = window.enhancedUxPopupAnywhereSettings;
 
     const svgIcons = new (class SVGIcons {
       constructor() {
@@ -861,7 +877,7 @@
                 }
               }
             }
-            if (disablePopupInPopup) {
+            if (settings.disablePopupInPopup) {
               $contents.find("a").addClass("prevent-popup-anywhere");
             }
 
@@ -895,7 +911,7 @@
                 localStorageKeyPrefix + "popup-anywhere-state",
               ),
             ) || {};
-          return states["_default-width"] ?? initialWidth;
+          return states["_default-width"] ?? settings.width;
         },
         set width(value) {
           const states =
@@ -917,7 +933,7 @@
                 localStorageKeyPrefix + "popup-anywhere-state",
               ),
             ) || {};
-          return states["_default-height"] ?? initialHeight;
+          return states["_default-height"] ?? settings.height;
         },
         set height(value) {
           const states =
@@ -1026,7 +1042,7 @@
           // Delete old timestamp objects
           while (
             Object.keys(states).length >
-            MaximumNumberOfStates + PopUp.specialStorageKeys.length
+            settings.maxStoredStateCount + PopUp.specialStorageKeys.length
           ) {
             const oldestTimeStamp = Math.min(
               ...Object.keys(states)
@@ -1212,7 +1228,7 @@
       window.addEventListener(
         "beforeunload",
         (e) => {
-          if (window === window.parent) {
+          if (window === window.parent || !settings.disablePopupInPopup) {
             PopUp.saveDialogState();
           }
         },
