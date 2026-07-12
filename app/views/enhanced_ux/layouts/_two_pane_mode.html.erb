@@ -31,7 +31,7 @@
       "time_entries",
       "issue_note_list",
     ];
-    const storageNameForSrc = localStorageKeyPrefix + "2-pane-mode-src";
+    const storageNameForSharedIssueId = localStorageKeyPrefix + "2-pane-mode-shared-issue-id";
     const storageNameForEachPage = localStorageKeyPrefix + "2-pane-mode-" + pageType;
     const classNameForOpenedItem = "two-pane-mode-opened-item";
     const newIssueSelector = "a[href*='/issues/new']";
@@ -179,6 +179,9 @@
           console.log(e);
         }
         return false;
+      },
+      generateIssueUrl: function (issueId) {
+        return location.origin + homeUrl + "issues/" + issueId;
       },
     };
 
@@ -541,7 +544,20 @@
         const loadedStatus = JSON.parse(
           localStorage.getItem(storageNameForEachPage) || "{}"
         );
-        loadedStatus.src = localStorage.getItem(storageNameForSrc);
+        const sharedIssueId = Number(
+          localStorage.getItem(storageNameForSharedIssueId)
+        );
+        if (
+          !isNaN(sharedIssueId) &&
+          utils.existIssueIdInIssueList(sharedIssueId)) {
+          loadedStatus.src = utils.generateIssueUrl(sharedIssueId);
+        } else if (
+          !isNaN(Number(loadedStatus.issueId)) &&
+          utils.existIssueIdInIssueList(Number(loadedStatus.issueId))) {
+          loadedStatus.src = utils.generateIssueUrl(
+            Number(loadedStatus.issueId)
+          );
+        }
         // console.debug("status.load", loadedStatus);
 
         if (!["Column", "Row"].includes(loadedStatus.direction)) {
@@ -579,10 +595,17 @@
 
       save() {
         // console.debug("status.save", this.current);
-        localStorage.setItem(storageNameForSrc, this.current.src);
+        const issueId = utils.getIssueIdFromIssueUrl(this.current.src);
+        if (issueId) {
+          localStorage.setItem(storageNameForSharedIssueId, issueId);
+        }
+
+        const statusToSave = {...this.current};
+        delete statusToSave.src;
+        statusToSave.issueId = issueId;
         localStorage.setItem(
           storageNameForEachPage,
-          JSON.stringify(this.current)
+          JSON.stringify(statusToSave)
         );
       }
 
@@ -1459,7 +1482,9 @@
             this.issuePane.openUrlIfIssueExistOrNew(this.status.current.src);
             return;
           }
-          this.status.set({ src: this.issuePane.$base.data("src") });
+          this.status.set({
+            src: this.issuePane.$base.data("src").replace(location.origin, "")
+          });
         } else {
           this.issuePane.hide();
         }
