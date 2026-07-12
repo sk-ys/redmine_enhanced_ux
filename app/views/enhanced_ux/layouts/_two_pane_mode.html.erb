@@ -180,6 +180,15 @@
         }
         return false;
       },
+      getRelativeUrlPath: function (url) {
+        try {
+          const parsedUrl = new URL(url, location.origin);
+          return parsedUrl.pathname + parsedUrl.search + parsedUrl.hash;
+        } catch (e) {
+          console.log(e);
+        }
+        return url;
+      },
       generateIssueUrl: function (issueId) {
         return location.origin + homeUrl + "issues/" + issueId;
       },
@@ -1483,7 +1492,7 @@
             return;
           }
           this.status.set({
-            src: this.issuePane.$base.data("src").replace(location.origin, "")
+            src: utils.getRelativeUrlPath(this.issuePane.$base.data("src")),
           });
         } else {
           this.issuePane.hide();
