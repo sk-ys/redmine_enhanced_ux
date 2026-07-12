@@ -1003,17 +1003,17 @@
             Object.keys(states).length >
             MaximumNumberOfStates + PopUp.specialStorageKeys.length
           ) {
-            const maxTimeStamp = Math.max(
+            const oldestTimeStamp = Math.min(
               ...Object.keys(states)
                 .filter((key) => !PopUp.specialStorageKeys.includes(key))
                 .map((k) => {
-                  Number(states[k].timeStamp);
+                  return Number(states[k].timeStamp);
                 })
             );
 
             for (const [key, value] of Object.entries(states)) {
               if (PopUp.specialStorageKeys.includes(key)) continue;
-              if (value.timeStamp === maxTimeStamp) {
+              if (Number(value.timeStamp) === oldestTimeStamp) {
                 delete states[key];
                 break;
               }
