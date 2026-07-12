@@ -25,10 +25,10 @@
     const MaximumNumberOfStates = 5;
     // ----- settings end -----
 
-    const homeUrl = ($("head script[src*='/jquery-'][src*='-ui-'][src*='.js']")
-      .attr("src")
-      ?.match(/^(.*?)(?:\/javascripts\/|\/assets\/)/)
-      ?.[1] || "") + "/";
+    const homeUrl =
+      ($("head script[src*='/jquery-'][src*='-ui-'][src*='.js']")
+        .attr("src")
+        ?.match(/^(.*?)(?:\/javascripts\/|\/assets\/)/)?.[1] || "") + "/";
     const localStorageKeyPrefix = homeUrl.slice(1).replaceAll("/", ".");
 
     // i18n
@@ -107,7 +107,7 @@
         return $(
           `<svg class="s18 icon-svg" aria-hidden="true">` +
             `<use href="${this.basePath}#${key}"></use>` +
-            `</svg>`
+            `</svg>`,
         );
       }
       get loader() {
@@ -148,7 +148,7 @@
       },
       isInternalUrl: (url) => {
         return RegExp("^" + utils.getAbsUrl(homeUrl)).test(
-          utils.getAbsUrl(url)
+          utils.getAbsUrl(url),
         );
       },
     };
@@ -273,7 +273,7 @@
         return Math.max(
           this.options.minWidth,
           document.body.clientWidth -
-            (this.uiDialog.outerWidth() - this.uiDialog.width())
+            (this.uiDialog.outerWidth() - this.uiDialog.width()),
         );
       },
 
@@ -414,7 +414,7 @@
             $unMinimizedDialogs.each((_, e) => {
               $(e)
                 .filter(
-                  (_, e) => !$(e).parent().hasClass("popup-anywhere-maximize")
+                  (_, e) => !$(e).parent().hasClass("popup-anywhere-maximize"),
                 )
                 .dialogPA("storeSizeAndPosition");
             });
@@ -519,11 +519,11 @@
 
         const width = Math.min(
           this.storedSizeAndPosition.width,
-          this.options.minimized ? this.options.widthAtMinimized : maxWidth
+          this.options.minimized ? this.options.widthAtMinimized : maxWidth,
         );
         const height = Math.min(
           this.storedSizeAndPosition.height,
-          this.options.minimized ? this._dialogHeightAtMinimized : maxHeight
+          this.options.minimized ? this._dialogHeightAtMinimized : maxHeight,
         );
         if (resize) this._resizeDialog(width, height);
         if (move) {
@@ -531,7 +531,7 @@
           const top = Math.max(this.storedSizeAndPosition.position.top, 0);
           this._moveDialog(
             left + width > maxWidth ? maxWidth - width : left,
-            top + height > maxHeight ? maxHeight - height : top
+            top + height > maxHeight ? maxHeight - height : top,
           );
         }
       },
@@ -567,7 +567,7 @@
           !(
             $("body").hasClass("popup-anywhere-flex") ||
             this.uiDialog.siblings(
-              ".ui-dialog.popup-anywhere.popup-anywhere-maximize"
+              ".ui-dialog.popup-anywhere.popup-anywhere-maximize",
             ).length > 0
           )
         ) {
@@ -821,7 +821,7 @@
             this.$btnForward.button(
               "option",
               "disabled",
-              this.history.pos >= this.history.list.length - 1
+              this.history.pos >= this.history.list.length - 1,
             );
 
             // Set title
@@ -871,11 +871,13 @@
             });
 
             // Hide sticky issue header
-            $contents.find("head").append(
-              $("<style>").text(
-                "#sticky-issue-header { display: none !important; }"
-              ).addClass("added-by-popup-anywhere hide-sticky-header")
-            );
+            $contents
+              .find("head")
+              .append(
+                $("<style>")
+                  .text("#sticky-issue-header { display: none !important; }")
+                  .addClass("added-by-popup-anywhere hide-sticky-header"),
+              );
 
             $(e.target).css("visibility", "");
           })
@@ -887,30 +889,48 @@
     class PopUp {
       static size = {
         get width() {
-          const states = JSON.parse(localStorage.getItem(
-            localStorageKeyPrefix + "popup-anywhere-state")) || {};
+          const states =
+            JSON.parse(
+              localStorage.getItem(
+                localStorageKeyPrefix + "popup-anywhere-state",
+              ),
+            ) || {};
           return states["_default-width"] ?? initialWidth;
         },
         set width(value) {
-          const states = JSON.parse(localStorage.getItem(
-              localStorageKeyPrefix + "popup-anywhere-state")) || {};
+          const states =
+            JSON.parse(
+              localStorage.getItem(
+                localStorageKeyPrefix + "popup-anywhere-state",
+              ),
+            ) || {};
           states["_default-width"] = value;
           localStorage.setItem(
             localStorageKeyPrefix + "popup-anywhere-state",
-            JSON.stringify(states));
+            JSON.stringify(states),
+          );
         },
         get height() {
-          const states = JSON.parse(localStorage.getItem(
-            localStorageKeyPrefix + "popup-anywhere-state")) || {};
+          const states =
+            JSON.parse(
+              localStorage.getItem(
+                localStorageKeyPrefix + "popup-anywhere-state",
+              ),
+            ) || {};
           return states["_default-height"] ?? initialHeight;
         },
         set height(value) {
-          const states = JSON.parse(localStorage.getItem(
-            localStorageKeyPrefix + "popup-anywhere-state")) || {};
+          const states =
+            JSON.parse(
+              localStorage.getItem(
+                localStorageKeyPrefix + "popup-anywhere-state",
+              ),
+            ) || {};
           states["_default-height"] = value;
           localStorage.setItem(
             localStorageKeyPrefix + "popup-anywhere-state",
-            JSON.stringify(states));
+            JSON.stringify(states),
+          );
         },
       };
 
@@ -920,7 +940,7 @@
 
       static getActiveDialogs() {
         return $(PopUp.dialogSelector).map((_, e) =>
-          $(e).children(".ui-dialog-content")
+          $(e).children(".ui-dialog-content"),
         );
       }
 
@@ -937,7 +957,7 @@
 
       static getActiveDialog(excludeElem) {
         const zIndices = PopUp.getDialogZIndices().filter(
-          (o) => !excludeElem || o.ui[0] !== excludeElem
+          (o) => !excludeElem || o.ui[0] !== excludeElem,
         );
         if (zIndices.length === 0) return undefined;
         const highestZIndex = Math.max(...zIndices.map((i) => i.zIndex));
@@ -946,14 +966,17 @@
 
       static getUnMinimizedDialogs() {
         return $(PopUp.dialogSelector + ":not(.popup-anywhere-minimize)").map(
-          (_, e) => $(e).children(".ui-dialog-content")
+          (_, e) => $(e).children(".ui-dialog-content"),
         );
       }
 
       static saveDialogState() {
         const states =
-          JSON.parse(localStorage.getItem(
-            localStorageKeyPrefix + "popup-anywhere-state")) || {};
+          JSON.parse(
+            localStorage.getItem(
+              localStorageKeyPrefix + "popup-anywhere-state",
+            ),
+          ) || {};
 
         if (PopUp.getActiveDialogs().length === 0) {
           delete states[location.pathname];
@@ -973,7 +996,7 @@
                     $(e)
                       .children(".ui-dialog-content")
                       .find("iframe")
-                      .attr("src")
+                      .attr("src"),
                   ) === false
                 );
               })
@@ -1010,7 +1033,7 @@
                 .filter((key) => !PopUp.specialStorageKeys.includes(key))
                 .map((k) => {
                   return Number(states[k].timeStamp);
-                })
+                }),
             );
 
             for (const [key, value] of Object.entries(states)) {
@@ -1026,7 +1049,7 @@
         if (states[location.pathname]?.dialogs?.length === 0) {
           delete states[location.pathname];
         }
-        
+
         // Remove title from the state to avoid storing unnecessary data
         const sanitizedStates = JSON.parse(JSON.stringify(states));
         for (const [key, value] of Object.entries(sanitizedStates)) {
@@ -1040,12 +1063,14 @@
 
         localStorage.setItem(
           localStorageKeyPrefix + "popup-anywhere-state",
-          JSON.stringify(sanitizedStates));
+          JSON.stringify(sanitizedStates),
+        );
       }
 
       static restoreDialogState() {
-        const states = JSON.parse(localStorage.getItem(
-          localStorageKeyPrefix + "popup-anywhere-state"));
+        const states = JSON.parse(
+          localStorage.getItem(localStorageKeyPrefix + "popup-anywhere-state"),
+        );
         if (states === null || states[location.pathname] === undefined) return;
         const state = states[location.pathname];
         state.dialogs
@@ -1062,7 +1087,7 @@
                 dialogProps.width,
                 dialogProps.maximized,
                 dialogProps.minimized,
-                dialogProps.fixed
+                dialogProps.fixed,
               );
             } catch (e) {
               console.error(e);
@@ -1083,7 +1108,7 @@
         width = PopUp.size.width,
         maximized = false,
         minimized = false,
-        fixed = false
+        fixed = false,
       ) {
         if (!url) throw new Error("url must not be null");
 
@@ -1105,7 +1130,7 @@
           this.$dialog.prepend(
             $("<div>")
               .addClass("popup-anywhere-container-loading-icon")
-              .append(svgIcons.loader)
+              .append(svgIcons.loader),
           );
         } else {
           this.$dialog.css({
@@ -1191,7 +1216,7 @@
             PopUp.saveDialogState();
           }
         },
-        { capture: true }
+        { capture: true },
       );
     }
 
@@ -1204,7 +1229,11 @@
   .ui-dialog.popup-anywhere:not(.ui-dialog-resizing):not(
       .ui-dialog-dragging
     ):not(.ui-dialog-position-changing) {
-    transition: width 0.5s, height 0.5s, top 0.5s, left 0.5s;
+    transition:
+      width 0.5s,
+      height 0.5s,
+      top 0.5s,
+      left 0.5s;
   }
 
   .ui-dialog.popup-anywhere {
@@ -1253,11 +1282,11 @@
 
       /* Stop animation when iframe is visible */
       &:is(
-          .ui-dialog-content.popup-anywhere-container:not(
-              :has(iframe[style*="visibility: hidden;"])
-            )
-            *
-        ) {
+        .ui-dialog-content.popup-anywhere-container:not(
+            :has(iframe[style*="visibility: hidden;"])
+          )
+          *
+      ) {
         display: none;
       }
     }
