@@ -56,6 +56,7 @@
         labelRowDirection: "Aligned in row direction",
         labelColumnDirection: "Aligned in column direction",
         messageCloseAllDialogs: "Close all dialogs?",
+        messageLoading: "Loading...",
       },
       ja: {
         labelClose: "閉じる",
@@ -81,6 +82,7 @@
         labelRowDirection: "行方向に整列",
         labelColumnDirection: "列方向に整列",
         messageCloseAllDialogs: "全てのダイアログを閉じますか？",
+        messageLoading: "読み込み中...",
       },
     };
     const resources = {
@@ -1024,10 +1026,21 @@
         if (states[location.pathname]?.dialogs?.length === 0) {
           delete states[location.pathname];
         }
+        
+        // Remove title from the state to avoid storing unnecessary data
+        const sanitizedStates = JSON.parse(JSON.stringify(states));
+        for (const [key, value] of Object.entries(sanitizedStates)) {
+          if (PopUp.specialStorageKeys.includes(key)) continue;
+          if (value.dialogs) {
+            value.dialogs.forEach((dialog) => {
+              delete dialog.title;
+            });
+          }
+        }
 
         localStorage.setItem(
           localStorageKeyPrefix + "popup-anywhere-state",
-          JSON.stringify(states));
+          JSON.stringify(sanitizedStates));
       }
 
       static restoreDialogState() {
@@ -1043,7 +1056,6 @@
           .forEach((dialogProps) => {
             try {
               new PopUp(
-                dialogProps.title,
                 dialogProps.src,
                 dialogProps.positionAt,
                 dialogProps.height,
@@ -1065,7 +1077,6 @@
       }
 
       constructor(
-        title,
         url,
         positionAt = null,
         height = PopUp.size.height,
@@ -1076,7 +1087,6 @@
       ) {
         if (!url) throw new Error("url must not be null");
 
-        this.title = title;
         this.url = url;
         this.positionAt = positionAt;
         this.height = height;
@@ -1086,7 +1096,7 @@
         this.fixed = fixed;
 
         this.$dialog = $("<div>")
-          .attr("title", title)
+          .attr("title", resources.messageLoading)
           .addClass("popup-anywhere-container")
           .data("height", this.height)
           .data("width", this.width);
@@ -1158,10 +1168,9 @@
         .on("click.popup-anywhere", targetLinkQueries, (e) => {
           if (e.ctrlKey) {
             const $anchor = $(e.target).closest("a");
-            const title = $anchor.text();
             const href = $anchor.attr("href");
             if (href && utils.isInternalUrl(href)) {
-              new PopUp(title, href);
+              new PopUp(href);
               e.preventDefault();
               e.stopPropagation();
             } else {
