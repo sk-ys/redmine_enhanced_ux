@@ -9,8 +9,8 @@
   $(function () {
     // ----- settings start -----
     const defaultSettings = {
-      width: 1000,
-      height: 600,
+      initialWidth: 1000,
+      initialHeight: 600,
       maxStoredStateCount: 5,
       disablePopupInPopup: true,
     };
@@ -105,6 +105,31 @@
       ...settingsFromLocalStorage,
     };
     const settings = window.enhancedUxPopupAnywhereSettings;
+
+    function saveSettings() {
+      localStorage.setItem(
+        localStorageKeyPrefix + "popup-anywhere-settings",
+        JSON.stringify(settings),
+      );
+    }
+
+    const states = {};
+    function loadStatesFromLocalStorage() {
+      const loadedStates = JSON.parse(
+        localStorage.getItem(localStorageKeyPrefix + "popup-anywhere-states") ||
+        localStorage.getItem(localStorageKeyPrefix + "popup-anywhere-state") ||
+          "{}",
+      );
+      Object.keys(states).forEach((key) => delete states[key]);
+      Object.assign(states, loadedStates);
+
+      // Remove old localStorage keys
+      localStorage.removeItem(localStorageKeyPrefix + "popup-anywhere-state");
+
+      // Remove unused parameters
+      delete states["_default-width"];
+      delete states["_default-height"];
+    }
 
     const svgIcons = new (class SVGIcons {
       constructor() {
@@ -902,57 +927,27 @@
       },
     });
 
+    const lastPopupSize = {
+      width: settings.initialWidth,
+      height: settings.initialHeight,
+    };
     class PopUp {
       static size = {
         get width() {
-          const states =
-            JSON.parse(
-              localStorage.getItem(
-                localStorageKeyPrefix + "popup-anywhere-state",
-              ),
-            ) || {};
-          return states["_default-width"] ?? settings.width;
+          return lastPopupSize.width;
         },
         set width(value) {
-          const states =
-            JSON.parse(
-              localStorage.getItem(
-                localStorageKeyPrefix + "popup-anywhere-state",
-              ),
-            ) || {};
-          states["_default-width"] = value;
-          localStorage.setItem(
-            localStorageKeyPrefix + "popup-anywhere-state",
-            JSON.stringify(states),
-          );
+          lastPopupSize.width = value;
         },
         get height() {
-          const states =
-            JSON.parse(
-              localStorage.getItem(
-                localStorageKeyPrefix + "popup-anywhere-state",
-              ),
-            ) || {};
-          return states["_default-height"] ?? settings.height;
+          return lastPopupSize.height;
         },
         set height(value) {
-          const states =
-            JSON.parse(
-              localStorage.getItem(
-                localStorageKeyPrefix + "popup-anywhere-state",
-              ),
-            ) || {};
-          states["_default-height"] = value;
-          localStorage.setItem(
-            localStorageKeyPrefix + "popup-anywhere-state",
-            JSON.stringify(states),
-          );
+          lastPopupSize.height = value;
         },
       };
 
       static dialogSelector = "body > .ui-dialog.popup-anywhere";
-
-      static specialStorageKeys = ["_default-width", "_default-height"];
 
       static getActiveDialogs() {
         return $(PopUp.dialogSelector).map((_, e) =>
@@ -987,12 +982,9 @@
       }
 
       static saveDialogState() {
-        const states =
-          JSON.parse(
-            localStorage.getItem(
-              localStorageKeyPrefix + "popup-anywhere-state",
-            ),
-          ) || {};
+        // Load the latest states from localStorage to avoid overwriting changes
+        // made in other tabs
+        loadStatesFromLocalStorage();
 
         if (PopUp.getActiveDialogs().length === 0) {
           delete states[location.pathname];
@@ -1033,8 +1025,7 @@
 
           // Delete undefined timestamp objects
           for (const [key, value] of Object.entries(states)) {
-            if (PopUp.specialStorageKeys.includes(key)) continue;
-            if (value.timeStamp === undefined) {
+            if (!value.timeStamp) {
               delete states[key];
             }
           }
@@ -1042,18 +1033,16 @@
           // Delete old timestamp objects
           while (
             Object.keys(states).length >
-            settings.maxStoredStateCount + PopUp.specialStorageKeys.length
+            settings.maxStoredStateCount
           ) {
             const oldestTimeStamp = Math.min(
               ...Object.keys(states)
-                .filter((key) => !PopUp.specialStorageKeys.includes(key))
                 .map((k) => {
                   return Number(states[k].timeStamp);
                 }),
             );
 
             for (const [key, value] of Object.entries(states)) {
-              if (PopUp.specialStorageKeys.includes(key)) continue;
               if (Number(value.timeStamp) === oldestTimeStamp) {
                 delete states[key];
                 break;
@@ -1069,7 +1058,6 @@
         // Remove title from the state to avoid storing unnecessary data
         const sanitizedStates = JSON.parse(JSON.stringify(states));
         for (const [key, value] of Object.entries(sanitizedStates)) {
-          if (PopUp.specialStorageKeys.includes(key)) continue;
           if (value.dialogs) {
             value.dialogs.forEach((dialog) => {
               delete dialog.title;
@@ -1078,15 +1066,12 @@
         }
 
         localStorage.setItem(
-          localStorageKeyPrefix + "popup-anywhere-state",
+          localStorageKeyPrefix + "popup-anywhere-states",
           JSON.stringify(sanitizedStates),
         );
       }
 
       static restoreDialogState() {
-        const states = JSON.parse(
-          localStorage.getItem(localStorageKeyPrefix + "popup-anywhere-state"),
-        );
         if (states === null || states[location.pathname] === undefined) return;
         const state = states[location.pathname];
         state.dialogs
@@ -1224,12 +1209,15 @@
 
     function Initialize() {
       replaceClickEventsForAllAnchorTags();
+      loadStatesFromLocalStorage();
       PopUp.restoreDialogState();
       window.addEventListener(
         "beforeunload",
         (e) => {
           if (window === window.parent || !settings.disablePopupInPopup) {
+            loadStatesFromLocalStorage();
             PopUp.saveDialogState();
+            saveSettings();
           }
         },
         { capture: true },
