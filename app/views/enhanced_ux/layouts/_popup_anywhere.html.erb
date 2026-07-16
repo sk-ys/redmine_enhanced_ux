@@ -53,6 +53,14 @@
         labelColumnDirection: "Aligned in column direction",
         messageCloseAllDialogs: "Close all dialogs?",
         messageLoading: "Loading...",
+        labelSettings: "Settings",
+        labelInitialWidth: "Initial width",
+        labelInitialHeight: "Initial height",
+        labelMaxStoredStateCount: "Max stored state count",
+        labelDisablePopupInPopup: "Disable popup in popup",
+        labelReset: "Reset",
+        labelSave: "Save",
+        labelCancel: "Cancel",
       },
       ja: {
         labelClose: "閉じる",
@@ -79,6 +87,14 @@
         labelColumnDirection: "列方向に整列",
         messageCloseAllDialogs: "全てのダイアログを閉じますか？",
         messageLoading: "読み込み中...",
+        labelSettings: "設定",
+        labelInitialWidth: "初期幅",
+        labelInitialHeight: "初期高さ",
+        labelMaxStoredStateCount: "最大状態保持数",
+        labelDisablePopupInPopup: "ポップアップ内ポップアップを無効化",
+        labelReset: "リセット",
+        labelSave: "保存",
+        labelCancel: "キャンセル",
       },
     };
     const resources = {
@@ -238,6 +254,127 @@
       get list() {
         return this.#list;
       }
+    }
+
+    let $settingsPanel = null;
+    function initSettingsPanel() {
+      $settingsPanel = $("<div>").attr(
+        "id",
+        "popup-anywhere-settings-panel-content",
+      );
+
+      function generateSettingItem(labelText, id, $input, value = false) {
+        const $container = $("<div>").addClass("setting-item");
+        const $label = $("<label>").text(labelText).attr("for", id);
+        $input
+          .attr("id", id)
+          .prop(
+            $input.attr("type") === "checkbox" ? "checked" : "value",
+            value,
+          );
+        return $container.append($label).append($input);
+      }
+
+      // Append settings to dialog
+      $settingsPanel
+        .append(
+          generateSettingItem(
+            resources.labelInitialWidth,
+            "pa_initial_width_settings",
+            $("<input>").attr({ type: "number", min: 100, step: 10 }),
+            settings.initialWidth,
+          ),
+        )
+        .append(
+          generateSettingItem(
+            resources.labelInitialHeight,
+            "pa_initial_height_settings",
+            $("<input>").attr({ type: "number", min: 100, step: 10 }),
+            settings.initialHeight,
+          ),
+        )
+        .append(
+          generateSettingItem(
+            resources.labelMaxStoredStateCount,
+            "pa_max_stored_state_count_settings",
+            $("<input>").attr({ type: "number", min: 0, step: 1 }),
+            settings.maxStoredStateCount,
+          ),
+        )
+        .append(
+          generateSettingItem(
+            resources.labelDisablePopupInPopup,
+            "pa_disable_popup_in_popup_settings",
+            $("<input>").attr("type", "checkbox"),
+            settings.disablePopupInPopup,
+          ),
+        );
+
+      const $dialog = $settingsPanel.dialog({
+        autoOpen: false,
+        title: "Popup Anywhere - " + resources.labelSettings,
+        modal: true,
+        width: 350,
+        resizable: false,
+        buttons: [
+          {
+            text: resources.labelReset,
+            click() {
+              // Reset settings to default
+              Object.assign(settings, defaultSettings);
+              localStorage.removeItem(
+                localStorageKeyPrefix + "popup-anywhere-settings",
+              );
+              saveSettings();
+              $dialog.dialog("close");
+            },
+          },
+          {
+            text: resources.labelSave,
+            click() {
+              // Update settings
+              Object.assign(settings, {
+                initialWidth: parseInt(
+                  $("#pa_initial_width_settings").prop("value"),
+                ),
+                initialHeight: parseInt(
+                  $("#pa_initial_height_settings").prop("value"),
+                ),
+                maxStoredStateCount: parseInt(
+                  $("#pa_max_stored_state_count_settings").prop("value"),
+                ),
+                disablePopupInPopup: $(
+                  "#pa_disable_popup_in_popup_settings",
+                ).prop("checked"),
+              });
+              saveSettings();
+              $dialog.dialog("close");
+            },
+          },
+          {
+            text: resources.labelCancel,
+            click() {
+              $dialog.dialog("close");
+            },
+          },
+        ],
+        open() {
+          // Set current settings values to inputs
+          $("#pa_initial_width_settings").prop("value", settings.initialWidth);
+          $("#pa_initial_height_settings").prop(
+            "value",
+            settings.initialHeight,
+          );
+          $("#pa_max_stored_state_count_settings").prop(
+            "value",
+            settings.maxStoredStateCount,
+          );
+          $("#pa_disable_popup_in_popup_settings").prop(
+            "checked",
+            settings.disablePopupInPopup,
+          );
+        },
+      });
     }
 
     // Extend jQuery UI Dialog Widget
@@ -656,6 +793,21 @@
       },
 
       _addButtonsToDialogTitlebar: function () {
+        const $btnSettings = $("<button>")
+          .addClass("ui-button-popup-anywhere-setting")
+          .button({
+            icon: "ui-icon-gear",
+            label: resources.labelSetting,
+            showLabel: false,
+          })
+          .attr("title", resources.labelSettings)
+          .click(() => {
+            if (!$settingsPanel) {
+              initSettingsPanel();
+            }
+            $settingsPanel.dialog("open");
+          });
+
         const $btnFlex = $("<button>")
           .button({
             icon: "ui-icon-calculator",
@@ -822,6 +974,7 @@
 
         this.uiDialogTitlebarButtonGroup = $("<div>")
           .addClass("ui-dialog-titlebar-button-group")
+          .append($btnSettings)
           .append($btnFlex)
           .append($btnDisableFlex)
           .append($btnFlexDirectionColumn)
@@ -1215,6 +1368,7 @@
     }
 
     function Initialize() {
+      initSettingsPanel();
       replaceClickEventsForAllAnchorTags();
       loadStatesFromLocalStorage();
       PopUp.restoreDialogState();
@@ -1224,7 +1378,6 @@
           if (!isIframe || !settings.disablePopupInPopup) {
             loadStatesFromLocalStorage();
             PopUp.saveDialogState();
-            saveSettings();
           }
         },
         { capture: true },
@@ -1453,6 +1606,38 @@
     .ui-dialog.popup-anywhere .ui-dialog-titlebar-button-group {
       right: auto;
       left: 30px;
+    }
+  }
+
+  /* Settings panel */
+  #popup-anywhere-settings-panel-content {
+    .setting-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 10px;
+    }
+
+    label {
+      font-size: 0.9em;
+      font-weight: normal;
+      cursor: pointer;
+    }
+
+    input[type="number"] {
+      width: 60px;
+      text-align: right;
+      padding: 0;
+    }
+
+    input[type="checkbox"] {
+      margin-right: 5px;
+    }
+
+    & + .ui-dialog-buttonpane {
+      button {
+        height: auto;
+      }
     }
   }
 </style>
