@@ -117,7 +117,9 @@
     function loadStatesFromLocalStorage() {
       const loadedStates = JSON.parse(
         localStorage.getItem(localStorageKeyPrefix + "popup-anywhere-states") ||
-        localStorage.getItem(localStorageKeyPrefix + "popup-anywhere-state") ||
+          localStorage.getItem(
+            localStorageKeyPrefix + "popup-anywhere-state",
+          ) ||
           "{}",
       );
       Object.keys(states).forEach((key) => delete states[key]);
@@ -157,6 +159,15 @@
     })();
 
     const isRtl = $('head link[rel="stylesheet"][href*="/rtl"]').length > 0;
+
+    const isIframe = window !== window.parent;
+    if (isIframe && settings.disablePopupInPopup) {
+      // Prevent popup in popup if the setting is enabled
+      console.log(
+        "Popup Anywhere: Popup in popup is disabled. Exiting script.",
+      );
+      return;
+    }
 
     const utils = {
       getAbsUrl: (url) => {
@@ -1031,15 +1042,11 @@
           }
 
           // Delete old timestamp objects
-          while (
-            Object.keys(states).length >
-            settings.maxStoredStateCount
-          ) {
+          while (Object.keys(states).length > settings.maxStoredStateCount) {
             const oldestTimeStamp = Math.min(
-              ...Object.keys(states)
-                .map((k) => {
-                  return Number(states[k].timeStamp);
-                }),
+              ...Object.keys(states).map((k) => {
+                return Number(states[k].timeStamp);
+              }),
             );
 
             for (const [key, value] of Object.entries(states)) {
@@ -1214,7 +1221,7 @@
       window.addEventListener(
         "beforeunload",
         (e) => {
-          if (window === window.parent || !settings.disablePopupInPopup) {
+          if (!isIframe || !settings.disablePopupInPopup) {
             loadStatesFromLocalStorage();
             PopUp.saveDialogState();
             saveSettings();
