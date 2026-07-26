@@ -58,6 +58,9 @@
         labelInitialWidth: "Initial width",
         labelInitialHeight: "Initial height",
         labelMaxStoredStateCount: "Max stored state count",
+        descOverMaxStoredStateCount:
+          "If the number of stored states exceeds this value, " +
+          "the oldest states will be removed automatically.",
         labelDisablePopupInPopup: "Disable popup in popup",
         labelInheritPopupSizeFromActiveWindow: "Inherit size from active popup",
         labelReset: "Reset",
@@ -100,6 +103,8 @@
         labelInitialWidth: "初期幅",
         labelInitialHeight: "初期高さ",
         labelMaxStoredStateCount: "ルールの最大保持数",
+        descOverMaxStoredStateCount:
+          "ルールの最大保持数を超えた場合、古いルールから自動的に削除されます。",
         labelDisablePopupInPopup: "ポップアップ内ポップアップを無効化",
         labelInheritPopupSizeFromActiveWindow:
           "アクティブなポップアップサイズを引き継ぐ",
@@ -111,7 +116,8 @@
         labelStoredStates: "保存済みのルール",
         labelNItems: "%{count} 件",
         messageRemoveThisState: "このルールを削除します",
-        messageActiveStateCannotBeRemoved: "アクティブなルールは削除できません。",
+        messageActiveStateCannotBeRemoved:
+          "アクティブなルールは削除できません。",
         messageCancelRemovingThisState: "このルールの削除をキャンセルします",
       },
     };
@@ -288,9 +294,18 @@
         "popup-anywhere-settings-panel-content",
       );
 
-      function generateSettingItem(labelText, id, $input, value = false) {
+      function generateSettingItem(
+        labelText,
+        id,
+        $input,
+        value = false,
+        labelTitle = null,
+      ) {
         const $container = $("<div>").addClass("setting-item");
         const $label = $("<label>").text(labelText).attr("for", id);
+        if (labelTitle) {
+          $label.attr("title", labelTitle);
+        }
         $input
           .attr("id", id)
           .prop(
@@ -401,6 +416,7 @@
             "pa_max_stored_state_count_settings",
             $("<input>").attr({ type: "number", min: 0, step: 1 }),
             settings.maxStoredStateCount,
+            resources.descOverMaxStoredStateCount,
           ),
         )
         .append(
