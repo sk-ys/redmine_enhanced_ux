@@ -13,6 +13,7 @@
       initialHeight: 600,
       maxStoredStateCount: 5,
       disablePopupInPopup: true,
+      inheritPopupSizeFromActiveWindow: true,
     };
 
     // Target link query
@@ -58,6 +59,7 @@
         labelInitialHeight: "Initial height",
         labelMaxStoredStateCount: "Max stored state count",
         labelDisablePopupInPopup: "Disable popup in popup",
+        labelInheritPopupSizeFromActiveWindow: "Inherit size from active popup",
         labelReset: "Reset",
         labelSave: "Save",
         labelCancel: "Cancel",
@@ -92,6 +94,8 @@
         labelInitialHeight: "初期高さ",
         labelMaxStoredStateCount: "最大状態保持数",
         labelDisablePopupInPopup: "ポップアップ内ポップアップを無効化",
+        labelInheritPopupSizeFromActiveWindow:
+          "アクティブなポップアップサイズを引き継ぐ",
         labelReset: "リセット",
         labelSave: "保存",
         labelCancel: "キャンセル",
@@ -308,6 +312,14 @@
             $("<input>").attr("type", "checkbox"),
             settings.disablePopupInPopup,
           ),
+        )
+        .append(
+          generateSettingItem(
+            resources.labelInheritPopupSizeFromActiveWindow,
+            "pa_get_popup_size_from_active_window_settings",
+            $("<input>").attr("type", "checkbox"),
+            settings.inheritPopupSizeFromActiveWindow,
+          ),
         );
 
       const $dialog = $settingsPanel.dialog({
@@ -346,6 +358,9 @@
                 disablePopupInPopup: $(
                   "#pa_disable_popup_in_popup_settings",
                 ).prop("checked"),
+                inheritPopupSizeFromActiveWindow: $(
+                  "#pa_get_popup_size_from_active_window_settings",
+                ).prop("checked"),
               });
               saveSettings();
               $dialog.dialog("close");
@@ -372,6 +387,10 @@
           $("#pa_disable_popup_in_popup_settings").prop(
             "checked",
             settings.disablePopupInPopup,
+          );
+          $("#pa_get_popup_size_from_active_window_settings").prop(
+            "checked",
+            settings.inheritPopupSizeFromActiveWindow,
           );
         },
       });
@@ -1262,11 +1281,25 @@
         $("body").addClass(`popup-anywhere-flex-${state.flexDirection}`);
       }
 
+      storeDialogSize() {
+        const $dialog = this.$dialog;
+        if (
+          $dialog.dialogPA("option", "minimized") ||
+          $dialog.dialogPA("option", "maximized")
+        )
+          return;
+
+        const width = $dialog.dialogPA("option", "width");
+        const height = $dialog.dialogPA("option", "height");
+        PopUp.size.width = width;
+        PopUp.size.height = height;
+      }
+
       constructor(
         url,
         positionAt = null,
-        height = PopUp.size.height,
-        width = PopUp.size.width,
+        height = null,
+        width = null,
         maximized = false,
         minimized = false,
         fixed = false,
@@ -1275,8 +1308,18 @@
 
         this.url = url;
         this.positionAt = positionAt;
-        this.height = height;
-        this.width = width;
+        this.height =
+          height !== null
+            ? height
+            : settings.inheritPopupSizeFromActiveWindow
+              ? PopUp.size.height
+              : settings.initialHeight;
+        this.width =
+          width !== null
+            ? width
+            : settings.inheritPopupSizeFromActiveWindow
+              ? PopUp.size.width
+              : settings.initialWidth;
         this.maximized = maximized;
         this.minimized = minimized;
         this.fixed = fixed;
@@ -1331,18 +1374,10 @@
             });
           },
           resizeStop: () => {
-            if (
-              this.$dialog.dialogPA("option", "minimized") ||
-              this.$dialog.dialogPA("option", "maximized")
-            )
-              return;
-
-            // Back up the current size
-            const height = this.$dialog.dialogPA("option", "height");
-            PopUp.size.height = height;
-
-            const width = this.$dialog.dialogPA("option", "width");
-            PopUp.size.width = width;
+            this.storeDialogSize();
+          },
+          focus: () => {
+            this.storeDialogSize();
           },
         });
       }
