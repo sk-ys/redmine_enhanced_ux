@@ -58,11 +58,21 @@
         labelInitialWidth: "Initial width",
         labelInitialHeight: "Initial height",
         labelMaxStoredStateCount: "Max stored state count",
+        descOverMaxStoredStateCount:
+          "If the number of stored states exceeds this value, " +
+          "the oldest states will be removed automatically.",
         labelDisablePopupInPopup: "Disable popup in popup",
         labelInheritPopupSizeFromActiveWindow: "Inherit size from active popup",
         labelReset: "Reset",
         labelSave: "Save",
         labelCancel: "Cancel",
+        labelRemove: "Remove",
+        labelActive: "Active",
+        labelStoredStates: "Stored States",
+        labelNItems: "%{count} item(s)",
+        messageRemoveThisState: "Remove this state",
+        messageActiveStateCannotBeRemoved: "Active state can not be removed.",
+        messageCancelRemovingThisState: "Cancel removing this state",
       },
       ja: {
         labelClose: "閉じる",
@@ -92,13 +102,23 @@
         labelSettings: "設定",
         labelInitialWidth: "初期幅",
         labelInitialHeight: "初期高さ",
-        labelMaxStoredStateCount: "最大状態保持数",
+        labelMaxStoredStateCount: "ルールの最大保持数",
+        descOverMaxStoredStateCount:
+          "ルールの最大保持数を超えた場合、古いルールから自動的に削除されます。",
         labelDisablePopupInPopup: "ポップアップ内ポップアップを無効化",
         labelInheritPopupSizeFromActiveWindow:
           "アクティブなポップアップサイズを引き継ぐ",
         labelReset: "リセット",
         labelSave: "保存",
         labelCancel: "キャンセル",
+        labelRemove: "削除",
+        labelActive: "アクティブ",
+        labelStoredStates: "保存済みのルール",
+        labelNItems: "%{count} 件",
+        messageRemoveThisState: "このルールを削除します",
+        messageActiveStateCannotBeRemoved:
+          "アクティブなルールは削除できません。",
+        messageCancelRemovingThisState: "このルールの削除をキャンセルします",
       },
     };
     const resources = {
@@ -151,6 +171,13 @@
       // Remove unused parameters
       delete states["_default-width"];
       delete states["_default-height"];
+    }
+
+    function saveStatesToLocalStorage(newStates = states) {
+      localStorage.setItem(
+        localStorageKeyPrefix + "popup-anywhere-states",
+        JSON.stringify(newStates),
+      );
     }
 
     const svgIcons = new (class SVGIcons {
@@ -267,9 +294,18 @@
         "popup-anywhere-settings-panel-content",
       );
 
-      function generateSettingItem(labelText, id, $input, value = false) {
+      function generateSettingItem(
+        labelText,
+        id,
+        $input,
+        value = false,
+        labelTitle = null,
+      ) {
         const $container = $("<div>").addClass("setting-item");
         const $label = $("<label>").text(labelText).attr("for", id);
+        if (labelTitle) {
+          $label.attr("title", labelTitle);
+        }
         $input
           .attr("id", id)
           .prop(
@@ -277,6 +313,83 @@
             value,
           );
         return $container.append($label).append($input);
+      }
+
+      function generateStoredStateListContainer() {
+        const $stateListContainer = $("<details>").addClass(
+          "state-list-container",
+        );
+        const $stateListOuter = $("<div>").addClass("state-list-outer");
+        const $stateList = $("<table>").addClass("state-list");
+        return $stateListContainer
+          .append($("<summary>").text(resources.labelStoredStates))
+          .append($stateListOuter.append($stateList));
+      }
+
+      let removeTargetStateKeys = [];
+      function updateStoredStateList() {
+        const $stateList = $settingsPanel.find(".state-list");
+        $stateList.empty();
+        Object.keys(states).forEach((key) => {
+          const $tr = $("<tr>");
+          const $tdKey = $("<td>")
+            .append(
+              key === location.pathname
+                ? $("<span>").text(key)
+                : $("<a>")
+                    .attr({
+                      href: key,
+                      target: "_blank",
+                    })
+                    .text(key),
+            )
+            .attr({
+              title: new Date(states[key]?.timeStamp).toLocaleString(),
+            });
+          const $tdItemCount = $("<td>")
+            .text(
+              resources.labelNItems.replace(
+                "%{count}",
+                states[key]?.dialogs?.length || 0,
+              ),
+            )
+            .attr(
+              "title",
+              states[key]?.dialogs
+                ?.map((dialog, index) => index + 1 + ": " + dialog.src)
+                .join("\n"),
+            );
+          const $tdAction = $("<td>").addClass("state-actions");
+          if (key === location.pathname) {
+            $tr.addClass("state-active");
+            $tdAction
+              .append($("<span>").text(resources.labelActive))
+              .attr("title", resources.messageActiveStateCannotBeRemoved);
+          } else if (removeTargetStateKeys.includes(key)) {
+            $tr.addClass("state-to-be-removed");
+            const $cancelBtn = $("<button>")
+              .text(resources.labelCancel)
+              .attr("title", resources.messageCancelRemovingThisState)
+              .on("click", () => {
+                removeTargetStateKeys = removeTargetStateKeys.filter(
+                  (k) => k !== key,
+                );
+                updateStoredStateList();
+              });
+            $tdAction.append($cancelBtn);
+          } else {
+            const $removeBtn = $("<button>")
+              .text(resources.labelRemove)
+              .attr("title", resources.messageRemoveThisState)
+              .on("click", () => {
+                removeTargetStateKeys.push(key);
+                updateStoredStateList();
+              });
+            $tdAction.append($removeBtn);
+          }
+          $tr.append($tdKey).append($tdItemCount).append($tdAction);
+          $stateList.append($tr);
+        });
       }
 
       // Append settings to dialog
@@ -303,6 +416,7 @@
             "pa_max_stored_state_count_settings",
             $("<input>").attr({ type: "number", min: 0, step: 1 }),
             settings.maxStoredStateCount,
+            resources.descOverMaxStoredStateCount,
           ),
         )
         .append(
@@ -320,13 +434,15 @@
             $("<input>").attr("type", "checkbox"),
             settings.inheritPopupSizeFromActiveWindow,
           ),
-        );
+        )
+        .append($("<hr>"))
+        .append(generateStoredStateListContainer());
 
       const $dialog = $settingsPanel.dialog({
         autoOpen: false,
         title: "Popup Anywhere - " + resources.labelSettings,
         modal: true,
-        width: 350,
+        width: 500,
         resizable: false,
         buttons: [
           {
@@ -363,6 +479,13 @@
                 ).prop("checked"),
               });
               saveSettings();
+              if (removeTargetStateKeys.length > 0) {
+                removeTargetStateKeys.forEach((key) => {
+                  delete states[key];
+                });
+                removeTargetStateKeys = [];
+                saveStatesToLocalStorage();
+              }
               $dialog.dialog("close");
             },
           },
@@ -392,6 +515,9 @@
             "checked",
             settings.inheritPopupSizeFromActiveWindow,
           );
+          removeTargetStateKeys = [];
+          loadStatesFromLocalStorage();
+          updateStoredStateList();
         },
       });
     }
@@ -1244,10 +1370,7 @@
           }
         }
 
-        localStorage.setItem(
-          localStorageKeyPrefix + "popup-anywhere-states",
-          JSON.stringify(sanitizedStates),
-        );
+        saveStatesToLocalStorage(sanitizedStates);
       }
 
       static restoreDialogState() {
@@ -1672,6 +1795,47 @@
     & + .ui-dialog-buttonpane {
       button {
         height: auto;
+      }
+    }
+
+    .state-list-container {
+      width: 100%;
+      box-sizing: border-box;
+
+      summary {
+        cursor: pointer;
+      }
+
+      .state-list-outer {
+        width: 100%;
+        max-height: 200px;
+        overflow-y: auto;
+        padding: 5px;
+        box-sizing: border-box;
+
+        .state-list {
+          width: 100%;
+
+          .state-active {
+            color: #9c9;
+          }
+
+          .state-to-be-removed {
+            text-decoration: line-through;
+            color: #999;
+            font-style: italic;
+          }
+
+          .state-actions {
+            text-align: center;
+
+            button {
+              margin: 0 5px;
+              height: auto;
+              cursor: pointer;
+            }
+          }
+        }
       }
     }
   }
