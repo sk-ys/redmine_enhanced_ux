@@ -22,18 +22,15 @@ window.addEventListener("DOMContentLoaded", () => {
     },
   ];
 
-  const homeUrl = ($("head script[src*='/jquery-'][src*='-ui-'][src*='.js']")
-    .attr("src")
-    ?.match(/^(.*?)(?:\/javascripts\/|\/assets\/)/)
-    ?.[1] || "") + "/";
+  // Derive the project issues base path from the current page's URL path.
+  // This avoids reading DOM attributes (script src, body class) as taint sources.
+  // Redmine issue pages follow the pattern: [sub-path]/projects/[id]/issues/[num]
+  const projectPathMatch = window.location.pathname.match(/^(.*?\/projects\/[^/]+)/);
+  const projectIssuePath = projectPathMatch ? projectPathMatch[1] : null;
 
-  const projectIdentifier = $("body")
-    .attr("class")
-    .split(" ")
-    .filter((i) => i.match(/^project-/))[0]
-    ?.match(/^project-(.+)/)[1];
+  function generateIssueLink() {
+    if (!projectIssuePath) return;
 
-  function generateIssueLink(url, text) {
     configs.forEach((config) => {
       const targets = $("#content .issue .attributes " + config.selector);
       if (targets.length == 0) return;
@@ -45,13 +42,15 @@ window.addEventListener("DOMContentLoaded", () => {
         `?set_filter=1` +
         `&f[]=${config.param}` +
         `&op[${config.param}]==` +
-        `&v[${config.param}][]=${idValue}`;
+        `&v[${config.param}][]=${encodeURIComponent(idValue)}`;
 
-      const issueListUrl =
-        homeUrl + "projects/" + projectIdentifier + "/issues" + search;
+      const issueListUrl = projectIssuePath + "/issues" + search;
 
       targets.each(function () {
-        $(this).html($("<a>").attr("href", issueListUrl).text(this.textContent));
+        const link = document.createElement("a");
+        link.href = issueListUrl;
+        link.textContent = this.textContent;
+        $(this).empty().append(link);
       });
     });
   }
