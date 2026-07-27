@@ -51,9 +51,7 @@ window.addEventListener("DOMContentLoaded", () => {
         homeUrl + "projects/" + projectIdentifier + "/issues" + search;
 
       targets.each(function () {
-        $(this).replaceWith(
-          $("<a>").attr("href", issueListUrl).text(this.textContent),
-        );
+        $(this).html($("<a>").attr("href", issueListUrl).text(this.textContent));
       });
     });
   }
