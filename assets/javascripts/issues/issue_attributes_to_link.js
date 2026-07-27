@@ -47,12 +47,18 @@ window.addEventListener("DOMContentLoaded", () => {
         `&op[${config.param}]==` +
         `&v[${config.param}][]=${idValue}`;
 
-      const issueListUrl =
-        homeUrl + "projects/" + projectIdentifier + "/issues" + search;
+      const issueListUrl = new URL(
+        homeUrl + "projects/" + projectIdentifier + "/issues",
+        window.location.origin,
+      );
+      issueListUrl.searchParams.set("set_filter", "1");
+      issueListUrl.searchParams.append("f[]", config.param);
+      issueListUrl.searchParams.set(`op[${config.param}]`, "=");
+      issueListUrl.searchParams.append(`v[${config.param}][]`, String(idValue));
 
       targets.each(function () {
         const link = document.createElement("a");
-        link.href = issueListUrl;
+        link.href = issueListUrl.toString();
         link.textContent = this.textContent;
         $(this).empty().append(link);
       });
