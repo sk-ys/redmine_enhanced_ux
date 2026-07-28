@@ -57,10 +57,9 @@ window.addEventListener("DOMContentLoaded", () => {
       issueListUrl.searchParams.append(`v[${config.param}][]`, String(idValue));
 
       targets.each(function () {
-        const link = document.createElement("a");
-        link.href = issueListUrl.toString();
-        link.textContent = this.textContent;
-        $(this).empty().append(link);
+        $(this).replaceWith(
+          $("<a>").attr("href", issueListUrl.toString()).text(this.textContent),
+        );
       });
     });
   }
