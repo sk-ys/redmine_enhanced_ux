@@ -205,7 +205,7 @@
         const actionOrIssueId =
           $selectedIssueIds.length > 1
             ? "bulk_update"
-            : $selectedIssueIds.val();
+            : encodeURIComponent($selectedIssueIds.val());
         const isCustomField = key.startsWith("cf_");
         const cfId = isCustomField ? key.split("_")[1] : null;
 
