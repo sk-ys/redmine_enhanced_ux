@@ -41,12 +41,6 @@ window.addEventListener("DOMContentLoaded", () => {
       const idValue = $(config.idSelector).val();
       if (idValue == undefined) return;
 
-      const search =
-        `?set_filter=1` +
-        `&f[]=${config.param}` +
-        `&op[${config.param}]==` +
-        `&v[${config.param}][]=${idValue}`;
-
       const issueListUrl = new URL(
         homeUrl + "projects/" + projectIdentifier + "/issues",
         window.location.origin,
