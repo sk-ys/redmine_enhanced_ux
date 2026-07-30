@@ -123,6 +123,7 @@ To access the plugin's settings:
 - [Redmine Actual Date](https://github.com/sk-ys/redmine_actual_date)
 - [Redmine Datetime CF](https://github.com/sk-ys/redmine_datetime_cf)
 - [Redmine Drafts](https://github.com/jbbarth/redmine_drafts)
+- [Redmine DrawIO](https://github.com/mikitex70/redmine_drawio)
 - [Redmine Extra Notes](http://github.com/sk-ys/redmine_extra_notes)
 - [Redmine GLightbox](http://github.com/sk-ys/redmine_glightbox)
 - [Redmine Issue Note List](https://github.com/sk-ys/redmine_issue_note_list)

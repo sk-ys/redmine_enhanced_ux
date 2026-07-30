@@ -22,10 +22,10 @@ window.addEventListener("DOMContentLoaded", () => {
     },
   ];
 
-  const homeUrl = ($("head script[src*='/jquery-'][src*='-ui-'][src*='.js']")
-    .attr("src")
-    ?.match(/^(.*?)(?:\/javascripts\/|\/assets\/)/)
-    ?.[1] || "") + "/";
+  const homeUrl =
+    ($("head script[src*='/jquery-'][src*='-ui-'][src*='.js']")
+      .attr("src")
+      ?.match(/^(.*?)(?:\/javascripts\/|\/assets\/)/)?.[1] || "") + "/";
 
   const projectIdentifier = $("body")
     .attr("class")
@@ -41,17 +41,19 @@ window.addEventListener("DOMContentLoaded", () => {
       const idValue = $(config.idSelector).val();
       if (idValue == undefined) return;
 
-      const search =
-        `?set_filter=1` +
-        `&f[]=${config.param}` +
-        `&op[${config.param}]==` +
-        `&v[${config.param}][]=${idValue}`;
-
-      const issueListUrl =
-        homeUrl + "projects/" + projectIdentifier + "/issues" + search;
+      const issueListUrl = new URL(
+        homeUrl + "projects/" + projectIdentifier + "/issues",
+        window.location.origin,
+      );
+      issueListUrl.searchParams.set("set_filter", "1");
+      issueListUrl.searchParams.append("f[]", config.param);
+      issueListUrl.searchParams.set(`op[${config.param}]`, "=");
+      issueListUrl.searchParams.append(`v[${config.param}][]`, String(idValue));
 
       targets.each(function () {
-        $(this).html($("<a>").attr("href", issueListUrl).text(this.innerHTML));
+        $(this).replaceWith(
+          $("<a>").attr("href", issueListUrl.toString()).text(this.textContent),
+        );
       });
     });
   }
