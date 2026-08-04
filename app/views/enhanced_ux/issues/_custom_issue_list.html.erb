@@ -373,7 +373,11 @@
             dropOnEmpty: false,
             update: (event, ui) => {
               $("table.issues>thead>tr>th")
-                .map((i, e) => $(e).attr("class").split(" ")[0])
+                .map((i, e) => {
+                  return /(^|\s)tags($|\s)/.test($(e).attr("class"))
+                    ? "tags"
+                    : $(e).attr("class").split(" ")[0];
+                })
                 .each((i, e) => {
                   // Sort selected in criteria
                   $(`#selected_c>option[value=${e}]`).appendTo("#selected_c");
