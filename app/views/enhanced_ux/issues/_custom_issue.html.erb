@@ -3147,23 +3147,30 @@
 
           // Fix height of wiki-preview with scrollbar
           // Override jsToolBar.showPreview function
-          const jsToolBarShowPreviewOrg = jsToolBar.prototype.showPreview;
-          jsToolBar.prototype.showPreview = function (event) {
-            const textareaHeight = $(this.textarea).outerHeight();
-            jsToolBarShowPreviewOrg.call(this, event);
-            if (textareaHeight > 0) {
-              // TODO:
-              // this.preview.setAttribute(
-              //   "style",
-              //   "height: " + textareaHeight + "px;"
-              // );
-              $(this.preview).css({
-                height: textareaHeight,
-                minHeight: textareaHeight,
-                boxSizing: "border-box",
-              });
-            }
-          };
+          // Guard: jsToolBar is only defined when the native Redmine jstoolbar
+          // is loaded. A custom wiki formatter (e.g. Quill) nulls out
+          // heads_for_wiki_formatter, so jsToolBar is undefined and this
+          // override would throw a ReferenceError, aborting init (breaking the
+          // side-panel quick notes). Skip the override when it is absent.
+          if (typeof jsToolBar !== "undefined") {
+            const jsToolBarShowPreviewOrg = jsToolBar.prototype.showPreview;
+            jsToolBar.prototype.showPreview = function (event) {
+              const textareaHeight = $(this.textarea).outerHeight();
+              jsToolBarShowPreviewOrg.call(this, event);
+              if (textareaHeight > 0) {
+                // TODO:
+                // this.preview.setAttribute(
+                //   "style",
+                //   "height: " + textareaHeight + "px;"
+                // );
+                $(this.preview).css({
+                  height: textareaHeight,
+                  minHeight: textareaHeight,
+                  boxSizing: "border-box",
+                });
+              }
+            };
+          }
 
           // Show RedmineRT QuickNotes -> discontinue
           // $("#quick_notes").slideDown();
