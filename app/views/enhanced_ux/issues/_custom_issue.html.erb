@@ -36,6 +36,7 @@
       sideBySideModeBreakpointWidth: 1280,
       quickNotesPosition: "auto",
       enableQuickNotesCompactTriggerButton: false,
+      isQuickNotesOpenByDefault: false,
       attributeSeparatorColors: {
         show: "rgba(0, 0, 0, 0.1)",
         edit: "rgba(0, 0, 0, 0.1)",
@@ -107,6 +108,7 @@
         labelSettingQuickNotesPosition: "Quick notes position",
         labelSettingEnableQuickNotesCompactTriggerButton:
           "Enable quick notes compact trigger button",
+        labelSettingIsQuickNotesOpenByDefault: "Open quick notes by default",
         messageSettingQuickNotesPosition:
           "Select where to display quick notes: auto (based on history direction), top, or bottom",
         labelSettingQuickNotesPositionAuto: "Auto",
@@ -183,6 +185,8 @@
         labelSettingQuickNotesPosition: "クイックコメントの位置",
         labelSettingEnableQuickNotesCompactTriggerButton:
           "クイックコメントのトリガーボタンをコンパクトにする",
+        labelSettingIsQuickNotesOpenByDefault:
+          "クイックコメント欄をデフォルトで開いた状態にする",
         messageSettingQuickNotesPosition:
           "クイックコメントを表示する位置を選択: auto (履歴の方向に基づく)、top、または bottom",
         labelSettingQuickNotesPositionAuto: "自動",
@@ -1648,6 +1652,15 @@
             }
 
             this.#init();
+
+            if (
+              this.#settingsManager.getSetting("isQuickNotesOpenByDefault") &&
+              !$("#tab-issue-edit").hasClass("selected")
+            ) {
+              setTimeout(() => {
+                this.enableInlineNotes({ focus: false });
+              });
+            }
           }
         }
         initialized() {
@@ -2691,8 +2704,8 @@
         ) {
           if (!isEditable) return;
           this.quickNotes2 = enableQuickNotes2
-            ? new QuickNotes2(() => {
-                this.enableInlineNotes();
+            ? new QuickNotes2((options) => {
+                this.enableInlineNotes(options);
               }, settingsManager)
             : null;
           this.dialogNotes = enableDialogNotes
@@ -2723,7 +2736,7 @@
           }
         }
 
-        enableInlineNotes() {
+        enableInlineNotes(options = { focus: true }) {
           if (!this.quickNotes2 || !this.quickNotes2.initialized()) return;
 
           this.enableDialogNotes(false);
@@ -2739,7 +2752,9 @@
           this.addNotesDialogPopOutButton();
 
           // Focus to notes field
-          $("#issue_notes")[0].focus();
+          if (options.focus) {
+            $("#issue_notes")[0].focus();
+          }
         }
 
         #setupInlineNotes() {
