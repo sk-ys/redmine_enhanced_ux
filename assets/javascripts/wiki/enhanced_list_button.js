@@ -436,7 +436,7 @@
     const selectionEnd = textarea.selectionEnd;
 
     // For Markdown, renumber the ordered list
-    const { listStart, listEnd } = detectSelectedList(textarea, methods.isOl);
+    const { listStart, listEnd } = detectSelectedList(textarea, methods.isList);
 
     // Select the list
     textarea.setSelectionRange(listStart, listEnd);
@@ -444,12 +444,17 @@
     // Renumbering
     let indexList = [];
     decorateLines({ textarea }, (lineStr) =>
-      markdownMethods.evalStr(
-        markdownMethods.olDecorator,
-        lineStr,
-        0,
-        indexList
-      )
+      {
+        // Leave the line unchanged if it is not an ordered list
+        if (!methods.isOl(lineStr)) return lineStr;
+
+        return markdownMethods.evalStr(
+          markdownMethods.olDecorator,
+          lineStr,
+          0,
+          indexList
+        );
+      }
     );
 
     // Restore selection range
