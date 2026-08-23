@@ -215,10 +215,10 @@
     const issueEditUrl = issueUrl + "/edit";
     const issueIdMatch = issuePathname.match(/\/issues\/([0-9]+)\/{0,1}$/);
     const isInIframe = window.self !== window.top;
-    const homeUrl = ($("head script[src*='/jquery-'][src*='-ui-'][src*='.js']")
-      .attr("src")
-      ?.match(/^(.*?)(?:\/javascripts\/|\/assets\/)/)
-      ?.[1] || "") + "/";
+    const homeUrl =
+      ($("head script[src*='/jquery-'][src*='-ui-'][src*='.js']")
+        .attr("src")
+        ?.match(/^(.*?)(?:\/javascripts\/|\/assets\/)/)?.[1] || "") + "/";
     const localStorageKeyPrefix = homeUrl.slice(1).replaceAll("/", ".");
     let notesManager = null;
     let issueLayoutManager = null;
@@ -1330,15 +1330,14 @@
           if (updateHistory) {
             if ($("#tab-content-history").length === 0) {
               // If no history entry exists, replace whole history
-              $("#history")
-                .replaceWith(
-                  $("#history", data).find(".lazy-load-history").remove().end()
-                );
+              $("#history").replaceWith(
+                $("#history", data).find(".lazy-load-history").remove().end(),
+              );
             } else {
               let $newHistory = $("#tab-content-history", data).children();
 
               // Support for Lazy Load History plugin
-              $newHistory = $newHistory.filter(":not(.lazy-load-history)")
+              $newHistory = $newHistory.filter(":not(.lazy-load-history)");
 
               $newHistory.each((i, el) => {
                 const $newElem = $(el);
@@ -3629,7 +3628,7 @@
 
     &.compact-trigger-button:not(:has(#add_notes)) {
       padding: 5px;
-      
+
       &:hover {
         padding: 10px;
       }
