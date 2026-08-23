@@ -436,10 +436,7 @@
     const selectionEnd = textarea.selectionEnd;
 
     // For Markdown, renumber the ordered list
-    const { listStart, listEnd } = detectSelectedList(
-      textarea,
-      (line) => methods.isList(line),
-    );
+    const { listStart, listEnd } = detectSelectedList(textarea, methods.isList);
 
     // Select the list
     textarea.setSelectionRange(listStart, listEnd);
