@@ -1429,7 +1429,7 @@
           // #content
           // ├─ .contextual (issue top menu)
           // ├─ h2 (issue title)
-          // ├─ span.badge (issue status)
+          // ├─ span.badge (issue status, private, ...)
           // ├─ div.issue.details
           // ├─ #side-by-side-switch-box (side-by-side mode switch)
           // └─ #history
@@ -1439,7 +1439,7 @@
           // ├─ #content-header (newly created)
           // │    ├─ .contextual (issue top menu)
           // │    ├─ h2 (issue title)
-          // │    ├─ span.badge (issue status)
+          // │    ├─ span.badge (issue status, private, ...)
           // │    └─ #side-by-side-switch-box (side-by-side mode switch)
           // ├─ div.issue.details
           // └─ #history
@@ -1459,7 +1459,7 @@
             const $issueTopMenuClone = $issueTopMenu.clone(true, true);
             $issueTopMenu.addClass("top");
             const $headerTitle = $("#content>h2:first");
-            const $headerBadge = $("#content>span.badge:first");
+            const $headerBadges = $("#content>span.badge");
             const $sideBySideSwitchBox = $("#content>#side-by-side-switch-box");
 
             // Support for Theme Bleuclair
@@ -1470,7 +1470,7 @@
               .append($sidebarSwitchPanel)
               .append($issueTopMenuClone)
               .append($headerTitle)
-              .append($headerBadge)
+              .append($headerBadges)
               .append($sideBySideSwitchBox);
 
             // Add line break after issue title
