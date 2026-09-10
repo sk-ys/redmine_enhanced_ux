@@ -35,6 +35,8 @@
       enableFixedIssueSubjectInIframe: false,
       sideBySideModeBreakpointWidth: 1280,
       quickNotesPosition: "auto",
+      enableQuickNotesCompactTriggerButton: false,
+      isQuickNotesOpenByDefault: false,
       attributeSeparatorColors: {
         show: "rgba(0, 0, 0, 0.1)",
         edit: "rgba(0, 0, 0, 0.1)",
@@ -104,6 +106,9 @@
         labelSettingSideBySideModeBreakpointWidth:
           "Minimum screen width for side-by-side mode",
         labelSettingQuickNotesPosition: "Quick notes position",
+        labelSettingEnableQuickNotesCompactTriggerButton:
+          "Enable quick notes compact trigger button",
+        labelSettingIsQuickNotesOpenByDefault: "Open quick notes by default",
         messageSettingQuickNotesPosition:
           "Select where to display quick notes: auto (based on history direction), top, or bottom",
         labelSettingQuickNotesPositionAuto: "Auto",
@@ -178,6 +183,10 @@
         labelSettingSideBySideModeBreakpointWidth:
           "左右に並べて表示を有効にする最小の画面幅",
         labelSettingQuickNotesPosition: "クイックコメントの位置",
+        labelSettingEnableQuickNotesCompactTriggerButton:
+          "クイックコメントのトリガーボタンをコンパクトにする",
+        labelSettingIsQuickNotesOpenByDefault:
+          "クイックコメント欄をデフォルトで開いた状態にする",
         messageSettingQuickNotesPosition:
           "クイックコメントを表示する位置を選択: auto (履歴の方向に基づく)、top、または bottom",
         labelSettingQuickNotesPositionAuto: "自動",
@@ -206,10 +215,10 @@
     const issueEditUrl = issueUrl + "/edit";
     const issueIdMatch = issuePathname.match(/\/issues\/([0-9]+)\/{0,1}$/);
     const isInIframe = window.self !== window.top;
-    const homeUrl = ($("head script[src*='/jquery-'][src*='-ui-'][src*='.js']")
-      .attr("src")
-      ?.match(/^(.*?)(?:\/javascripts\/|\/assets\/)/)
-      ?.[1] || "") + "/";
+    const homeUrl =
+      ($("head script[src*='/jquery-'][src*='-ui-'][src*='.js']")
+        .attr("src")
+        ?.match(/^(.*?)(?:\/javascripts\/|\/assets\/)/)?.[1] || "") + "/";
     const localStorageKeyPrefix = homeUrl.slice(1).replaceAll("/", ".");
     let notesManager = null;
     let issueLayoutManager = null;
@@ -1321,15 +1330,14 @@
           if (updateHistory) {
             if ($("#tab-content-history").length === 0) {
               // If no history entry exists, replace whole history
-              $("#history")
-                .replaceWith(
-                  $("#history", data).find(".lazy-load-history").remove().end()
-                );
+              $("#history").replaceWith(
+                $("#history", data).find(".lazy-load-history").remove().end(),
+              );
             } else {
               let $newHistory = $("#tab-content-history", data).children();
 
               // Support for Lazy Load History plugin
-              $newHistory = $newHistory.filter(":not(.lazy-load-history)")
+              $newHistory = $newHistory.filter(":not(.lazy-load-history)");
 
               $newHistory.each((i, el) => {
                 const $newElem = $(el);
@@ -1643,6 +1651,15 @@
             }
 
             this.#init();
+
+            if (
+              this.#settingsManager.getSetting("isQuickNotesOpenByDefault") &&
+              !$("#tab-issue-edit").hasClass("selected")
+            ) {
+              setTimeout(() => {
+                this.enableInlineNotes({ focus: false });
+              });
+            }
           }
         }
         initialized() {
@@ -1698,6 +1715,14 @@
               paste: copyImageFromClipboard,
             })
             .append($("<div>").addClass("box filedroplistner"));
+
+          if (
+            this.#settingsManager.getSetting(
+              "enableQuickNotesCompactTriggerButton",
+            )
+          ) {
+            this.#$elem.addClass("compact-trigger-button");
+          }
 
           this.switchPosition(this.position);
 
@@ -2678,8 +2703,8 @@
         ) {
           if (!isEditable) return;
           this.quickNotes2 = enableQuickNotes2
-            ? new QuickNotes2(() => {
-                this.enableInlineNotes();
+            ? new QuickNotes2((options) => {
+                this.enableInlineNotes(options);
               }, settingsManager)
             : null;
           this.dialogNotes = enableDialogNotes
@@ -2710,7 +2735,7 @@
           }
         }
 
-        enableInlineNotes() {
+        enableInlineNotes(options = { focus: true }) {
           if (!this.quickNotes2 || !this.quickNotes2.initialized()) return;
 
           this.enableDialogNotes(false);
@@ -2726,7 +2751,9 @@
           this.addNotesDialogPopOutButton();
 
           // Focus to notes field
-          $("#issue_notes")[0].focus();
+          if (options.focus) {
+            $("#issue_notes")[0].focus();
+          }
         }
 
         #setupInlineNotes() {
@@ -3595,13 +3622,16 @@
     align-items: stretch;
     border-radius: 3px;
     margin: 0;
-    padding: 5px;
+    padding: 10px;
     /* Prevent the change of the top by Resizable event */
     top: 0 !important;
 
-    &:hover,
-    &:has(#add_notes) {
-      padding: 10px;
+    &.compact-trigger-button:not(:has(#add_notes)) {
+      padding: 5px;
+
+      &:hover {
+        padding: 10px;
+      }
     }
 
     & > div.box {
@@ -3673,7 +3703,6 @@
     }
   }
   #quick_notes2-open-button {
-    display: none;
     width: 100%;
     background-color: transparent;
 
@@ -3681,8 +3710,14 @@
       background-color: #fff;
     }
   }
-  #quick_notes2:hover:not(:has(#add_notes)) #quick_notes2-open-button {
-    display: block;
+  #quick_notes2.compact-trigger-button {
+    #quick_notes2-open-button {
+      display: none;
+    }
+
+    &:hover:not(:has(#add_notes)) #quick_notes2-open-button {
+      display: block;
+    }
   }
   #quick_notes2-close-button,
   #quick_notes2-submit-button {
