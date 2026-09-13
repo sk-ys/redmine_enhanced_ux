@@ -255,8 +255,9 @@
               const $additionalTagsMenu = $("<li />").append(
                 $("<a>").text($elem.children("h3").text()),
               );
-              const $additionalTagsSubMenu =
-                $("<ul />").appendTo($additionalTagsMenu);
+              const $additionalTagsSubMenu = $("<ul />").appendTo(
+                $additionalTagsMenu,
+              );
               $elem.find("a").each((_, e) => {
                 $additionalTagsSubMenu.append(
                   $("<li>").append($(e).parent().clone()),
