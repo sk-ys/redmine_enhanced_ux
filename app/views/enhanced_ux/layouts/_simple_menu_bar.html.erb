@@ -23,6 +23,7 @@
         '<style class="simple-menu-bar">#header{display: none;}</style>',
       );
     }
+    let isRedmine7 = false;
 
     function setupSimpleMenuBar() {
       // ----- i18n -----
@@ -347,9 +348,9 @@
             const isHeader = $elem.prop("nodeName") === "STRONG";
             if (isHeader) {
               $simpleProjectMenuItems.append(
-                $("<li>").append($("<div>").text($elem.text())).addClass(
-                  "ui-widget-header",
-                ),
+                $("<li>")
+                  .append($("<div>").text($elem.text()))
+                  .addClass("ui-widget-header"),
               );
             } else {
               $simpleProjectMenuItems.append(
@@ -462,7 +463,13 @@
           });
         }
 
-        $topMenu.children("ul").append($("<li />").append($btn));
+        if (isRedmine7) {
+          $topMenu
+            .find(".general-menu .top-menu__links > ul")
+            .append($("<li />").append($btn));
+        } else {
+          $topMenu.children("ul").append($("<li />").append($btn));
+        }
 
         function setHeaderVisibility(state) {
           setHeaderPositionFixed(false);
@@ -501,22 +508,27 @@
           );
         }
 
-        let defaultTopMenuHeight = null;
+        let defaultTopMenuHeight = 0;
         // Detect default top menu height when shown for the first time
         function detectTopMenuDefaultHeight() {
-          if (defaultTopMenuHeight !== null) return;
+          if (defaultTopMenuHeight > 0) return;
           if (isMobile()) return;
           const activeTopMenuStyle = $topMenu.attr("style") || "";
-          $topMenu.attr(
-            "style",
-            "display: block !important; overflow: hidden;",
-          );
+          if (isRedmine7) {
+            $topMenu.attr("style", "");
+          } else {
+            $topMenu.attr(
+              "style",
+              "display: block !important; overflow: hidden;",
+            );
+          }
           const topMenuChildrenStyles = $topMenu
             .children()
             .map((_, el) => $(el).attr("style") || "");
-          $topMenu.children().each((i, el) => {
-            if (!$(el).is("#account")) $(el).hide();
-          });
+          if (!isRedmine7) {
+            $topMenu.children().each((i, el) => $(el).hide());
+            $topMenu.find("#account").show();
+          }
           defaultTopMenuHeight = $topMenu.outerHeight();
           $topMenu.attr("style", activeTopMenuStyle);
           $topMenu.children().each((i, el) => {
@@ -526,10 +538,12 @@
         if (isMobile()) {
           $(window).on("resize.detectTopMenuHeight", () => {
             if (!isMobile()) {
-              $(window).off("resize.detectTopMenuHeight");
               requestAnimationFrame(() =>
                 setTopMenuPositionFixed($topMenu.hasClass("fixed")),
               );
+              if (defaultTopMenuHeight > 0) {
+                $(window).off("resize.detectTopMenuHeight");
+              }
             }
           });
         } else {
@@ -679,6 +693,7 @@
     }
 
     window.addEventListener("DOMContentLoaded", () => {
+      isRedmine7 = $("#top-menu .profile-menu").length > 0;
       requestAnimationFrame(setupSimpleMenuBar);
     });
   })();
@@ -753,6 +768,7 @@
 
           & > a {
             padding-left: calc(20px + 2px);
+            transition: none;
 
             &.selected {
               background-color: #f6f7f8;
@@ -766,6 +782,10 @@
             /* Affects the Admin menu */
             &:has(svg) {
               padding-left: 2px;
+            }
+
+            svg.icon-svg {
+              transition: none;
             }
           }
 
@@ -806,6 +826,24 @@
       width: 18px;
       #hide-header-btn {
         position: absolute;
+      }
+    }
+    .general-menu #hide-header-btn {
+      bottom: 0;
+      padding-inline: 3px;
+    }
+
+    /* For Redmine 7 */
+    &:has(.general-menu) {
+      grid-template-columns: max-content minmax(0, auto) max-content;
+      grid-template-areas: "general-menu title-bar profile-menu";
+
+      .general-menu {
+        grid-area: general-menu;
+      }
+
+      .profile-menu {
+        grid-area: profile-menu;
       }
     }
   }
@@ -887,6 +925,7 @@
 
     a {
       font-weight: normal;
+      color: inherit;
     }
 
     .main-menu {
