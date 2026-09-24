@@ -36,6 +36,8 @@
       ?.match(/^(.*?)(?:\/javascripts\/|\/assets\/)/)
       ?.[1] || "") + "/";
 
+    const initialQueryFormAction = $("#query_form").attr("action");
+
     const svgIcons = new (class SVGIcons {
       constructor() {
         const extractedPath = this.#extractIconPath();
@@ -95,6 +97,9 @@
     }
 
     function replaceQueryFormSubmission(e) {
+      if ($("#query_form").attr("action") !== initialQueryFormAction) return;
+      if ($("#query_form").data("ajaxUpdateIssueListIsDisabled")) return;
+
       e.preventDefault();
       ajaxUpdateIssueListWithQuery(e.currentTarget);
       $("#query_form").hide();
@@ -163,18 +168,22 @@
       $("#query_form_with_buttons>.buttons").append($cancelButton);
 
       // Replace apply button with Ajax update
-      $("#query_form_with_buttons p.buttons>a.icon-checked:first")
-        .attr("onclick", "")
-        .on("click", (e) => {
-          e.preventDefault();
-
-          // Conventional query submission
-          if (e.ctrlKey) {
-            removeReplaceQueryFormSubmission();
-          }
-
-          $("#query_form").submit();
-        });
+      $(
+        "#query_form_with_buttons p.buttons>a.icon-checked:first",
+      )[0]?.addEventListener(
+        "click",
+        (e) => {
+          // Restore the original action and re-disable `$("#query_type")`
+          // replaced and enabled by the "Save custom query" action.
+          $("#query_type").prop("disabled", true);
+          $("#query_form")
+            .attr("action", initialQueryFormAction)
+            .data("ajaxUpdateIssueListIsDisabled", e.ctrlKey);
+        },
+        {
+          capture: true,
+        },
+      );
 
       // Replace clear button with Ajax update
       $("#query_form_with_buttons p.buttons>a.icon-reload:first")
@@ -202,14 +211,6 @@
         .appendTo("#content > div.contextual:first")
         .find("a")
         .addClass("prevent-popup-anywhere");
-
-      // Remove the ReplaceQueryFormSubmission function before the click event
-      // in the capturing phase.
-      $(
-        "#query_form_with_buttons p.buttons > a.icon.icon-save",
-      )[0]?.addEventListener("click", removeReplaceQueryFormSubmission, {
-        capture: true,
-      });
 
       $("#query_form").hide();
     }
