@@ -116,6 +116,8 @@
         showProjectList();
       }
 
+      const initialQueryFormAction = $("#query_form").attr("action");
+
       const svgIcons = new (class SVGIcons {
         constructor() {
           const extractedPath = this.#extractIconPath();
@@ -404,7 +406,27 @@
 
           $("#query_form_with_buttons>.buttons").append($cancelButton);
 
+          setupQueryButtonEventListeners();
+
           $("#query_form").hide();
+        }
+
+        function setupQueryButtonEventListeners() {
+          // Replace apply button with ajax update
+          $(
+            "#query_form_with_buttons p.buttons>a.icon-checked:first",
+          )[0]?.addEventListener(
+            "click",
+            (e) => {
+              // Restore the original action and re-disable `$("#query_type")`
+              // replaced and enabled by the "Save custom query" action.
+              $("#query_type").prop("disabled", true);
+              $("#query_form").attr("action", initialQueryFormAction);
+            },
+            {
+              capture: true,
+            },
+          );
         }
 
         $("#main").addClass("eux-compact-query-form-enabled");
