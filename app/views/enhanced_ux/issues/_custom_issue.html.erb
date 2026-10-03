@@ -1482,8 +1482,10 @@
 
           function calcBaseTop() {
             baseTop =
-              ($("#header").outerHeight() ?? 0) +
-              (isMobile() ? 0 : ($("#top-menu").outerHeight() ?? 0));
+              (document.querySelector("#header").offsetHeight ?? 0) +
+              (isMobile()
+                ? 0
+                : (document.querySelector("#top-menu").offsetHeight ?? 0));
           }
 
           function updateMarginTop() {
