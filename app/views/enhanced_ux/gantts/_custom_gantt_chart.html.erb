@@ -1000,14 +1000,22 @@
       }).observe($("table.gantt-table:not(.cloned)")[0], { childList: true });
     }
 
-    // Add event about column width change to ui-resizable-handle.
-    $("table.gantt-table")
-      .on("mouseup", "td.ui-resizable>.ui-resizable-handle", (e) => {
-        ganttColumnWidth.saveList($(e.target).parent());
-      })
-      .on("dblclick", "td.ui-resizable>.ui-resizable-handle", (e) => {
-        ganttColumnWidth.reset($(e.target).parent());
-      });
+    // Add a column width change event listener to `.ui-resizable-handle`.
+    $("#content")
+      .on(
+        "mouseup",
+        "table.gantt-table td.ui-resizable>.ui-resizable-handle",
+        (e) => {
+          ganttColumnWidth.saveList($(e.target).parent());
+        },
+      )
+      .on(
+        "dblclick",
+        "table.gantt-table td.ui-resizable>.ui-resizable-handle",
+        (e) => {
+          ganttColumnWidth.reset($(e.target).parent());
+        },
+      );
 
     // Add adding new issue link
     if ($("#content > .contextual a.new-issue").length === 0) {
