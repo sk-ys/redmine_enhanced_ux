@@ -1220,7 +1220,9 @@
     :is(
       div.gantt_subjects_container > div.gantt_subjects,
       div.gantt_selected_column_container > div.gantt_selected_column_content,
-      form[data-cm-url$="/issues/context_menu"]
+      form[data-cm-url$="/issues/context_menu"],
+      #today_line,
+      #gantt_draw_area
     ) {
       opacity: 1;
       transition: opacity 0.5s ease-in-out; 
@@ -1230,7 +1232,9 @@
     :is(
       div.gantt_subjects_container > div.gantt_subjects,
       div.gantt_selected_column_container > div.gantt_selected_column_content,
-      form[data-cm-url$="/issues/context_menu"]
+      form[data-cm-url$="/issues/context_menu"],
+      #today_line,
+      #gantt_draw_area
     ) {
       opacity: 0.1;
     }
