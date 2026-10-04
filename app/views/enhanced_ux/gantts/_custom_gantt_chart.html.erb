@@ -160,14 +160,14 @@
       return $ganttTableCloned;
     }
 
-    function moveContextualButtons(htmlString) {
+    function moveContextualButtons(data) {
       // Update contextual
       $("#content>div.contextual:first")
         .children("span")
         .remove()
         .end()
         .append(
-          $("#query_form_with_buttons > p.contextual", htmlString).children(),
+          $("#query_form_with_buttons > p.contextual", data).children(),
         )
         .find("a")
         .addClass("prevent-popup-anywhere");
@@ -184,7 +184,7 @@
         "p.other-formats a.png",
       ].forEach((s) => {
         if ($(s).parents(".contextual").length === 0) {
-          $(s).attr("href", $(s, htmlString).attr("href"));
+          $(s).attr("href", $(s, data).attr("href"));
         }
       });
     }
@@ -236,6 +236,7 @@
       }
 
       function ajaxPostProcess(htmlString) {
+        const $htmlString = $(htmlString);
         const data = new DOMParser().parseFromString(htmlString, "text/html");
 
         // Execute actual dates plugin startup script
@@ -272,7 +273,9 @@
         // Update query form
         $("#query_form")
           .empty()
-          .append($("#query_form", htmlString).children());
+          // Intentionally use `$htmlString` here because using `data` causes
+          // `#query_form` to stop working correctly.
+          .append($("#query_form", $htmlString).children());
         setUpQueryFormButtons();
         setFilterItemToSortable();
 
@@ -281,24 +284,24 @@
           .contents()
           .each((i, e) => {
             if (e.nodeType === Node.TEXT_NODE) {
-              e.nodeValue = $("#content>h2", htmlString).text();
+              e.nodeValue = $("#content>h2", data).text();
             }
           });
 
         // Update page title
         // Note: The cause is unknown, Failed to extract title using
         // `$("title", htmlString)`
-        $("head>title").text(data.querySelector("head > title").textContent);
+        $("head>title").text($("head>title", data).text());
 
         // Update sidebar
         if ($("#sidebar-wrapper").length === 0) {
           // Support for Redmine earlier than 5
-          $("#sidebar").empty().append($("#sidebar", htmlString).children());
+          $("#sidebar").empty().append($("#sidebar", $htmlString).children());
         } else {
           // Support for Redmine 6 and later
           $("#sidebar-wrapper")
             .empty()
-            .append($("#sidebar-wrapper", htmlString).children());
+            .append($("#sidebar-wrapper", $htmlString).children());
         }
 
         // Support for RedmineUp issue_tags plugin
@@ -309,10 +312,6 @@
             });
           }
         }
-
-        // Update query-totals
-        $("#content>p.query-totals").remove();
-        $("#query_form+p.query-totals", htmlString).insertAfter("#query_form");
 
         // Update issue list
         const scrollTargetSelector = "#gantt_area";
@@ -355,10 +354,10 @@
           // Update gantt-table element
           $ganttTable
             .empty()
-            .append($("table.gantt-table", htmlString).children());
+            .append($("table.gantt-table", data).children());
         }
 
-        moveContextualButtons(htmlString);
+        moveContextualButtons(data);
 
         if (isRedmine7OrLater) {
           setUpGanttTable();
