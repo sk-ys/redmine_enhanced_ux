@@ -328,6 +328,7 @@
         const ganttTable = document.querySelector(".gantt-table");
 
         if (isRedmine7OrLater) {
+          ganttColumnWidth.restoreAll(data);
           const newGanttTable = data.querySelector(".gantt-table");
 
           if (newGanttTable && ganttTable) {
@@ -650,19 +651,19 @@
           JSON.stringify(ganttColumnWidthList),
         );
       },
-      restoreAll: () => {
+      restoreAll: (target=document) => {
         const ganttColumnWidthList = ganttColumnWidth.loadList();
         for (const [columnName, columnWidth] of Object.entries(
           ganttColumnWidthList,
         )) {
-          ganttColumnWidth.set(columnName, columnWidth);
+          ganttColumnWidth.set(columnName, columnWidth, target);
         }
       },
-      set: (columnName, columnWidth) => {
+      set: (columnName, columnWidth, target=document) => {
         const diffWidth =
           columnWidth -
-          $("table.gantt-table:not(.cloned) td." + columnName).width();
-        $("table.gantt-table:not(.cloned) td." + columnName)
+          $("table.gantt-table:not(.cloned) td." + columnName, target).width();
+        $("table.gantt-table:not(.cloned) td." + columnName, target)
           .width(columnWidth)
           .children('div[class*="container"]')
           .each((_, e) => $(e).width($(e).width() + diffWidth))
