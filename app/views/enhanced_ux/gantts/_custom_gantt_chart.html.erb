@@ -288,6 +288,15 @@
             }
           });
 
+        // Update list description
+        $("#content>h2 + .subtitle")
+          .contents()
+          .each((i, e) => {
+            if (e.nodeType === Node.TEXT_NODE) {
+              e.nodeValue = $("#content>h2 + .subtitle", data).text();
+            }
+          });
+
         // Update page title
         // Note: The cause is unknown, Failed to extract title using
         // `$("title", htmlString)`
