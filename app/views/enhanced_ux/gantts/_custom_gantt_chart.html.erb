@@ -352,11 +352,6 @@
 
           $ganttTableCloned.insertBefore($ganttTable);
 
-          // Restore scroll position
-          $ganttAreaCloned
-            .scrollTop(scrollPositionBeforeUpdate.top)
-            .scrollLeft(scrollPositionBeforeUpdate.left);
-
           // Hide original gantt by opacity settings
           $ganttTable.css({ opacity: 0 });
 
