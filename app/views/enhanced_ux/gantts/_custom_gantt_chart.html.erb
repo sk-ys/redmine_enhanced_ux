@@ -679,15 +679,42 @@
       },
     };
 
-    // Replace the original function to keep state of collapsed/expanded.
-    const ganttEntryClickOrg = ganttEntryClick;
+    let ganttEntryClickOrg = null
+    if (!window.ganttEntryClick) {
+      ganttEntryClickOrg = (e) => {
+        const $iconExpander = $(e.currentTarget);
+        if (
+          !(
+            $iconExpander.hasClass("icon") && $iconExpander.hasClass("expander")
+          )
+        )
+          return;
+        setTimeout(() => $iconExpander.click());
+      };
 
-    ganttEntryClick = (e) => {
-      ganttEntryClickOrg(e);
-      setTimeout(() =>
-        ganttCollapseExpandState.save(e.currentTarget, e.ctrlKey),
+      $("#content").on(
+        "click",
+        "table.gantt-table:not(.cloned) " +
+          "div.gantt_subjects_container > div.gantt_subjects " +
+          "span.icon.expander",
+        (e) => {
+          const $iconExpander = $(e.currentTarget);
+          setTimeout(() =>
+            ganttCollapseExpandState.save($iconExpander, e.ctrlKey),
+          );
+        },
       );
-    };
+    } else {
+      // Replace the original function to keep state of collapsed/expanded.
+      ganttEntryClickOrg = ganttEntryClick;
+
+      ganttEntryClick = (e) => {
+        ganttEntryClickOrg(e);
+        setTimeout(() =>
+          ganttCollapseExpandState.save(e.currentTarget, e.ctrlKey),
+        );
+      };
+    }
 
     function ajaxUpdateIssueListWithQuery(target) {
       // Select or deselect all columns before serializing
