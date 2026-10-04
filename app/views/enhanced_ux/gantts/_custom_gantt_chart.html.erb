@@ -333,7 +333,6 @@
 
           if (newGanttTable && ganttTable) {
             ganttTable.replaceWith(newGanttTable);
-            newGanttTable.classList.add("restored");
           }
         } else {
           const $ganttTableCloned = cloneGanttTable($ganttTable);
@@ -364,17 +363,21 @@
         $("#gantt_draw_area").empty();
         draw_gantt = null;
 
-        // Run the original gantt setup scripts
-        const scriptTag = $(".gantt-table~script", data)
-          .toArray()
-          .filter((e) =>
-            $(e).text().includes("disable_unavailable_columns"),
-          )[0];
-        const regexExtractUnavailableColumns =
-          /disable_unavailable_columns\(\s*'([^']+)'\.split\(\s*','\)/;
-        const match = scriptTag?.text.match(regexExtractUnavailableColumns);
-        const unavailableColumns = match ? match[1].split(",") : [];
-        runOriginalGanttSetupScripts(unavailableColumns);
+        if (isRedmine7OrLater) {
+          setUpGanttTable();
+        } else {
+          // Run the original gantt setup scripts
+          const scriptTag = $(".gantt-table~script", data)
+            .toArray()
+            .filter((e) =>
+              $(e).text().includes("disable_unavailable_columns"),
+            )[0];
+          const regexExtractUnavailableColumns =
+            /disable_unavailable_columns\(\s*'([^']+)'\.split\(\s*','\)/;
+          const match = scriptTag?.text.match(regexExtractUnavailableColumns);
+          const unavailableColumns = match ? match[1].split(",") : [];
+          runOriginalGanttSetupScripts(unavailableColumns);
+        }
 
         // Restore scroll position
         setTimeout(() => {
@@ -986,14 +989,16 @@
       }
     }).observe($("#content > span.pagination")[0]);
 
-    // Set up a mutation observer to setup the Gantt chart
-    new MutationObserver((mutations) => {
-      mutations.forEach((mutation) => {
-        if (mutation.addedNodes.length > 0) {
-          setUpGanttTable();
-        }
-      });
-    }).observe($("table.gantt-table:not(.cloned)")[0], { childList: true });
+    if (!isRedmine7OrLater) {
+      // Set up a mutation observer to setup the Gantt chart
+      new MutationObserver((mutations) => {
+        mutations.forEach((mutation) => {
+          if (mutation.addedNodes.length > 0) {
+            setUpGanttTable();
+          }
+        });
+      }).observe($("table.gantt-table:not(.cloned)")[0], { childList: true });
+    }
 
     // Add event about column width change to ui-resizable-handle.
     $("table.gantt-table")
