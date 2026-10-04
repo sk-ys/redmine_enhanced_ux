@@ -326,7 +326,6 @@
         };
 
         const ganttTable = document.querySelector(".gantt-table");
-        const $ganttTable = $(ganttTable);
 
         if (isRedmine7OrLater) {
           const newGanttTable = data.querySelector(".gantt-table");
@@ -335,6 +334,7 @@
             ganttTable.replaceWith(newGanttTable);
           }
         } else {
+          const $ganttTable = $(ganttTable);
           const $ganttTableCloned = cloneGanttTable($ganttTable);
 
           const $ganttAreaCloned = $ganttTableCloned
@@ -343,7 +343,7 @@
 
           $ganttTableCloned.insertBefore($ganttTable);
 
-          // Restore scrolling
+          // Restore scroll position
           $ganttAreaCloned
             .scrollTop(scrollPositionBeforeUpdate.top)
             .scrollLeft(scrollPositionBeforeUpdate.left);
@@ -359,13 +359,13 @@
 
         moveContextualButtons(htmlString);
 
-        // Reset svg
-        $("#gantt_draw_area").empty();
-        draw_gantt = null;
-
         if (isRedmine7OrLater) {
           setUpGanttTable();
         } else {
+          // Reset svg
+          $("#gantt_draw_area").empty();
+          draw_gantt = null;
+
           // Run the original gantt setup scripts
           const scriptTag = $(".gantt-table~script", data)
             .toArray()
@@ -391,8 +391,7 @@
               .eq(Number($("#months").prop("value")))
               .width();
           }
-          $ganttTable
-            .find("#gantt_area")
+          $("#gantt_area")
             .scrollTop(scrollPositionBeforeUpdate.top)
             .scrollLeft(scrollPositionBeforeUpdate.left + offsetLeft);
         });
