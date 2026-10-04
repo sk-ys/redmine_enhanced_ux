@@ -40,6 +40,7 @@
     const localStorageKeyPrefix = homeUrl.slice(1).replaceAll("/", ".");
 
     const initialQueryFormAction = $("#query_form").attr("action");
+    const isRedmine7OrLater = $("#top-menu .profile-menu").length > 0;
 
     const svgIcons = new (class SVGIcons {
       constructor() {
@@ -192,6 +193,12 @@
       // Adapted from the original code in `redmine/app/views/gantts/show.html.erb`.
       // Confirmed for Redmine versions 4.1.0 through 6.0.3.
       // disable_unavailable_columns('<%= Redmine::Helpers::Gantt::UNAVAILABLE_COLUMNS.map(&:to_s).join(',') %>'.split(','));
+
+      if (isRedmine7OrLater) {
+        // Skip the original Gantt setup scripts for Redmine 7 or later because Stimulus handles it automatically.
+        return;
+      }
+
       window.disable_unavailable_columns &&
         disable_unavailable_columns(unavailableColumns);
       window.drawGanttHandler && drawGanttHandler();
@@ -230,7 +237,6 @@
 
       function ajaxPostProcess(htmlString) {
         const data = new DOMParser().parseFromString(htmlString, "text/html");
-        const $headData = $("head", data);
 
         // Execute actual dates plugin startup script
         try {
@@ -282,7 +288,7 @@
         // Update page title
         // Note: The cause is unknown, Failed to extract title using
         // `$("title", htmlString)`
-        $("head>title").text($headData.find("title").text());
+        $("head>title").text(data.querySelector("head > title").textContent);
 
         // Update sidebar
         if ($("#sidebar-wrapper").length === 0) {
@@ -319,28 +325,38 @@
               : $(scrollTargetSelector).scrollLeft(),
         };
 
-        const $ganttTable = $("table.gantt-table");
+        const ganttTable = document.querySelector(".gantt-table");
+        const $ganttTable = $(ganttTable);
 
-        const $ganttTableCloned = cloneGanttTable($ganttTable);
+        if (isRedmine7OrLater) {
+          const newGanttTable = data.querySelector(".gantt-table");
 
-        const $ganttAreaCloned = $ganttTableCloned
-          .find("#gantt_area")
-          .attr("id", "gantt_area_cloned");
+          if (newGanttTable && ganttTable) {
+            ganttTable.replaceWith(newGanttTable);
+            newGanttTable.classList.add("restored");
+          }
+        } else {
+          const $ganttTableCloned = cloneGanttTable($ganttTable);
 
-        $ganttTableCloned.insertBefore($ganttTable);
+          const $ganttAreaCloned = $ganttTableCloned
+            .find("#gantt_area")
+            .attr("id", "gantt_area_cloned");
 
-        // Restore scrolling
-        $ganttAreaCloned
-          .scrollTop(scrollPositionBeforeUpdate.top)
-          .scrollLeft(scrollPositionBeforeUpdate.left);
+          $ganttTableCloned.insertBefore($ganttTable);
 
-        // Hide original gantt by opacity settings
-        $ganttTable.css({ opacity: 0 });
+          // Restore scrolling
+          $ganttAreaCloned
+            .scrollTop(scrollPositionBeforeUpdate.top)
+            .scrollLeft(scrollPositionBeforeUpdate.left);
 
-        // Update gantt-table element
-        $ganttTable
-          .empty()
-          .append($("table.gantt-table", htmlString).children());
+          // Hide original gantt by opacity settings
+          $ganttTable.css({ opacity: 0 });
+
+          // Update gantt-table element
+          $ganttTable
+            .empty()
+            .append($("table.gantt-table", htmlString).children());
+        }
 
         moveContextualButtons(htmlString);
 
