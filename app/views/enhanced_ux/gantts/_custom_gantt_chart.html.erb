@@ -1219,6 +1219,7 @@
   table.gantt-table {
     :is(
       div.gantt_subjects_container > div.gantt_subjects,
+      div.gantt_selected_column_container > div.gantt_selected_column_content,
       form[data-cm-url$="/issues/context_menu"]
     ) {
       opacity: 1;
@@ -1228,6 +1229,7 @@
   table.gantt-table:not(.restored) {
     :is(
       div.gantt_subjects_container > div.gantt_subjects,
+      div.gantt_selected_column_container > div.gantt_selected_column_content,
       form[data-cm-url$="/issues/context_menu"]
     ) {
       opacity: 0.1;
