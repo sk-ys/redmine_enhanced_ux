@@ -937,7 +937,9 @@
       setTimeout(() => {
         ganttColumnWidth.restoreAll();
         ganttCollapseExpandState.restore($("table.gantt-table:not(.cloned)"));
-        $("#content.gantt_content > table.gantt-table").addClass("restored");
+        setTimeout(() => {
+          $("#content > table.gantt-table").addClass("restored");
+        });
       });
 
       // Remove cloned gantt-table
