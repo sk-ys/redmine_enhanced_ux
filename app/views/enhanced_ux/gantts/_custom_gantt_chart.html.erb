@@ -1216,6 +1216,15 @@
   /* ----- Query form settings end -----*/
 
   /* Hide gantt items until loading is complete. */
+  table.gantt-table {
+    :is(
+      div.gantt_subjects_container > div.gantt_subjects,
+      form[data-cm-url$="/issues/context_menu"]
+    ) {
+      opacity: 1;
+      transition: opacity 0.5s ease-in-out; 
+    }
+  }
   table.gantt-table:not(.restored) {
     :is(
       div.gantt_subjects_container > div.gantt_subjects,
