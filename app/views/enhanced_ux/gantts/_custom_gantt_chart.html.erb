@@ -398,7 +398,9 @@
           $("#gantt_area")
             .scrollTop(scrollPositionBeforeUpdate.top)
             .scrollLeft(scrollPositionBeforeUpdate.left + offsetLeft);
-        });
+        }, 500);
+        // Note: Progress lines may not be fully updated immediately after the 
+        // gantt chart is redrawn.
       }
 
       try {
