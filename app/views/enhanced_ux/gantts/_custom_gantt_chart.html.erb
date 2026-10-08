@@ -109,6 +109,26 @@
       }
     }
 
+    function getGanttAreaScrollPosition() {
+      const $ganttArea = $("#gantt_area");
+      return {
+        top: $ganttArea.scrollTop(),
+        left: $ganttArea.scrollLeft(),
+      };
+    }
+
+    function setGanttAreaScrollPosition(scrollPosition) {
+      const $ganttArea = $("#gantt_area");
+      typeof scrollPosition.top === "number" &&
+        $ganttArea.scrollTop(scrollPosition.top);
+      typeof scrollPosition.left === "number" &&
+        $ganttArea.scrollLeft(scrollPosition.left);
+    }
+
+    function isProgressLineEnabled() {
+      return document.getElementById("draw_progress_line")?.checked;
+    }
+
     // Cloning gantt-table
     function cloneGanttTable($ganttTable) {
       const $ganttTableCloned = $ganttTable
@@ -365,6 +385,7 @@
 
         if (isRedmine7OrLater) {
           setUpGanttTable();
+          setupCollapseExpandEventListener();
         } else {
           // Reset svg
           $("#gantt_draw_area").empty();
@@ -697,7 +718,51 @@
       },
     };
 
-    let ganttEntryClickOrg = null
+    let collapseExpandAttributeMutationObserver = null;
+    function resetGanttScrollPositionAfterMutation(target) {
+      if (!isProgressLineEnabled() || !(target instanceof Element)) return;
+
+      collapseExpandAttributeMutationObserver?.disconnect();
+
+      const scrollPosition = getGanttAreaScrollPosition();
+      setGanttAreaScrollPosition({ top: 0 });
+
+      collapseExpandAttributeMutationObserver = new MutationObserver(() => {
+        setGanttAreaScrollPosition(scrollPosition);
+        collapseExpandAttributeMutationObserver?.disconnect();
+      });
+
+      collapseExpandAttributeMutationObserver.observe(target, {
+        childList: false,
+        subtree: false,
+        attributes: true,
+      });
+    }
+
+    function setupCollapseExpandEventListener() {
+      const $expander = $(
+        "table.gantt-table:not(.cloned) " +
+          "div.gantt_subjects_container > div.gantt_subjects " +
+          "span.icon.expander",
+      );
+
+      $expander.on("click", (e) => {
+        const $iconExpander = $(e.currentTarget);
+        setTimeout(() =>
+          ganttCollapseExpandState.save($iconExpander, e.ctrlKey),
+        );
+      });
+
+      $expander.each((_, elem) => {
+        elem.addEventListener(
+          "click",
+          (e) => resetGanttScrollPositionAfterMutation(elem),
+          true,
+        );
+      });
+    }
+
+    let ganttEntryClickOrg = null;
     if (!window.ganttEntryClick) {
       ganttEntryClickOrg = (e) => {
         const $iconExpander = $(e.currentTarget);
@@ -710,24 +775,17 @@
         setTimeout(() => $iconExpander.click());
       };
 
-      $("#content").on(
-        "click",
-        "table.gantt-table:not(.cloned) " +
-          "div.gantt_subjects_container > div.gantt_subjects " +
-          "span.icon.expander",
-        (e) => {
-          const $iconExpander = $(e.currentTarget);
-          setTimeout(() =>
-            ganttCollapseExpandState.save($iconExpander, e.ctrlKey),
-          );
-        },
-      );
+      setupCollapseExpandEventListener();
     } else {
       // Replace the original function to keep state of collapsed/expanded.
       ganttEntryClickOrg = ganttEntryClick;
 
       ganttEntryClick = (e) => {
+        const scrollPosition =
+          isProgressLineEnabled() && getGanttAreaScrollPosition();
+        scrollPosition && setGanttAreaScrollPosition({ top: 0 });
         ganttEntryClickOrg(e);
+        scrollPosition && setGanttAreaScrollPosition(scrollPosition);
         setTimeout(() =>
           ganttCollapseExpandState.save(e.currentTarget, e.ctrlKey),
         );
