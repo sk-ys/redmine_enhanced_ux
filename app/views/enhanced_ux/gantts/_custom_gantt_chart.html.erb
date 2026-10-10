@@ -422,6 +422,8 @@
         }, 500);
         // Note: Progress lines may not be fully updated immediately after the 
         // gantt chart is redrawn.
+
+        setupProgressLineEnabledEventListener();
       }
 
       try {
@@ -792,6 +794,16 @@
       };
     }
 
+    function setupProgressLineEnabledEventListener() {
+      document.querySelector("#draw_progress_line").addEventListener("change", () => {
+        if (isProgressLineEnabled()) {
+          const scrollPosition = getGanttAreaScrollPosition();
+          setGanttAreaScrollPosition({ top: 0 });
+          requestAnimationFrame(() => setGanttAreaScrollPosition(scrollPosition));
+        }
+      }, true);
+    }
+
     function ajaxUpdateIssueListWithQuery(target) {
       // Select or deselect all columns before serializing
       $("#selected_c option").prop("selected", true);
@@ -1103,6 +1115,7 @@
     setUpQueryForm();
     setUpAnchorTags();
     setUpGanttTable();
+    setupProgressLineEnabledEventListener();
   });
 </script>
 <style>
