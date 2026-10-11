@@ -347,10 +347,14 @@
         const scrollPositionBeforeUpdate = {
           top: $(scrollTargetSelector).scrollTop(),
           left: $(settings.target).parent().hasClass("previous page")
-            ? $(scrollTargetSelector).width()
+            ? $(scrollTargetSelector)[0].scrollWidth
             : $(settings.target).parent().hasClass("next page")
               ? 0
               : $(scrollTargetSelector).scrollLeft(),
+          height: $(scrollTargetSelector)[0].scrollHeight,
+          width: $(scrollTargetSelector)[0].scrollWidth,
+          targetHeight: $(scrollTargetSelector).height(),
+          targetWidth: $(scrollTargetSelector).width()
         };
 
         const ganttTable = document.querySelector(".gantt-table");
@@ -406,19 +410,23 @@
 
         // Restore scroll position
         setTimeout(() => {
-          let offsetLeft = 0;
+          // Calculate the horizontal scroll position to center the target
+          // element within the scroll container.
+          const scrollLeft = (
+            $(settings.target).hasClass("icon-zoom-in") ||
+              $(settings.target).hasClass("icon-zoom-out")
+              ? $(scrollTargetSelector)[0].scrollWidth *
+              (
+                scrollPositionBeforeUpdate.left +
+                scrollPositionBeforeUpdate.targetWidth / 2
+              ) / scrollPositionBeforeUpdate.width -
+              $(scrollTargetSelector).width() / 2
+              : scrollPositionBeforeUpdate.left
+          );
 
-          // Offset to previous or next month
-          // if ($(settings.target).attr("accesskey") === "p") {
-          //   offsetLeft = $("#gantt_area>.gantt_hdr").eq(1).width();
-          // } else if ($(settings.target).attr("accesskey") === "n") {
-          //   offsetLeft = -$("#gantt_area>.gantt_hdr")
-          //     .eq(Number($("#months").prop("value")))
-          //     .width();
-          // }
           $("#gantt_area")
             .scrollTop(scrollPositionBeforeUpdate.top)
-            .scrollLeft(scrollPositionBeforeUpdate.left + offsetLeft);
+            .scrollLeft(scrollLeft);
         }, 500);
         // Note: Progress lines may not be fully updated immediately after the 
         // gantt chart is redrawn.
