@@ -485,6 +485,7 @@
 
     const ganttCollapseExpandState = {
       localStorageKey: localStorageKeyPrefix + "gantt-closed-items",
+      preventSave: false,
       getCollapsableElements: (context) => {
         return $(".gantt_subjects>form>div", context).filter(
           (_, e) => $(e).find("span.expander").length > 0,
@@ -499,17 +500,18 @@
           });
       },
       getChildElements: (parent, context) => {
-        const itemCount =
-          ganttCollapseExpandState.getCollapsableElements(context).length;
+        const itemCount = ganttCollapseExpandState.getCollapsableElements(
+          context,
+        ).length;
         const firstIndex =
           ganttCollapseExpandState
             .getCollapsableElements(context)
             .toArray()
             .indexOf(parent) + 1;
-        const parentLeft = $(parent).position().left;
+        const parentLeft = Number($(parent).css("left").replace("px", ""));
 
         const childElements = [];
-        for (i = firstIndex; i < itemCount; i++) {
+        for (let i = firstIndex; i < itemCount; i++) {
           const $elem = ganttCollapseExpandState
             .getCollapsableElements(context)
             .eq(i);
@@ -530,6 +532,8 @@
         );
       },
       save: (target, collapseWithChildren = false, context = null) => {
+        if (ganttCollapseExpandState.preventSave) return;
+
         const $parent = $(target).closest(
           ".project-name, .version-name, .issue-subject",
         );
@@ -720,17 +724,63 @@
       },
     };
 
+    function syncGanttCollapseExpandState(target) {
+      const $target = $(target).closest("div");
+      const $targetExpander = $target.find(".icon.expander");
+
+      if ($targetExpander.length == 0 || !$target.hasClass("open")) {
+        // If the target is already collapsed, no need to sync child elements.
+        return;
+      }
+
+      const childElements = ganttCollapseExpandState.getChildElements(
+        $target[0],
+      );
+
+      const collapsedItems = ganttCollapseExpandState.load()[location.pathname]
+        ?.closedItems;
+
+      if (!collapsedItems) return;
+
+      ganttCollapseExpandState.preventSave = true;
+      try {
+        childElements.forEach((elem) => {
+          const $expander = $(elem).find(".icon.expander");
+
+          if ($expander.length && elem.checkVisibility()) {
+            if (collapsedItems.includes($(elem).find("a").attr("href"))) {
+              if ($(elem).hasClass("open")) {
+                $expander.click();
+              }
+            } else {
+              if (!$(elem).hasClass("open")) {
+                $expander.click();
+              }
+            }
+          }
+        });
+      } catch (error) {
+        console.error("Error syncing Gantt collapse/expand state:", error);
+      } finally {
+        ganttCollapseExpandState.preventSave = false;
+      }
+    }
+
     let collapseExpandAttributeMutationObserver = null;
-    function resetGanttScrollPositionAfterMutation(target) {
-      if (!isProgressLineEnabled() || !(target instanceof Element)) return;
+    function resetGanttScrollPositionAfterMutation(
+      target,
+      withChildren = false,
+    ) {
+      if (!(target instanceof Element)) return;
 
       collapseExpandAttributeMutationObserver?.disconnect();
 
       const scrollPosition = getGanttAreaScrollPosition();
-      setGanttAreaScrollPosition({ top: 0 });
+      isProgressLineEnabled() && setGanttAreaScrollPosition({ top: 0 });
 
       collapseExpandAttributeMutationObserver = new MutationObserver(() => {
-        setGanttAreaScrollPosition(scrollPosition);
+        !withChildren && syncGanttCollapseExpandState(target);
+        isProgressLineEnabled() && setGanttAreaScrollPosition(scrollPosition);
         collapseExpandAttributeMutationObserver?.disconnect();
       });
 
@@ -750,15 +800,15 @@
 
       $expander.on("click", (e) => {
         const $iconExpander = $(e.currentTarget);
-        setTimeout(() =>
-          ganttCollapseExpandState.save($iconExpander, e.ctrlKey),
-        );
+        setTimeout(() => {
+          ganttCollapseExpandState.save($iconExpander, e.ctrlKey);
+        });
       });
 
       $expander.each((_, elem) => {
         elem.addEventListener(
           "click",
-          (e) => resetGanttScrollPositionAfterMutation(elem),
+          (e) => resetGanttScrollPositionAfterMutation(elem, e.ctrlKey),
           true,
         );
       });
@@ -783,14 +833,21 @@
       ganttEntryClickOrg = ganttEntryClick;
 
       ganttEntryClick = (e) => {
-        const scrollPosition =
-          isProgressLineEnabled() && getGanttAreaScrollPosition();
-        scrollPosition && setGanttAreaScrollPosition({ top: 0 });
-        ganttEntryClickOrg(e);
-        scrollPosition && setGanttAreaScrollPosition(scrollPosition);
-        setTimeout(() =>
-          ganttCollapseExpandState.save(e.currentTarget, e.ctrlKey),
-        );
+        const withChildren = e.ctrlKey;
+        if (e.isTrusted || e.originalEvent?.isTrusted) {
+          // Fire only if the event is trusted (user-initiated)
+          const scrollPosition =
+            isProgressLineEnabled() && getGanttAreaScrollPosition();
+          scrollPosition && setGanttAreaScrollPosition({ top: 0 });
+          ganttEntryClickOrg(e);
+          !withChildren && syncGanttCollapseExpandState(e.currentTarget);
+          scrollPosition && setGanttAreaScrollPosition(scrollPosition);
+          setTimeout(() =>
+            ganttCollapseExpandState.save(e.currentTarget, withChildren),
+          );
+        } else {
+          ganttEntryClickOrg(e);
+        }
       };
     }
 
