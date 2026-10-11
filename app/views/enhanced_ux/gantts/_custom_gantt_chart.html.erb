@@ -408,30 +408,43 @@
           runOriginalGanttSetupScripts(unavailableColumns);
         }
 
-        // Restore scroll position
-        setTimeout(() => {
-          // Calculate the horizontal scroll position to center the target
-          // element within the scroll container.
-          const scrollLeft = (
-            $(settings.target).hasClass("icon-zoom-in") ||
-              $(settings.target).hasClass("icon-zoom-out")
-              ? $(scrollTargetSelector)[0].scrollWidth *
-              (
-                scrollPositionBeforeUpdate.left +
-                scrollPositionBeforeUpdate.targetWidth / 2
-              ) / scrollPositionBeforeUpdate.width -
-              $(scrollTargetSelector).width() / 2
-              : scrollPositionBeforeUpdate.left
-          );
+        // Calculate the horizontal scroll position to center the target
+        // element within the scroll container.
+        const scrollLeft = (
+          $(settings.target).hasClass("icon-zoom-in") ||
+            $(settings.target).hasClass("icon-zoom-out")
+            ? $(scrollTargetSelector)[0].scrollWidth *
+            (
+              scrollPositionBeforeUpdate.left +
+              scrollPositionBeforeUpdate.targetWidth / 2
+            ) / scrollPositionBeforeUpdate.width -
+            $(scrollTargetSelector).width() / 2
+            : scrollPositionBeforeUpdate.left
+        );
 
+        // Restore scroll position
+        function updateScrollPosition(top, left) {
+          // debugger;
           $("#gantt_area")
-            .scrollTop(scrollPositionBeforeUpdate.top)
-            .scrollLeft(scrollLeft);
-        }, 500);
-        // Note: Progress lines may not be fully updated immediately after the 
-        // gantt chart is redrawn.
+            .scrollTop(top)
+            .scrollLeft(left);
+        }
 
         setupProgressLineEnabledEventListener();
+        setupProgressLineUpdatedEvent();
+
+        if (isProgressLineEnabled()) {
+          updateScrollPosition(0, scrollLeft);
+          // Note: Progress lines may not be fully updated immediately after the 
+          // gantt chart is redrawn.
+           const ganttDrawArea = document.querySelector("#gantt_draw_area");
+          $(ganttDrawArea).on("progressLineUpdated.afterAjaxUpdate", () => {
+            updateScrollPosition(scrollPositionBeforeUpdate.top, scrollLeft);
+            $(ganttDrawArea).off("progressLineUpdated.afterAjaxUpdate");
+          });
+        } else {
+          updateScrollPosition(scrollPositionBeforeUpdate.top, scrollLeft);
+        }
       }
 
       try {
@@ -859,6 +872,24 @@
       };
     }
 
+    function setupProgressLineUpdatedEvent() {
+      const ganttDrawArea = document.querySelector("#gantt_draw_area");
+      if (!ganttDrawArea) return;
+
+      const observer = new MutationObserver((mutations) => {
+        ganttDrawArea.dispatchEvent(
+          new CustomEvent("progressLineUpdated", {
+            detail: { mutations: mutations },
+          }),
+        );
+      });
+      observer.observe(ganttDrawArea, {
+        attributes: true,
+        childList: false,
+        subtree: true,
+      });
+    }
+
     function setupProgressLineEnabledEventListener() {
       document.querySelector("#draw_progress_line").addEventListener("change", () => {
         if (isProgressLineEnabled()) {
@@ -1181,6 +1212,7 @@
     setUpAnchorTags();
     setUpGanttTable();
     setupProgressLineEnabledEventListener();
+    setupProgressLineUpdatedEvent();
   });
 </script>
 <style>
