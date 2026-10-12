@@ -40,6 +40,7 @@
     const localStorageKeyPrefix = homeUrl.slice(1).replaceAll("/", ".");
 
     const initialQueryFormAction = $("#query_form").attr("action");
+    const isRedmine7OrLater = $("#top-menu .profile-menu").length > 0;
 
     const svgIcons = new (class SVGIcons {
       constructor() {
@@ -108,6 +109,60 @@
       }
     }
 
+    function getGanttAreaScrollPosition() {
+      const $ganttArea = $("#gantt_area");
+      return {
+        top: $ganttArea.scrollTop(),
+        left: $ganttArea.scrollLeft(),
+      };
+    }
+
+    function setGanttAreaScrollPosition(scrollPosition) {
+      const $ganttArea = $("#gantt_area");
+      typeof scrollPosition.top === "number" &&
+        $ganttArea.scrollTop(scrollPosition.top);
+      typeof scrollPosition.left === "number" &&
+        $ganttArea.scrollLeft(scrollPosition.left);
+    }
+
+    function restoreGanttAreaScrollPosition(scrollPosition){
+      setupProgressLineUpdatedEvent();
+
+      if (isProgressLineEnabled()) {
+        setGanttAreaScrollPosition({ top: 0, left: scrollPosition.left });
+        // Note: Progress lines may not be fully updated immediately after the
+        // gantt chart is redrawn.
+        const ganttDrawArea = document.querySelector("#gantt_draw_area");
+        $(ganttDrawArea).on("progressLineUpdated.afterAjaxUpdate", () => {
+          setGanttAreaScrollPosition(scrollPosition);
+          $(ganttDrawArea).off("progressLineUpdated.afterAjaxUpdate");
+        });
+      } else {
+        setGanttAreaScrollPosition(scrollPosition);
+      }
+    }
+
+    function isProgressLineEnabled() {
+      return document.getElementById("draw_progress_line")?.checked;
+    }
+
+    const ganttStimulusController = {
+      disconnect: function() {
+        isRedmine7OrLater &&
+          $("[data-controller='gantt--chart']").attr(
+            "data-controller",
+            "gantt--chart_suspended",
+          );
+      },
+      connect: function() {
+        isRedmine7OrLater &&
+          $("[data-controller='gantt--chart_suspended']").attr(
+            "data-controller",
+            "gantt--chart",
+          );
+      },
+    };
+    
     // Cloning gantt-table
     function cloneGanttTable($ganttTable) {
       const $ganttTableCloned = $ganttTable
@@ -159,14 +214,14 @@
       return $ganttTableCloned;
     }
 
-    function moveContextualButtons(htmlString) {
+    function moveContextualButtons(data) {
       // Update contextual
       $("#content>div.contextual:first")
         .children("span")
         .remove()
         .end()
         .append(
-          $("#query_form_with_buttons > p.contextual", htmlString).children(),
+          $("#query_form_with_buttons > p.contextual", data).children(),
         )
         .find("a")
         .addClass("prevent-popup-anywhere");
@@ -183,7 +238,7 @@
         "p.other-formats a.png",
       ].forEach((s) => {
         if ($(s).parents(".contextual").length === 0) {
-          $(s).attr("href", $(s, htmlString).attr("href"));
+          $(s).attr("href", $(s, data).attr("href"));
         }
       });
     }
@@ -192,6 +247,12 @@
       // Adapted from the original code in `redmine/app/views/gantts/show.html.erb`.
       // Confirmed for Redmine versions 4.1.0 through 6.0.3.
       // disable_unavailable_columns('<%= Redmine::Helpers::Gantt::UNAVAILABLE_COLUMNS.map(&:to_s).join(',') %>'.split(','));
+
+      if (isRedmine7OrLater) {
+        // Skip the original Gantt setup scripts for Redmine 7 or later because Stimulus handles it automatically.
+        return;
+      }
+
       window.disable_unavailable_columns &&
         disable_unavailable_columns(unavailableColumns);
       window.drawGanttHandler && drawGanttHandler();
@@ -229,8 +290,8 @@
       }
 
       function ajaxPostProcess(htmlString) {
+        const $htmlString = $(htmlString);
         const data = new DOMParser().parseFromString(htmlString, "text/html");
-        const $headData = $("head", data);
 
         // Execute actual dates plugin startup script
         try {
@@ -266,7 +327,9 @@
         // Update query form
         $("#query_form")
           .empty()
-          .append($("#query_form", htmlString).children());
+          // Intentionally use `$htmlString` here because using `data` causes
+          // `#query_form` to stop working correctly.
+          .append($("#query_form", $htmlString).children());
         setUpQueryFormButtons();
         setFilterItemToSortable();
 
@@ -275,24 +338,33 @@
           .contents()
           .each((i, e) => {
             if (e.nodeType === Node.TEXT_NODE) {
-              e.nodeValue = $("#content>h2", htmlString).text();
+              e.nodeValue = $("#content>h2", data).text();
+            }
+          });
+
+        // Update list description
+        $("#content>h2 + .subtitle")
+          .contents()
+          .each((i, e) => {
+            if (e.nodeType === Node.TEXT_NODE) {
+              e.nodeValue = $("#content>h2 + .subtitle", data).text();
             }
           });
 
         // Update page title
         // Note: The cause is unknown, Failed to extract title using
         // `$("title", htmlString)`
-        $("head>title").text($headData.find("title").text());
+        $("head>title").text($("head>title", data).text());
 
         // Update sidebar
         if ($("#sidebar-wrapper").length === 0) {
           // Support for Redmine earlier than 5
-          $("#sidebar").empty().append($("#sidebar", htmlString).children());
+          $("#sidebar").empty().append($("#sidebar", $htmlString).children());
         } else {
           // Support for Redmine 6 and later
           $("#sidebar-wrapper")
             .empty()
-            .append($("#sidebar-wrapper", htmlString).children());
+            .append($("#sidebar-wrapper", $htmlString).children());
         }
 
         // Support for RedmineUp issue_tags plugin
@@ -304,107 +376,116 @@
           }
         }
 
-        // Update query-totals
-        $("#content>p.query-totals").remove();
-        $("#query_form+p.query-totals", htmlString).insertAfter("#query_form");
-
         // Update issue list
         const scrollTargetSelector = "#gantt_area";
         const scrollPositionBeforeUpdate = {
           top: $(scrollTargetSelector).scrollTop(),
           left: $(settings.target).parent().hasClass("previous page")
-            ? $(scrollTargetSelector).width()
+            ? $(scrollTargetSelector)[0].scrollWidth
             : $(settings.target).parent().hasClass("next page")
               ? 0
               : $(scrollTargetSelector).scrollLeft(),
+          height: $(scrollTargetSelector)[0].scrollHeight,
+          width: $(scrollTargetSelector)[0].scrollWidth,
+          targetHeight: $(scrollTargetSelector).height(),
+          targetWidth: $(scrollTargetSelector).width()
         };
 
-        const $ganttTable = $("table.gantt-table");
+        const ganttTable = document.querySelector(".gantt-table");
 
-        const $ganttTableCloned = cloneGanttTable($ganttTable);
+        if (isRedmine7OrLater) {
+          ganttColumnWidth.restoreAll(data);
+          const newGanttTable = data.querySelector(".gantt-table");
 
-        const $ganttAreaCloned = $ganttTableCloned
-          .find("#gantt_area")
-          .attr("id", "gantt_area_cloned");
-
-        $ganttTableCloned.insertBefore($ganttTable);
-
-        // Restore scrolling
-        $ganttAreaCloned
-          .scrollTop(scrollPositionBeforeUpdate.top)
-          .scrollLeft(scrollPositionBeforeUpdate.left);
-
-        // Hide original gantt by opacity settings
-        $ganttTable.css({ opacity: 0 });
-
-        // Update gantt-table element
-        $ganttTable
-          .empty()
-          .append($("table.gantt-table", htmlString).children());
-
-        moveContextualButtons(htmlString);
-
-        // Reset svg
-        $("#gantt_draw_area").empty();
-        draw_gantt = null;
-
-        // Run the original gantt setup scripts
-        const scriptTag = $(".gantt-table~script", data)
-          .toArray()
-          .filter((e) =>
-            $(e).text().includes("disable_unavailable_columns"),
-          )[0];
-        const regexExtractUnavailableColumns =
-          /disable_unavailable_columns\(\s*'([^']+)'\.split\(\s*','\)/;
-        const match = scriptTag?.text.match(regexExtractUnavailableColumns);
-        const unavailableColumns = match ? match[1].split(",") : [];
-        runOriginalGanttSetupScripts(unavailableColumns);
-
-        // Restore scroll position
-        setTimeout(() => {
-          let offsetLeft = 0;
-
-          // Offset to previous or next month
-          if ($(settings.target).attr("accesskey") === "p") {
-            offsetLeft = $("#gantt_area>.gantt_hdr").eq(1).width();
-          } else if ($(settings.target).attr("accesskey") === "n") {
-            offsetLeft = -$("#gantt_area>.gantt_hdr")
-              .eq(Number($("#months").prop("value")))
-              .width();
+          if (newGanttTable && ganttTable) {
+            ganttTable.replaceWith(newGanttTable);
           }
-          $ganttTable
+        } else {
+          const $ganttTable = $(ganttTable);
+          const $ganttTableCloned = cloneGanttTable($ganttTable);
+
+          const $ganttAreaCloned = $ganttTableCloned
             .find("#gantt_area")
-            .scrollTop(scrollPositionBeforeUpdate.top)
-            .scrollLeft(scrollPositionBeforeUpdate.left + offsetLeft);
-        });
+            .attr("id", "gantt_area_cloned");
+
+          $ganttTableCloned.insertBefore($ganttTable);
+
+          // Hide original gantt by opacity settings
+          $ganttTable.css({ opacity: 0 });
+
+          // Update gantt-table element
+          $ganttTable
+            .empty()
+            .append($("table.gantt-table", data).children());
+        }
+
+        moveContextualButtons(data);
+
+        // Calculate the horizontal scroll position to center the target
+        // element within the scroll container.
+        const scrollLeft = (
+          $(settings.target).hasClass("icon-zoom-in") ||
+            $(settings.target).hasClass("icon-zoom-out")
+            ? $(scrollTargetSelector)[0].scrollWidth *
+            (
+              scrollPositionBeforeUpdate.left +
+              scrollPositionBeforeUpdate.targetWidth / 2
+            ) / scrollPositionBeforeUpdate.width -
+            $(scrollTargetSelector).width() / 2
+            : scrollPositionBeforeUpdate.left
+        );
+
+        if (isRedmine7OrLater) {
+          setUpGanttTable(callbackBeforeRestore=() => restoreGanttAreaScrollPosition({
+              top: scrollPositionBeforeUpdate.top,
+              left: scrollLeft,
+            }));
+          setupCollapseExpandEventListener();
+        } else {
+          // Reset svg
+          $("#gantt_draw_area").empty();
+          draw_gantt = null;
+
+          // Run the original gantt setup scripts
+          const scriptTag = $(".gantt-table~script", data)
+            .toArray()
+            .filter((e) =>
+              $(e).text().includes("disable_unavailable_columns"),
+            )[0];
+          const regexExtractUnavailableColumns =
+            /disable_unavailable_columns\(\s*'([^']+)'\.split\(\s*','\)/;
+          const match = scriptTag?.text.match(regexExtractUnavailableColumns);
+          const unavailableColumns = match ? match[1].split(",") : [];
+          runOriginalGanttSetupScripts(unavailableColumns);
+          restoreGanttAreaScrollPosition({
+              top: scrollPositionBeforeUpdate.top,
+              left: scrollLeft,
+            });
+        }
+
+        setupProgressLineEnabledEventListener();
       }
 
       try {
+        // Show ajax indicator
+        $("#ajax-indicator").show();
+
         // Add query parameters to url
         const response = await fetch(url);
         if (!response.ok) {
           throw new Error(`Error ${response.status}: ${response.statusText}`);
         }
 
-        // Show ajax indicator
-        $("#ajax-indicator").show();
-
         const htmlString = await response.text();
-
-        // Show flash
-        const $flash = $("#content > div.flash", htmlString);
-        if ($flash.length) {
-          $("#content > div.flash").remove();
-          $flash.prependTo("#content");
-        }
 
         ajaxPostProcess(htmlString, response.status, response);
 
-        // Hide ajax indicator
-        $("#ajax-indicator").hide();
       } catch (error) {
         console.error("Fetch error:", error);
         alert("Fetch error:", error);
+      } finally {
+        // Hide ajax indicator
+        $("#ajax-indicator").hide();
       }
     };
 
@@ -444,6 +525,7 @@
 
     const ganttCollapseExpandState = {
       localStorageKey: localStorageKeyPrefix + "gantt-closed-items",
+      preventSave: false,
       getCollapsableElements: (context) => {
         return $(".gantt_subjects>form>div", context).filter(
           (_, e) => $(e).find("span.expander").length > 0,
@@ -458,17 +540,18 @@
           });
       },
       getChildElements: (parent, context) => {
-        const itemCount =
-          ganttCollapseExpandState.getCollapsableElements(context).length;
+        const itemCount = ganttCollapseExpandState.getCollapsableElements(
+          context,
+        ).length;
         const firstIndex =
           ganttCollapseExpandState
             .getCollapsableElements(context)
             .toArray()
             .indexOf(parent) + 1;
-        const parentLeft = $(parent).position().left;
+        const parentLeft = Number($(parent).css("left").replace("px", ""));
 
         const childElements = [];
-        for (i = firstIndex; i < itemCount; i++) {
+        for (let i = firstIndex; i < itemCount; i++) {
           const $elem = ganttCollapseExpandState
             .getCollapsableElements(context)
             .eq(i);
@@ -489,6 +572,8 @@
         );
       },
       save: (target, collapseWithChildren = false, context = null) => {
+        if (ganttCollapseExpandState.preventSave) return;
+
         const $parent = $(target).closest(
           ".project-name, .version-name, .issue-subject",
         );
@@ -631,19 +716,19 @@
           JSON.stringify(ganttColumnWidthList),
         );
       },
-      restoreAll: () => {
+      restoreAll: (target=document) => {
         const ganttColumnWidthList = ganttColumnWidth.loadList();
         for (const [columnName, columnWidth] of Object.entries(
           ganttColumnWidthList,
         )) {
-          ganttColumnWidth.set(columnName, columnWidth);
+          ganttColumnWidth.set(columnName, columnWidth, target);
         }
       },
-      set: (columnName, columnWidth) => {
+      set: (columnName, columnWidth, target=document) => {
         const diffWidth =
           columnWidth -
-          $("table.gantt-table:not(.cloned) td." + columnName).width();
-        $("table.gantt-table:not(.cloned) td." + columnName)
+          $("table.gantt-table:not(.cloned) td." + columnName, target).width();
+        $("table.gantt-table:not(.cloned) td." + columnName, target)
           .width(columnWidth)
           .children('div[class*="container"]')
           .each((_, e) => $(e).width($(e).width() + diffWidth))
@@ -679,15 +764,160 @@
       },
     };
 
-    // Replace the original function to keep state of collapsed/expanded.
-    const ganttEntryClickOrg = ganttEntryClick;
+    function syncGanttCollapseExpandState(target) {
+      const $target = $(target).closest("div");
+      const $targetExpander = $target.find(".icon.expander");
 
-    ganttEntryClick = (e) => {
-      ganttEntryClickOrg(e);
-      setTimeout(() =>
-        ganttCollapseExpandState.save(e.currentTarget, e.ctrlKey),
+      if ($targetExpander.length == 0 || !$target.hasClass("open")) {
+        // If the target is already collapsed, no need to sync child elements.
+        return;
+      }
+
+      const childElements = ganttCollapseExpandState.getChildElements(
+        $target[0],
       );
-    };
+
+      const collapsedItems = ganttCollapseExpandState.load()[location.pathname]
+        ?.closedItems;
+
+      if (!collapsedItems) return;
+
+      ganttCollapseExpandState.preventSave = true;
+      try {
+        childElements.forEach((elem) => {
+          const $expander = $(elem).find(".icon.expander");
+
+          if ($expander.length && elem.checkVisibility()) {
+            if (collapsedItems.includes($(elem).find("a").attr("href"))) {
+              if ($(elem).hasClass("open")) {
+                $expander.click();
+              }
+            } else {
+              if (!$(elem).hasClass("open")) {
+                $expander.click();
+              }
+            }
+          }
+        });
+      } catch (error) {
+        console.error("Error syncing Gantt collapse/expand state:", error);
+      } finally {
+        ganttCollapseExpandState.preventSave = false;
+      }
+    }
+
+    let collapseExpandAttributeMutationObserver = null;
+    function resetGanttScrollPositionAfterMutation(
+      target,
+      withChildren = false,
+    ) {
+      if (!(target instanceof Element)) return;
+
+      collapseExpandAttributeMutationObserver?.disconnect();
+
+      const scrollPosition = getGanttAreaScrollPosition();
+      isProgressLineEnabled() && setGanttAreaScrollPosition({ top: 0 });
+
+      collapseExpandAttributeMutationObserver = new MutationObserver(() => {
+        !withChildren && syncGanttCollapseExpandState(target);
+        isProgressLineEnabled() && setGanttAreaScrollPosition(scrollPosition);
+        collapseExpandAttributeMutationObserver?.disconnect();
+      });
+
+      collapseExpandAttributeMutationObserver.observe(target, {
+        childList: false,
+        subtree: false,
+        attributes: true,
+      });
+    }
+
+    function setupCollapseExpandEventListener() {
+      const $expander = $(
+        "table.gantt-table:not(.cloned) " +
+          "div.gantt_subjects_container > div.gantt_subjects " +
+          "span.icon.expander",
+      );
+
+      $expander.on("click", (e) => {
+        const $iconExpander = $(e.currentTarget);
+        setTimeout(() => {
+          ganttCollapseExpandState.save($iconExpander, e.ctrlKey);
+        });
+      });
+
+      $expander.each((_, elem) => {
+        elem.addEventListener(
+          "click",
+          (e) => resetGanttScrollPositionAfterMutation(elem, e.ctrlKey),
+          true,
+        );
+      });
+    }
+
+    let ganttEntryClickOrg = null;
+    if (!window.ganttEntryClick) {
+      ganttEntryClickOrg = (e) => {
+        const $iconExpander = $(e.currentTarget);
+        if (
+          !(
+            $iconExpander.hasClass("icon") && $iconExpander.hasClass("expander")
+          )
+        )
+          return;
+        setTimeout(() => $iconExpander.click());
+      };
+
+      setupCollapseExpandEventListener();
+    } else {
+      // Replace the original function to keep state of collapsed/expanded.
+      ganttEntryClickOrg = ganttEntryClick;
+
+      ganttEntryClick = (e) => {
+        const withChildren = e.ctrlKey;
+        if (e.isTrusted || e.originalEvent?.isTrusted) {
+          // Fire only if the event is trusted (user-initiated)
+          const scrollPosition =
+            isProgressLineEnabled() && getGanttAreaScrollPosition();
+          scrollPosition && setGanttAreaScrollPosition({ top: 0 });
+          ganttEntryClickOrg(e);
+          !withChildren && syncGanttCollapseExpandState(e.currentTarget);
+          scrollPosition && setGanttAreaScrollPosition(scrollPosition);
+          setTimeout(() =>
+            ganttCollapseExpandState.save(e.currentTarget, withChildren),
+          );
+        } else {
+          ganttEntryClickOrg(e);
+        }
+      };
+    }
+
+    function setupProgressLineUpdatedEvent() {
+      const ganttDrawArea = document.querySelector("#gantt_draw_area");
+      if (!ganttDrawArea) return;
+
+      const observer = new MutationObserver((mutations) => {
+        ganttDrawArea.dispatchEvent(
+          new CustomEvent("progressLineUpdated", {
+            detail: { mutations: mutations },
+          }),
+        );
+      });
+      observer.observe(ganttDrawArea, {
+        attributes: true,
+        childList: false,
+        subtree: true,
+      });
+    }
+
+    function setupProgressLineEnabledEventListener() {
+      document.querySelector("#draw_progress_line").addEventListener("change", () => {
+        if (isProgressLineEnabled()) {
+          const scrollPosition = getGanttAreaScrollPosition();
+          setGanttAreaScrollPosition({ top: 0 });
+          requestAnimationFrame(() => setGanttAreaScrollPosition(scrollPosition));
+        }
+      }, true);
+    }
 
     function ajaxUpdateIssueListWithQuery(target) {
       // Select or deselect all columns before serializing
@@ -860,7 +1090,7 @@
       });
     }
 
-    function setUpGanttTable() {
+    function setUpGanttTable(callbackBeforeRestore) {
       // Add dummy space
       $("table.gantt-table:not(.cloned)")
         .find(".gantt_subjects_container, .gantt_selected_column_container")
@@ -905,12 +1135,18 @@
           );
         });
 
-      // Execute
+      ganttStimulusController.disconnect();
+
+      // Adjust Gantt area size and restore state
       adjustGanttAreaSize();
+      callbackBeforeRestore && callbackBeforeRestore();
       setTimeout(() => {
         ganttColumnWidth.restoreAll();
         ganttCollapseExpandState.restore($("table.gantt-table:not(.cloned)"));
-        $("#content.gantt_content > table.gantt-table").addClass("restored");
+        setTimeout(() => {
+          ganttStimulusController.connect();
+          $("#content > table.gantt-table").addClass("restored");
+        });
       });
 
       // Remove cloned gantt-table
@@ -941,23 +1177,33 @@
       }
     }).observe($("#content > span.pagination")[0]);
 
-    // Set up a mutation observer to setup the Gantt chart
-    new MutationObserver((mutations) => {
-      mutations.forEach((mutation) => {
-        if (mutation.addedNodes.length > 0) {
-          setUpGanttTable();
-        }
-      });
-    }).observe($("table.gantt-table:not(.cloned)")[0], { childList: true });
+    if (!isRedmine7OrLater) {
+      // Set up a mutation observer to setup the Gantt chart
+      new MutationObserver((mutations) => {
+        mutations.forEach((mutation) => {
+          if (mutation.addedNodes.length > 0) {
+            setUpGanttTable();
+          }
+        });
+      }).observe($("table.gantt-table:not(.cloned)")[0], { childList: true });
+    }
 
-    // Add event about column width change to ui-resizable-handle.
-    $("table.gantt-table")
-      .on("mouseup", "td.ui-resizable>.ui-resizable-handle", (e) => {
-        ganttColumnWidth.saveList($(e.target).parent());
-      })
-      .on("dblclick", "td.ui-resizable>.ui-resizable-handle", (e) => {
-        ganttColumnWidth.reset($(e.target).parent());
-      });
+    // Add a column width change event listener to `.ui-resizable-handle`.
+    $("#content")
+      .on(
+        "mouseup",
+        "table.gantt-table td.ui-resizable>.ui-resizable-handle",
+        (e) => {
+          ganttColumnWidth.saveList($(e.target).parent());
+        },
+      )
+      .on(
+        "dblclick",
+        "table.gantt-table td.ui-resizable>.ui-resizable-handle",
+        (e) => {
+          ganttColumnWidth.reset($(e.target).parent());
+        },
+      );
 
     // Add adding new issue link
     if ($("#content > .contextual a.new-issue").length === 0) {
@@ -988,6 +1234,8 @@
     setUpQueryForm();
     setUpAnchorTags();
     setUpGanttTable();
+    setupProgressLineEnabledEventListener();
+    setupProgressLineUpdatedEvent();
   });
 </script>
 <style>
@@ -1159,10 +1407,25 @@
   /* ----- Query form settings end -----*/
 
   /* Hide gantt items until loading is complete. */
+  table.gantt-table {
+    :is(
+      div.gantt_subjects_container > div.gantt_subjects,
+      div.gantt_selected_column_container > div.gantt_selected_column_content,
+      form[data-cm-url$="/issues/context_menu"],
+      #today_line,
+      #gantt_draw_area
+    ) {
+      opacity: 1;
+      transition: opacity 0.5s ease-in-out; 
+    }
+  }
   table.gantt-table:not(.restored) {
     :is(
       div.gantt_subjects_container > div.gantt_subjects,
-      form[data-cm-url$="/issues/context_menu"]
+      div.gantt_selected_column_container > div.gantt_selected_column_content,
+      form[data-cm-url$="/issues/context_menu"],
+      #today_line,
+      #gantt_draw_area
     ) {
       opacity: 0.1;
     }
