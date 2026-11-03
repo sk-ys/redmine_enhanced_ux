@@ -1,0 +1,43 @@
+version: '3.8'
+
+services:
+  redmine:
+    image: redmine:latest
+    container_name: redmine-test
+    ports:
+      - "3000:3000"
+    environment:
+      REDMINE_DB_MYSQL: db
+      REDMINE_DB_PASSWORD: password
+      REDMINE_DB_USERNAME: redmine
+      REDMINE_PLUGINS_MIGRATE: "true"
+    volumes:
+      - ./plugins:/usr/src/redmine/plugins
+      - redmine_data:/usr/src/redmine/files
+    depends_on:
+      - db
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  db:
+    image: mysql:8.0
+    container_name: redmine-db-test
+    environment:
+      MYSQL_ROOT_PASSWORD: root_password
+      MYSQL_DATABASE: redmine
+      MYSQL_USER: redmine
+      MYSQL_PASSWORD: password
+    volumes:
+      - db_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  redmine_data:
+  db_data:
