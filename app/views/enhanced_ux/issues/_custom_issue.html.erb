@@ -3090,6 +3090,8 @@
           "&" +
           $("#new-attachments input").serialize();
 
+        const selectedExtraNoteType = $("#extra_note_type").val();
+
         // Post data
         await new Promise((resolve, reject) => {
           $.ajax({
@@ -3113,7 +3115,13 @@
               }
 
               // Support for extra notes plugin 
-              window.extraNotes?.refreshHistoryTab();
+              if (window.extraNotes) {
+                window.extraNotes.refreshHistoryTab?.();
+
+                if (selectedExtraNoteType) {
+                  window.extraNotes.showTabForNoteType?.(selectedExtraNoteType);
+                }
+              }
 
               resolve(data);
             })
