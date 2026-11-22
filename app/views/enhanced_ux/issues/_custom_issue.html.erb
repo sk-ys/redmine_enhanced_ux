@@ -3111,6 +3111,10 @@
               if (!redmineRTEnabled) {
                 issueLayoutManager?.resetHeightOfAttachmentTable();
               }
+
+              // Support for extra notes plugin 
+              window.extraNotes?.refreshHistoryTab();
+
               resolve(data);
             })
             .fail((res) => {
