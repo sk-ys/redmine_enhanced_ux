@@ -243,12 +243,10 @@
       let year = parseInt($("#year option[selected]").val());
       let month = parseInt($("#month option[selected]").val());
       const day = parseInt(
-        $calbody
-          .find("p.day-num")
-          .clone()
-          .children()
-          .remove()
-          .end()
+        ($calbody.find(".day-num .day-value").length > 0
+          ? $calbody.find(".day-num .day-value")
+          : $calbody.find(".day-num").clone().children().remove().end()
+        )
           .text()
           .trim(),
       );
