@@ -361,6 +361,8 @@
             .text(String.fromCharCode(160))
             .attr("title", resources.labelHideColumn);
 
+          if (svgIcons.close) $hideButton.prepend(svgIcons.close);
+
           $issueListTr
             .children("th:not(.checkbox):not(.id):not(.buttons)")
             .append($hideButton);
