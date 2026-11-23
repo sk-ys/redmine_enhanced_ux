@@ -173,11 +173,26 @@
           top: $ganttTable.position().top,
           width: $ganttTable.width(),
           backgroundColor: getBackgroundColorRecursively($ganttTable),
-          zIndex: 99,
+          zIndex: 89,
         });
+
+      const $ganttAreaCloned = $ganttTableCloned.find("#gantt_area");
 
       // Remove all ids
       $ganttTableCloned.find("[id]").removeAttr("id");
+
+      // Set a new id for the cloned gantt area to avoid duplicate ids
+      $ganttAreaCloned.attr("id", "gantt_area_cloned");
+
+      // Set style for the cloned gantt header
+      $ganttAreaCloned.children().eq(0).css({
+        position: "absolute",
+        top: $("#gantt_area").scrollTop(),
+        paddingLeft: $(".gantt_subjects_column").width(),
+        overflow: "hidden",
+        zIndex: 90,
+        width: "100%",
+      });
 
       // Remove classes
       $ganttTableCloned
@@ -404,11 +419,13 @@
           const $ganttTable = $(ganttTable);
           const $ganttTableCloned = cloneGanttTable($ganttTable);
 
-          const $ganttAreaCloned = $ganttTableCloned
-            .find("#gantt_area")
-            .attr("id", "gantt_area_cloned");
-
           $ganttTableCloned.insertBefore($ganttTable);
+
+          // Restore scroll position for the cloned gantt area
+          const $ganttArea = $("#gantt_area");
+          const $ganttAreaCloned = $("#gantt_area_cloned");
+          $ganttAreaCloned.scrollTop($ganttArea.scrollTop());
+          $ganttAreaCloned.scrollLeft($ganttArea.scrollLeft());
 
           // Hide original gantt by opacity settings
           $ganttTable.css({ opacity: 0 });
@@ -1487,7 +1504,7 @@
     top: 0;
     left: 0;
     overflow: hidden;
-    z-index: 30;
+    z-index: 90;
   }
   #gantt_area_cloned {
     overflow: hidden;
