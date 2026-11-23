@@ -39,6 +39,7 @@ Redmine::Plugin.register :redmine_enhanced_ux do
         update_relative_time_in_realtime: '1',
         enhanced_keyboard_shortcuts: '1',
         custom_project_list: '1',
+        cross_project_search_link: '1',
       },
       partial: 'settings/enhanced_ux_settings'
 end
