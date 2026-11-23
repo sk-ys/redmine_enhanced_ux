@@ -243,12 +243,10 @@
       let year = parseInt($("#year option[selected]").val());
       let month = parseInt($("#month option[selected]").val());
       const day = parseInt(
-        $calbody
-          .find("p.day-num")
-          .clone()
-          .children()
-          .remove()
-          .end()
+        ($calbody.find(".day-num .day-value").length > 0
+          ? $calbody.find(".day-num .day-value")
+          : $calbody.find(".day-num").clone().children().remove().end()
+        )
           .text()
           .trim(),
       );
@@ -893,6 +891,10 @@
     margin: 0 !important;
     border: none !important;
     overflow: hidden;
+  }
+
+  #content ul.cal .ui-sortable-placeholder {
+    position: relative !important;
   }
 
   #content ul.cal:hover .ui-sortable-placeholder {
