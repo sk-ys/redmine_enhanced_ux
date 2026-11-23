@@ -141,6 +141,12 @@ module EnhancedUx
             tags << javascript_include_tag("global/update_relative_time_in_realtime", :plugin => "redmine_enhanced_ux")
           end
 
+          if /\/projects\/[^\/]+(\/issues($|\/gantt|\/calendar)|\/issue_note_list)$/.match?(path)
+            if Setting.plugin_redmine_enhanced_ux[:cross_project_search_link] == '1'
+              tags << javascript_include_tag("issues/cross_project_search_link", plugin: "redmine_enhanced_ux")
+            end
+          end
+
           return tags.join('')
         else
           return ''
