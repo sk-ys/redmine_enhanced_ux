@@ -68,3 +68,9 @@ yarn-debug.log*
 /storage/*
 !/storage/.keep
 /public/uploads
+
+# Playwright
+/test-results/
+/playwright-report/
+/blob-report/
+/playwright/.cache/
